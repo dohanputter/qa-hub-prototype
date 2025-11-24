@@ -16,8 +16,7 @@ export default function DashboardLayout({
         <div className="min-h-screen bg-[#f9fafb]">
             <Sidebar />
             <main
-                className={`min-h-screen transition-all duration-300 ${isBoardView ? '' : 'ml-64'
-                    }`}
+                className="min-h-screen transition-all duration-300 ml-64"
             >
                 {children}
             </main>

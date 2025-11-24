@@ -28,6 +28,35 @@ export default async function ProjectBoardPage({ params }: { params: Promise<{ p
     try {
         const gitlabProject = await getProject(projectId, session.accessToken);
 
+        if (process.env.NEXT_PUBLIC_MOCK_MODE === 'true') {
+            // Mock project configuration for board
+            const mockProjectConfig = {
+                ...gitlabProject,
+                qaLabelMapping: {
+                    pending: 'bug',
+                    passed: 'feature',
+                    failed: 'critical'
+                }
+            };
+            const issues = await getIssues(projectId, session.accessToken, { state: 'opened' });
+            return (
+                <div className="flex flex-col h-screen overflow-hidden">
+                    <div className="flex items-center justify-between px-6 py-4 border-b bg-white">
+                        <div className="flex items-baseline gap-2">
+                            <h1 className="text-xl font-bold">{gitlabProject.name}</h1>
+                            <span className="text-xl text-gray-400 font-normal">Board</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                            {/* Filters could go here */}
+                        </div>
+                    </div>
+                    <div className="flex-1 overflow-x-auto overflow-y-hidden p-6 bg-[#f9fafb]">
+                        <KanbanBoard project={mockProjectConfig as any} issues={issues} />
+                    </div>
+                </div>
+            );
+        }
+
         // Check DB
         let project = await db.query.projects.findFirst({
             where: eq(projects.id, projectId)
@@ -44,8 +73,9 @@ export default async function ProjectBoardPage({ params }: { params: Promise<{ p
         return (
             <div className="flex flex-col h-screen overflow-hidden">
                 <div className="flex items-center justify-between px-6 py-4 border-b bg-white">
-                    <div>
-                        <h1 className="text-xl font-bold">{gitlabProject.name} <span className="text-gray-400 font-normal">Board</span></h1>
+                    <div className="flex items-baseline gap-2">
+                        <h1 className="text-xl font-bold">{gitlabProject.name}</h1>
+                        <span className="text-xl text-gray-400 font-normal">Board</span>
                     </div>
                     <div className="flex items-center gap-2">
                         {/* Filters could go here */}

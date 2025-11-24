@@ -69,6 +69,19 @@ export async function configureProjectLabels(
 }
 
 export async function getUserProjects() {
+    // Check for mock mode environment variable directly or via a helper if available in this scope
+    // Since we can't easily import isMock from lib/gitlab (it's not exported), we'll check env here or export isMock.
+    // Better to export isMock from lib/gitlab or just check env.
+    if (process.env.NEXT_PUBLIC_MOCK_MODE === 'true') {
+        // We need to import MOCK_PROJECTS or fetch them. 
+        // Since MOCK_PROJECTS is not exported, we can use getAccessibleProjects which returns them in mock mode.
+        // But getAccessibleProjects requires a token.
+        // Let's modify lib/gitlab.ts to export MOCK_PROJECTS or a specific getter for them without token in mock mode.
+        // Or just use getAccessibleProjects with a dummy token since it mocks anyway.
+        const { getAccessibleProjects } = await import('@/lib/gitlab');
+        return getAccessibleProjects('mock-token') as any;
+    }
+
     const session = await auth();
     if (!session?.user?.id) throw new Error('Unauthorized');
 

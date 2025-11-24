@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { DndContext, DragOverlay, useSensor, useSensors, PointerSensor, closestCorners } from '@dnd-kit/core';
+import { arrayMove } from '@dnd-kit/sortable';
 import { KanbanColumn } from './KanbanColumn';
 import { KanbanCard } from './KanbanCard';
 import { moveIssue } from '@/app/actions/board';
@@ -69,12 +70,33 @@ export function KanbanBoard({ project, issues: initialIssues }: KanbanBoardProps
                 destStatus = Object.keys(columns).find(key =>
                     overIssue.labels.includes(columns[key as keyof typeof columns])
                 ) as keyof typeof columns;
+            } else {
+                // Check if dropped on a column container directly (when empty)
+                // The droppable ID for column is the status key (pending, passed, failed)
+                const isColumn = Object.keys(columns).includes(over.id);
+                if (isColumn) {
+                    destStatus = over.id as keyof typeof columns;
+                }
             }
         }
 
-        if (!sourceStatus || !destStatus || sourceStatus === destStatus) return;
+        if (!sourceStatus || !destStatus) return;
 
-        // Optimistic Update
+        // Handle reordering in same column
+        if (sourceStatus === destStatus) {
+            const oldIndex = issues.findIndex(i => i.id.toString() === active.id);
+            const newIndex = issues.findIndex(i => i.id.toString() === over.id);
+
+            if (oldIndex !== newIndex) {
+                setIssues((items) => arrayMove(items, oldIndex, newIndex));
+                // Note: We are not persisting reordering to the server in this prototype
+                // as the backend/mock data doesn't support ranking yet.
+                // But the UI will update.
+            }
+            return;
+        }
+
+        // Optimistic Update for moving between columns
         const oldLabel = columns[sourceStatus];
         const newLabel = columns[destStatus];
 
