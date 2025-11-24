@@ -66,7 +66,7 @@ export function Sidebar() {
                     <span>Tools</span>
                 </Link>
                 <button
-                    onClick={() => signOut()}
+                    onClick={() => signOut({ callbackUrl: '/auth/signin' })}
                     className="w-full flex items-center gap-3 px-4 py-3 text-gray-400 hover:text-red-400 transition-colors"
                 >
                     <LogOut size={20} />

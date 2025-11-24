@@ -11,7 +11,11 @@ export default function SignInPage() {
     const handleSignIn = async () => {
         setIsLoading(true);
         try {
-            await signIn('gitlab', { callbackUrl: '/' });
+            if (process.env.NEXT_PUBLIC_MOCK_MODE === 'true') {
+                await signIn('mock-login', { callbackUrl: '/' });
+            } else {
+                await signIn('gitlab', { callbackUrl: '/' });
+            }
         } catch (error) {
             console.error('Sign in failed', error);
         } finally {
