@@ -150,6 +150,9 @@ const MOCK_ISSUES = [
     },
 ];
 
+// Mutable store for mock issues (so we can update labels in mock mode)
+let mockIssuesStore = JSON.parse(JSON.stringify(MOCK_ISSUES));
+
 const isMock = () => process.env.NEXT_PUBLIC_MOCK_MODE === 'true';
 
 export function getGitlabClient(token: string) {
@@ -196,17 +199,17 @@ export const getProjectLabels = async (projectId: number, token: string) => {
 
 export const getIssues = async (projectId: number, token: string, params?: { state?: 'opened' | 'closed'; labels?: string; search?: string }) => {
     if (isMock()) {
-        let issues = MOCK_ISSUES.filter(i => i.project_id === Number(projectId));
+        let issues = mockIssuesStore.filter((i: any) => i.project_id === Number(projectId));
         if (params?.state) {
-            issues = issues.filter(i => i.state === params.state);
+            issues = issues.filter((i: any) => i.state === params.state);
         }
         if (params?.labels) {
             const labelList = params.labels.split(',');
-            issues = issues.filter(i => labelList.every(l => i.labels.includes(l)));
+            issues = issues.filter((i: any) => labelList.every((l: string) => i.labels.includes(l)));
         }
         if (params?.search) {
             const searchLower = params.search.toLowerCase();
-            issues = issues.filter(i =>
+            issues = issues.filter((i: any) =>
                 i.title.toLowerCase().includes(searchLower) ||
                 i.description.toLowerCase().includes(searchLower)
             );
@@ -229,7 +232,7 @@ export const getIssues = async (projectId: number, token: string, params?: { sta
 
 export const getIssue = async (projectId: number, issueIid: number, token: string) => {
     if (isMock()) {
-        return MOCK_ISSUES.find(i => i.project_id === Number(projectId) && i.iid === Number(issueIid));
+        return mockIssuesStore.find((i: any) => i.project_id === Number(projectId) && i.iid === Number(issueIid));
     }
     try {
         const gitlab = getGitlabClient(token);
@@ -270,6 +273,17 @@ export const updateIssueLabels = async (
 ) => {
     if (isMock()) {
         console.log(`[MOCK] Updating labels for issue ${issueIid} in project ${projectId}:`, options);
+        // Actually update the mock data
+        const issue = mockIssuesStore.find((i: any) => i.project_id === Number(projectId) && i.iid === Number(issueIid));
+        if (issue) {
+            if (options.removeLabels) {
+                issue.labels = issue.labels.filter((l: string) => !options.removeLabels!.includes(l));
+            }
+            if (options.addLabels) {
+                issue.labels = [...issue.labels, ...options.addLabels.filter((l: string) => !issue.labels.includes(l))];
+            }
+            issue.updated_at = new Date().toISOString();
+        }
         return { success: true };
     }
     try {

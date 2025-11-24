@@ -102,32 +102,26 @@ export function KanbanBoard({ project, issues: initialIssues }: KanbanBoardProps
         const oldLabel = columns[sourceStatus];
         const newLabel = columns[destStatus];
 
-        // Calculate new position
-        let newIssues = [...issues];
-
-        // Remove the active issue from its current position
-        const [movedIssue] = newIssues.splice(activeIndex, 1);
-
-        // Update the issue's labels
+        // Update the issue's labels first
         const updatedIssue = {
-            ...movedIssue,
-            labels: movedIssue.labels.filter((l: string) => l !== oldLabel).concat(newLabel)
+            ...activeIssue,
+            labels: activeIssue.labels.filter((l: string) => l !== oldLabel).concat(newLabel)
         };
 
-        // Find the insertion index
+        // Calculate insertion index BEFORE removing the active issue
         let insertIndex: number;
         if (droppedOnCard && overIssue) {
             // Insert at the position of the card we dropped on
-            insertIndex = newIssues.findIndex(i => i.id.toString() === over.id);
+            insertIndex = issues.findIndex(i => i.id.toString() === over.id);
         } else {
             // Dropped on empty column or column background - add to end of that column
-            const destColumnIssues = newIssues.filter(i =>
+            const destColumnIssues = issues.filter(i =>
                 i.labels.includes(columns[destStatus as keyof typeof columns])
             );
             if (destColumnIssues.length > 0) {
                 // Find the last issue in destination column
                 const lastIssueInDestColumn = destColumnIssues[destColumnIssues.length - 1];
-                insertIndex = newIssues.findIndex(i => i.id === lastIssueInDestColumn.id) + 1;
+                insertIndex = issues.findIndex(i => i.id === lastIssueInDestColumn.id) + 1;
             } else {
                 // Column is empty, find where it should go based on column order
                 // Add it after the last issue of the previous column, or at the start
@@ -135,7 +129,7 @@ export function KanbanBoard({ project, issues: initialIssues }: KanbanBoardProps
                 const destColumnIndex = columnOrder.indexOf(destStatus);
                 let insertAfterColumn: keyof typeof columns | null = null;
                 for (let i = destColumnIndex - 1; i >= 0; i--) {
-                    const prevColumnIssues = newIssues.filter(issue =>
+                    const prevColumnIssues = issues.filter(issue =>
                         issue.labels.includes(columns[columnOrder[i]])
                     );
                     if (prevColumnIssues.length > 0) {
@@ -145,15 +139,26 @@ export function KanbanBoard({ project, issues: initialIssues }: KanbanBoardProps
                 }
 
                 if (insertAfterColumn) {
-                    const prevColumnIssues = newIssues.filter(i =>
+                    const prevColumnIssues = issues.filter(i =>
                         i.labels.includes(columns[insertAfterColumn as keyof typeof columns])
                     );
                     const lastInPrevColumn = prevColumnIssues[prevColumnIssues.length - 1];
-                    insertIndex = newIssues.findIndex(i => i.id === lastInPrevColumn.id) + 1;
+                    insertIndex = issues.findIndex(i => i.id === lastInPrevColumn.id) + 1;
                 } else {
                     insertIndex = 0;
                 }
             }
+        }
+
+        // Now create the new array with the card moved
+        let newIssues = [...issues];
+
+        // Remove the active issue from its current position
+        newIssues.splice(activeIndex, 1);
+
+        // Adjust insertion index if we removed an item before it
+        if (activeIndex < insertIndex) {
+            insertIndex--;
         }
 
         // Insert the updated issue at the calculated position
