@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { Suspense } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { LayoutDashboard, ListTodo, KanbanSquare, Bell, Wrench, LogOut, FileCode, Wand2 } from 'lucide-react';
@@ -36,7 +36,11 @@ export function Sidebar() {
                     </div>
                     <h1 className="text-xl font-bold text-white tracking-tight">QA Hub</h1>
                 </div>
-                <ProjectSelector />
+                <Suspense fallback={
+                    <div className="w-full h-10 bg-gray-800 rounded-md animate-pulse" />
+                }>
+                    <ProjectSelector />
+                </Suspense>
             </div>
 
             <nav className="flex-1 p-4 space-y-2">

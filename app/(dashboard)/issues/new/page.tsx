@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { Suspense, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -16,7 +16,9 @@ import { createIssue } from '@/app/actions/issues';
 import { ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
 
-export default function NewIssuePage() {
+export const dynamic = 'force-dynamic';
+
+function NewIssueForm() {
     const router = useRouter();
     const searchParams = useSearchParams();
     const projectId = searchParams.get('projectId') || '1'; // Default to 1 if not set
@@ -152,5 +154,29 @@ export default function NewIssuePage() {
                 </form>
             </div>
         </div>
+    );
+}
+
+export default function NewIssuePage() {
+    return (
+        <Suspense fallback={
+            <div className="flex-1 space-y-4 p-8 pt-6">
+                <div className="flex items-center justify-between space-y-2">
+                    <div className="flex items-center gap-4">
+                        <Button variant="ghost" size="icon" asChild>
+                            <Link href="/issues">
+                                <ArrowLeft className="h-4 w-4" />
+                            </Link>
+                        </Button>
+                        <div>
+                            <h2 className="text-3xl font-bold tracking-tight">New Issue</h2>
+                            <p className="text-muted-foreground">Loading...</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        }>
+            <NewIssueForm />
+        </Suspense>
     );
 }

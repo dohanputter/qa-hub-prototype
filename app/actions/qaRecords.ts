@@ -2,7 +2,7 @@
 import 'server-only';
 import { auth } from '@/auth';
 import { db } from '@/lib/db';
-import { qaRecords, attachments, notifications } from '@/db/schema';
+import { qaRecords, attachments, notifications, projects } from '@/db/schema';
 import { eq, and, isNull } from 'drizzle-orm';
 import {
     getIssue,
@@ -26,9 +26,13 @@ export async function createOrUpdateQARecord(data: {
 
     const issue = await getIssue(data.projectId, data.issueIid, session.accessToken);
 
-    const existing = await db.query.qaRecords.findFirst({
-        where: eq(qaRecords.gitlabIssueId, issue.id)
-    });
+    const existingResults = await db
+        .select()
+        .from(qaRecords)
+        .where(eq(qaRecords.gitlabIssueId, issue.id))
+        .limit(1);
+
+    const existing = existingResults[0];
 
     if (existing) {
         const [updated] = await db
@@ -65,10 +69,34 @@ export async function submitQAResult(qaRecordId: string, result: 'passed' | 'fai
     const session = await auth();
     if (!session?.accessToken || !session.user?.id) throw new Error('Unauthorized');
 
-    const record = await db.query.qaRecords.findFirst({
-        where: eq(qaRecords.id, qaRecordId),
-        with: { attachments: true, project: true },
-    });
+    const recordResults = await db
+        .select({
+            qaRecord: qaRecords,
+        })
+        .from(qaRecords)
+        .where(eq(qaRecords.id, qaRecordId))
+        .limit(1);
+
+    const qaRecordData = recordResults[0]?.qaRecord;
+    if (!qaRecordData) throw new Error('QA record not found');
+
+    // Fetch related data
+    const attachmentsResults = await db
+        .select()
+        .from(attachments)
+        .where(eq(attachments.qaRecordId, qaRecordId));
+
+    const projectResults = await db
+        .select()
+        .from(projects)
+        .where(eq(projects.id, qaRecordData.gitlabProjectId))
+        .limit(1);
+
+    const record = {
+        ...qaRecordData,
+        attachments: attachmentsResults,
+        project: projectResults[0]
+    };
 
     if (!record) throw new Error('QA record not found');
     if (!record.project.qaLabelMapping) throw new Error('Project labels not configured');
@@ -90,7 +118,7 @@ export async function submitQAResult(qaRecordId: string, result: 'passed' | 'fai
             commentBody += tiptapToMarkdown(record.issuesFoundContent as JSONContent);
             if (record.attachments.length > 0) {
                 commentBody += `\n\n### Attachments\n\n`;
-                record.attachments.forEach((att) => (commentBody += `- ${att.markdown}\n`));
+                record.attachments.forEach((att: typeof attachments.$inferSelect) => (commentBody += `- ${att.markdown}\n`));
             }
         }
     }
@@ -155,10 +183,25 @@ export async function deleteQARecord(qaRecordId: string) {
     const session = await auth();
     if (!session?.accessToken) throw new Error('Unauthorized');
 
-    const record = await db.query.qaRecords.findFirst({
-        where: eq(qaRecords.id, qaRecordId),
-        with: { attachments: true },
-    });
+    const recordResults = await db
+        .select()
+        .from(qaRecords)
+        .where(eq(qaRecords.id, qaRecordId))
+        .limit(1);
+
+    const qaRecordData = recordResults[0];
+    if (!qaRecordData) throw new Error('Record not found');
+
+    // Fetch attachments
+    const attachmentsResults = await db
+        .select()
+        .from(attachments)
+        .where(eq(attachments.qaRecordId, qaRecordId));
+
+    const record = {
+        ...qaRecordData,
+        attachments: attachmentsResults
+    };
 
     if (!record) throw new Error('Record not found');
 

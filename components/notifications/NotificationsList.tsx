@@ -35,12 +35,12 @@ export function NotificationsList() {
     return (
         <div className="space-y-4">
             <div className="flex justify-end">
-                <Button variant="outline" size="sm" onClick={() => markAllRead.mutate()} disabled={!notifications?.some(n => !n.isRead)}>
+                <Button variant="outline" size="sm" onClick={() => markAllRead.mutate()} disabled={!notifications?.some((n: Awaited<ReturnType<typeof getUserNotifications>>[number]) => !n.isRead)}>
                     <CheckCheck className="mr-2 h-4 w-4" /> Mark all as read
                 </Button>
             </div>
             <div className="space-y-2">
-                {notifications?.map((n) => (
+                {notifications?.map((n: Awaited<ReturnType<typeof getUserNotifications>>[number]) => (
                     <Card key={n.id} className={`transition-opacity ${n.isRead ? 'opacity-60 bg-gray-50' : 'bg-white border-l-4 border-l-blue-500'}`}>
                         <CardContent className="p-4 flex justify-between items-start">
                             <div className="space-y-1">

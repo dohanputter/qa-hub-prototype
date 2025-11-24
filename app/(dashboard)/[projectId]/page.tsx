@@ -58,9 +58,13 @@ export default async function ProjectBoardPage({ params }: { params: Promise<{ p
         }
 
         // Check DB
-        let project = await db.query.projects.findFirst({
-            where: eq(projects.id, projectId)
-        });
+        const projectResults = await db
+            .select()
+            .from(projects)
+            .where(eq(projects.id, projectId))
+            .limit(1);
+
+        let project = projectResults[0];
 
         if (!project || !project.isConfigured) {
             const labels = await getProjectLabels(projectId, session.accessToken);

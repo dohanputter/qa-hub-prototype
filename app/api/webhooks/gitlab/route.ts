@@ -40,9 +40,13 @@ export async function POST(req: Request) {
 
 async function handleIssueEvent(event: any) {
     const issue = event.object_attributes;
-    const project = await db.query.projects.findFirst({
-        where: eq(projects.id, event.project.id)
-    });
+    const projectResults = await db
+        .select()
+        .from(projects)
+        .where(eq(projects.id, event.project.id))
+        .limit(1);
+
+    const project = projectResults[0];
 
     if (!project?.qaLabelMapping) return;
 
@@ -71,12 +75,18 @@ async function handleNoteEvent(event: any) {
 
     if (!issue) return;
 
-    const qaRecord = await db.query.qaRecords.findFirst({
-        where: and(
-            eq(qaRecords.gitlabProjectId, event.project.id),
-            eq(qaRecords.gitlabIssueIid, issue.iid)
-        ),
-    });
+    const qaRecordResults = await db
+        .select()
+        .from(qaRecords)
+        .where(
+            and(
+                eq(qaRecords.gitlabProjectId, event.project.id),
+                eq(qaRecords.gitlabIssueIid, issue.iid)
+            )
+        )
+        .limit(1);
+
+    const qaRecord = qaRecordResults[0];
 
     if (!qaRecord) return;
 

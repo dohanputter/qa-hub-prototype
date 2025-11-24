@@ -38,7 +38,7 @@ export function RecentNotifications() {
             <CardContent>
                 <ScrollArea className="h-[350px] pr-4">
                     <div className="space-y-4">
-                        {notifications?.map((notification) => (
+                        {notifications?.map((notification: Awaited<ReturnType<typeof getUserNotifications>>[number]) => (
                             <div key={notification.id} className="flex flex-col gap-1 pb-4 border-b last:border-0">
                                 <p className="text-sm font-medium leading-none">{notification.title}</p>
                                 <p className="text-sm text-muted-foreground line-clamp-2">{notification.message}</p>

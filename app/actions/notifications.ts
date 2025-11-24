@@ -10,11 +10,12 @@ export async function getUserNotifications(limit = 50) {
     const session = await auth();
     if (!session?.user?.id) throw new Error('Unauthorized');
 
-    return db.query.notifications.findMany({
-        where: eq(notifications.userId, session.user.id),
-        orderBy: [desc(notifications.createdAt)],
-        limit,
-    });
+    return db
+        .select()
+        .from(notifications)
+        .where(eq(notifications.userId, session.user.id))
+        .orderBy(desc(notifications.createdAt))
+        .limit(limit);
 }
 
 export async function markNotificationAsRead(notificationId: string) {

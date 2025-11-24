@@ -85,10 +85,13 @@ export async function getUserProjects() {
     const session = await auth();
     if (!session?.user?.id) throw new Error('Unauthorized');
 
-    const result = await db.query.userProjects.findMany({
-        where: eq(userProjects.userId, session.user.id),
-        with: { project: true },
-    });
+    const result = await db
+        .select({
+            project: projects,
+        })
+        .from(userProjects)
+        .innerJoin(projects, eq(userProjects.projectId, projects.id))
+        .where(eq(userProjects.userId, session.user.id));
 
-    return result.map((up) => up.project);
+    return result.map((row: { project: typeof projects.$inferSelect }) => row.project);
 }
