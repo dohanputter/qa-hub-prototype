@@ -13,6 +13,18 @@ export default async function ProjectBoardPage({ params }: { params: Promise<{ p
     const { projectId: projectIdStr } = await params;
     const projectId = parseInt(projectIdStr);
 
+    // Validate projectId
+    if (isNaN(projectId) || !isFinite(projectId)) {
+        return (
+            <div className="flex items-center justify-center h-full">
+                <div className="text-center">
+                    <h2 className="text-lg font-semibold">Invalid Project ID</h2>
+                    <p className="text-muted-foreground">Please select a valid project.</p>
+                </div>
+            </div>
+        );
+    }
+
     try {
         const gitlabProject = await getProject(projectId, session.accessToken);
 
