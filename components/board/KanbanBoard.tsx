@@ -1,30 +1,13 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { DndContext, DragOverlay, useSensor, useSensors, PointerSensor, closestCenter } from '@dnd-kit/core';
-import { arrayMove } from '@dnd-kit/sortable';
-import { KanbanColumn } from './KanbanColumn';
-import { KanbanCard, IssueCard } from './KanbanCard';
-import { moveIssue } from '@/app/actions/board';
-import { toast } from '@/components/ui/use-toast';
+import { useState, useEffect } from 'react'; import { DndContext, DragOverlay, useSensor, useSensors, PointerSensor, closestCenter } from '@dnd-kit/core'; import { arrayMove } from '@dnd-kit/sortable'; import { KanbanColumn } from './KanbanColumn'; import { KanbanCard, IssueCard } from './KanbanCard'; import { moveIssue } from '@/app/actions/board'; import { toast } from '@/components/ui/use-toast';
 
-interface KanbanBoardProps {
-    project: {
-        id: number;
-        qaLabelMapping: {
-            pending: string;
-            passed: string;
-            failed: string;
-        };
-    };
-    issues: any[];
-}
+interface KanbanBoardProps { project: { id: number; qaLabelMapping: { pending: string; passed: string; failed: string; }; }; issues: any[]; }
 
 export function KanbanBoard({ project, issues: initialIssues }: KanbanBoardProps) {
-    const [issues, setIssues] = useState(initialIssues);
-    const [activeId, setActiveId] = useState<string | null>(null);
+    const [issues, setIssues] = useState(initialIssues); const [activeId, setActiveId] = useState<string | null>(null);
 
-    // Update local state when server data changes (e.g. polling or revalidation)
+    // Update local state when server data changes
     useEffect(() => {
         setIssues(initialIssues);
     }, [initialIssues]);
@@ -55,26 +38,23 @@ export function KanbanBoard({ project, issues: initialIssues }: KanbanBoardProps
         const activeIssue = issues.find(i => i.id.toString() === active.id);
         if (!activeIssue) return;
 
-        // Find source column (status)
+        // 1. Determine Source and Destination Status
         const sourceStatus = Object.keys(columns).find(key =>
             activeIssue.labels.includes(columns[key as keyof typeof columns])
         ) as keyof typeof columns | undefined;
 
-        // Find destination column and the card we're dropping over
         let destStatus: keyof typeof columns | undefined;
-        let overIssue: any = null;
         let droppedOnCard = false;
 
         // Check if dropped on a card
-        const possibleOverIssue = issues.find(i => i.id.toString() === over.id);
-        if (possibleOverIssue) {
-            overIssue = possibleOverIssue;
+        const overIssue = issues.find(i => i.id.toString() === over.id);
+        if (overIssue) {
             droppedOnCard = true;
             destStatus = Object.keys(columns).find(key =>
                 overIssue.labels.includes(columns[key as keyof typeof columns])
             ) as keyof typeof columns;
         } else {
-            // Dropped on a column container (empty or on background)
+            // Dropped on a column container
             const isColumn = Object.keys(columns).includes(over.id);
             if (isColumn) {
                 destStatus = over.id as keyof typeof columns;
@@ -83,103 +63,82 @@ export function KanbanBoard({ project, issues: initialIssues }: KanbanBoardProps
 
         if (!sourceStatus || !destStatus) return;
 
-        const activeIndex = issues.findIndex(i => i.id.toString() === active.id);
-
-        // Handle reordering in same column
+        // 2. Handle Reordering in Same Column (Visual Only)
         if (sourceStatus === destStatus && droppedOnCard) {
+            const activeIndex = issues.findIndex(i => i.id.toString() === active.id);
             const overIndex = issues.findIndex(i => i.id.toString() === over.id);
 
             if (activeIndex !== overIndex) {
                 setIssues((items) => arrayMove(items, activeIndex, overIndex));
-                // Note: We are not persisting reordering to the server in this prototype
-                // as the backend/mock data doesn't support ranking yet.
-                // But the UI will update.
             }
             return;
         }
 
-        // Moving between columns
+        // 3. Handle Moving Between Columns
         const oldLabel = columns[sourceStatus];
         const newLabel = columns[destStatus];
 
-        // Update the issue's labels first
+        // Optimistic Update: Update label and timestamp
+        // We update timestamp to 'now' because the server will sort by updated_at DESC.
+        // This prevents the card from "jumping" when the server revalidates.
         const updatedIssue = {
             ...activeIssue,
+            updated_at: new Date().toISOString(),
             labels: activeIssue.labels.filter((l: string) => l !== oldLabel).concat(newLabel)
         };
 
-        // Calculate insertion index BEFORE removing the active issue
-        let insertIndex: number;
-        if (droppedOnCard && overIssue) {
-            // Insert at the position of the card we dropped on
-            insertIndex = issues.findIndex(i => i.id.toString() === over.id);
-        } else {
-            // Dropped on empty column or column background - add to end of that column
-            const destColumnIssues = issues.filter(i =>
-                i.labels.includes(columns[destStatus as keyof typeof columns])
-            );
-            if (destColumnIssues.length > 0) {
-                // Find the last issue in destination column
-                const lastIssueInDestColumn = destColumnIssues[destColumnIssues.length - 1];
-                insertIndex = issues.findIndex(i => i.id === lastIssueInDestColumn.id) + 1;
-            } else {
-                // Column is empty, find where it should go based on column order
-                // Add it after the last issue of the previous column, or at the start
-                const columnOrder: (keyof typeof columns)[] = ['pending', 'passed', 'failed'];
-                const destColumnIndex = columnOrder.indexOf(destStatus);
-                let insertAfterColumn: keyof typeof columns | null = null;
-                for (let i = destColumnIndex - 1; i >= 0; i--) {
-                    const prevColumnIssues = issues.filter(issue =>
-                        issue.labels.includes(columns[columnOrder[i]])
-                    );
-                    if (prevColumnIssues.length > 0) {
-                        insertAfterColumn = columnOrder[i];
-                        break;
-                    }
-                }
-
-                if (insertAfterColumn) {
-                    const prevColumnIssues = issues.filter(i =>
-                        i.labels.includes(columns[insertAfterColumn as keyof typeof columns])
-                    );
-                    const lastInPrevColumn = prevColumnIssues[prevColumnIssues.length - 1];
-                    insertIndex = issues.findIndex(i => i.id === lastInPrevColumn.id) + 1;
-                } else {
-                    insertIndex = 0;
-                }
-            }
-        }
-
-        // Now create the new array with the card moved
+        // Remove active issue from its old position
+        const activeIndex = issues.findIndex(i => i.id.toString() === active.id);
         let newIssues = [...issues];
-
-        // Remove the active issue from its current position
         newIssues.splice(activeIndex, 1);
 
-        // Adjust insertion index if we removed an item before it
-        if (activeIndex < insertIndex) {
-            insertIndex--;
+        // Calculate Insertion Index
+        let insertIndex = 0;
+
+        if (droppedOnCard && overIssue) {
+            // If dropped on a card, we try to insert it at that specific visual position
+            // We need to find where that card is in the GLOBAL list
+            const overIndex = issues.findIndex(i => i.id.toString() === over.id);
+
+            // Since we removed the item at 'activeIndex', if 'activeIndex' was before 'overIndex',
+            // the indices have shifted down by 1.
+            insertIndex = overIndex;
+            if (activeIndex < overIndex) {
+                insertIndex--;
+            }
+        } else {
+            // Dropped on column background -> Insert at the TOP of the global list (Index 0)
+            // This effectively puts it at the top of the destination column.
+            // This matches backend behavior (sort by updated_at DESC).
+            insertIndex = 0;
         }
 
-        // Insert the updated issue at the calculated position
+        // Insert the updated issue
         newIssues.splice(insertIndex, 0, updatedIssue);
-
         setIssues(newIssues);
 
-        // Server Action
+        // 4. Server Action
         const result = await moveIssue(project.id, activeIssue.iid, newLabel, oldLabel);
+
         if (!result.success) {
             toast({ title: "Error moving issue", description: result.error, variant: "destructive" });
-            setIssues(issues); // Revert
+            setIssues(issues); // Revert to original state on failure
         } else {
-            toast({ title: "Issue moved", description: `Moved to ${destStatus}` });
+            // Optional: Toast success
+            // toast({ title: "Issue moved", description: `Moved to ${destStatus}` });
         }
     };
 
     const activeIssue = activeId ? issues.find(i => i.id.toString() === activeId) : null;
 
     return (
-        <DndContext id="kanban-board-dnd-context" sensors={sensors} collisionDetection={closestCenter} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
+        <DndContext
+            id="kanban-board-dnd-context"
+            sensors={sensors}
+            collisionDetection={closestCenter}
+            onDragStart={handleDragStart}
+            onDragEnd={handleDragEnd}
+        >
             <div className="flex h-full gap-6 overflow-x-auto pb-4 items-start">
                 <KanbanColumn id="pending" title="Ready for QA" issues={getIssuesByStatus('pending')} projectId={project.id} />
                 <KanbanColumn id="passed" title="Passed" issues={getIssuesByStatus('passed')} projectId={project.id} />
