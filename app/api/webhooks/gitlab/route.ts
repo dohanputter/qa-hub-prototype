@@ -55,7 +55,7 @@ async function handleIssueEvent(event: any) {
             status: newStatus,
             issueTitle: issue.title,
             issueDescription: issue.description || '',
-            updatedAt: Date.now(),
+            updatedAt: new Date(),
         })
         .where(
             and(

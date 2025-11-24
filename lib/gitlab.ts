@@ -1,4 +1,4 @@
-'use server';
+
 import 'server-only';
 import { Gitlab } from '@gitbeaker/rest';
 import { env } from '@/lib/env';
@@ -33,7 +33,7 @@ export const getProject = async (projectId: number, token: string) => {
 export const getProjectLabels = async (projectId: number, token: string) => {
     try {
         const gitlab = getGitlabClient(token);
-        return await gitlab.Labels.all(projectId);
+        return await gitlab.ProjectLabels.all(projectId);
     } catch (error) {
         console.error('GitLab API Error (getProjectLabels):', error);
         throw new Error('Failed to fetch project labels');
@@ -58,7 +58,7 @@ export const getIssues = async (projectId: number, token: string, params?: { sta
 export const getIssue = async (projectId: number, issueIid: number, token: string) => {
     try {
         const gitlab = getGitlabClient(token);
-        return await gitlab.Issues.show(projectId, issueIid);
+        return await gitlab.Issues.show(projectId, issueIid as any);
     } catch (error) {
         console.error('GitLab API Error (getIssue):', error);
         throw new Error('Failed to fetch issue details');
@@ -84,8 +84,8 @@ export const updateIssueLabels = async (
     try {
         const gitlab = getGitlabClient(token);
         return await gitlab.Issues.edit(projectId, issueIid, {
-            add_labels: options.addLabels?.join(','),
-            remove_labels: options.removeLabels?.join(','),
+            addLabels: options.addLabels?.join(','),
+            removeLabels: options.removeLabels?.join(','),
         });
     } catch (error) {
         console.error('GitLab API Error (updateIssueLabels):', error);
@@ -107,7 +107,7 @@ export async function uploadAttachmentToGitLab(projectId: number, token: string,
     try {
         const buffer = Buffer.from(await file.arrayBuffer());
         const gitlab = getGitlabClient(token);
-        const upload = await gitlab.Projects.upload(projectId, { filename: file.name, content: buffer });
+        const upload = await (gitlab.Projects as any).upload(projectId, { filename: file.name, content: buffer });
 
         const fullUrl = upload.url.startsWith('http')
             ? upload.url
@@ -127,11 +127,11 @@ export async function createProjectWebhook(projectId: number, token: string) {
 
         return await gitlab.ProjectHooks.add(projectId, webhookUrl, {
             token: env.WEBHOOK_SECRET,
-            issues_events: true,
-            note_events: true,
-            push_events: false,
-            merge_requests_events: false,
-            enable_ssl_verification: true,
+            issuesEvents: true,
+            noteEvents: true,
+            pushEvents: false,
+            mergeRequestsEvents: false,
+            enableSslVerification: true,
         });
     } catch (error) {
         console.error('GitLab API Error (createProjectWebhook):', error);

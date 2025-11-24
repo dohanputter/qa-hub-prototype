@@ -3,7 +3,7 @@ import 'server-only';
 import { auth } from '@/auth';
 import { db } from '@/lib/db';
 import { qaRecords, attachments, notifications } from '@/db/schema';
-import { eq, and } from 'drizzle-orm';
+import { eq, and, isNull } from 'drizzle-orm';
 import {
     getIssue,
     createIssueNote,
@@ -36,7 +36,7 @@ export async function createOrUpdateQARecord(data: {
             .set({
                 testCasesContent: data.testCasesContent || existing.testCasesContent,
                 issuesFoundContent: data.issuesFoundContent || existing.issuesFoundContent,
-                updatedAt: Date.now(),
+                updatedAt: new Date(),
             })
             .where(eq(qaRecords.id, existing.id))
             .returning();
@@ -115,12 +115,12 @@ export async function submitQAResult(qaRecordId: string, result: 'passed' | 'fai
     }
 
     await db.update(qaRecords)
-        .set({ status: result, completedAt: Date.now(), updatedAt: Date.now() })
+        .set({ status: result, completedAt: new Date(), updatedAt: new Date() })
         .where(eq(qaRecords.id, qaRecordId));
 
     await db.update(attachments)
         .set({ qaRecordId })
-        .where(eq(attachments.qaRecordId, null));
+        .where(isNull(attachments.qaRecordId));
 
     if (mentions.length > 0) {
         const members = await getProjectMembers(record.gitlabProjectId, session.accessToken);

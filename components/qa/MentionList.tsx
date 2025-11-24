@@ -1,0 +1,75 @@
+'use client';
+
+import React, { forwardRef, useEffect, useImperativeHandle, useState } from 'react';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+
+export const MentionList = forwardRef((props: any, ref) => {
+    const [selectedIndex, setSelectedIndex] = useState(0);
+
+    const selectItem = (index: number) => {
+        const item = props.items[index];
+        if (item) {
+            props.command({ id: item.id, label: item.label });
+        }
+    };
+
+    const upHandler = () => {
+        setSelectedIndex((selectedIndex + props.items.length - 1) % props.items.length);
+    };
+
+    const downHandler = () => {
+        setSelectedIndex((selectedIndex + 1) % props.items.length);
+    };
+
+    const enterHandler = () => {
+        selectItem(selectedIndex);
+    };
+
+    useEffect(() => setSelectedIndex(0), [props.items]);
+
+    useImperativeHandle(ref, () => ({
+        onKeyDown: ({ event }: { event: KeyboardEvent }) => {
+            if (event.key === 'ArrowUp') {
+                upHandler();
+                return true;
+            }
+            if (event.key === 'ArrowDown') {
+                downHandler();
+                return true;
+            }
+            if (event.key === 'Enter') {
+                enterHandler();
+                return true;
+            }
+            return false;
+        },
+    }));
+
+    return (
+        <div className="items bg-white rounded-md shadow-lg border p-1 min-w-[200px] overflow-hidden">
+            {props.items.length ? (
+                props.items.map((item: any, index: number) => (
+                    <button
+                        className={`flex items-center gap-2 w-full text-left px-2 py-1.5 text-sm rounded-sm ${index === selectedIndex ? 'bg-indigo-50 text-indigo-900' : 'hover:bg-gray-50'
+                            }`}
+                        key={index}
+                        onClick={() => selectItem(index)}
+                    >
+                        {item.avatarUrl && (
+                            <Avatar className="h-5 w-5">
+                                <AvatarImage src={item.avatarUrl} />
+                                <AvatarFallback>{item.label[0]}</AvatarFallback>
+                            </Avatar>
+                        )}
+                        <span>{item.label}</span>
+                        <span className="text-xs text-muted-foreground ml-auto">@{item.id}</span>
+                    </button>
+                ))
+            ) : (
+                <div className="px-2 py-1.5 text-sm text-muted-foreground">No result</div>
+            )}
+        </div>
+    );
+});
+
+MentionList.displayName = 'MentionList';

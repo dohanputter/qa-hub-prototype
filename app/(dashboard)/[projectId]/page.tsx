@@ -1,0 +1,58 @@
+import { auth } from '@/auth';
+import { getProject, getIssues, getProjectLabels } from '@/lib/gitlab';
+import { db } from '@/lib/db';
+import { projects } from '@/db/schema';
+import { eq } from 'drizzle-orm';
+import { KanbanBoard } from '@/components/board/KanbanBoard';
+import { ProjectConfiguration } from '@/components/board/ProjectConfiguration';
+
+export default async function ProjectBoardPage({ params }: { params: Promise<{ projectId: string }> }) {
+    const session = await auth();
+    if (!session?.accessToken) return <div>Unauthorized</div>;
+
+    const { projectId: projectIdStr } = await params;
+    const projectId = parseInt(projectIdStr);
+
+    try {
+        const gitlabProject = await getProject(projectId, session.accessToken);
+
+        // Check DB
+        let project = await db.query.projects.findFirst({
+            where: eq(projects.id, projectId)
+        });
+
+        if (!project || !project.isConfigured) {
+            const labels = await getProjectLabels(projectId, session.accessToken);
+            return <ProjectConfiguration gitlabProject={gitlabProject} labels={labels} />;
+        }
+
+        // Fetch issues
+        const issues = await getIssues(projectId, session.accessToken, { state: 'opened' });
+
+        return (
+            <div className="flex flex-col h-screen overflow-hidden">
+                <div className="flex items-center justify-between px-6 py-4 border-b bg-white">
+                    <div>
+                        <h1 className="text-xl font-bold">{gitlabProject.name} <span className="text-gray-400 font-normal">Board</span></h1>
+                    </div>
+                    <div className="flex items-center gap-2">
+                        {/* Filters could go here */}
+                    </div>
+                </div>
+                <div className="flex-1 overflow-x-auto overflow-y-hidden p-6 bg-[#f9fafb]">
+                    <KanbanBoard project={project as typeof project & { qaLabelMapping: { pending: string; passed: string; failed: string } }} issues={issues} />
+                </div>
+            </div>
+        );
+    } catch (error) {
+        console.error("Error loading project board:", error);
+        return (
+            <div className="flex items-center justify-center h-full">
+                <div className="text-center">
+                    <h2 className="text-lg font-semibold">Error loading project</h2>
+                    <p className="text-muted-foreground">Please check if you have access to this project.</p>
+                </div>
+            </div>
+        );
+    }
+}

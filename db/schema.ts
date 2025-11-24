@@ -61,7 +61,7 @@ export const projects = sqliteTable('projects', {
     webhookId: integer('webhook_id'),
     isConfigured: integer('is_configured', { mode: 'boolean' }).default(false).notNull(),
     lastSyncedAt: integer('last_synced_at', { mode: 'timestamp_ms' }),
-    createdAt: integer('created_at', { mode: 'timestamp_ms' }).$defaultFn(() => Date.now()),
+    createdAt: integer('created_at', { mode: 'timestamp_ms' }).$defaultFn(() => new Date()),
 });
 
 export const userProjects = sqliteTable(
@@ -69,7 +69,7 @@ export const userProjects = sqliteTable(
     {
         userId: text('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
         projectId: integer('project_id').notNull().references(() => projects.id, { onDelete: 'cascade' }),
-        addedAt: integer('added_at', { mode: 'timestamp_ms' }).$defaultFn(() => Date.now()),
+        addedAt: integer('added_at', { mode: 'timestamp_ms' }).$defaultFn(() => new Date()),
     },
     (table) => ({
         pk: primaryKey({ columns: [table.userId, table.projectId] }),
@@ -90,8 +90,8 @@ export const qaRecords = sqliteTable('qa_records', {
     issuesFoundContent: text('issues_found_content', { mode: 'json' }),
     createdBy: text('created_by').notNull().references(() => users.id),
     completedAt: integer('completed_at', { mode: 'timestamp_ms' }),
-    createdAt: integer('created_at', { mode: 'timestamp_ms' }).$defaultFn(() => Date.now()),
-    updatedAt: integer('updated_at', { mode: 'timestamp_ms' }).$defaultFn(() => Date.now()),
+    createdAt: integer('created_at', { mode: 'timestamp_ms' }).$defaultFn(() => new Date()),
+    updatedAt: integer('updated_at', { mode: 'timestamp_ms' }).$defaultFn(() => new Date()),
 }, (table) => ({
     projectIdx: index('idx_records_project').on(table.gitlabProjectId),
     issueIdx: index('idx_records_issue').on(table.gitlabIssueIid),
@@ -108,7 +108,7 @@ export const attachments = sqliteTable('attachments', {
     mimeType: text('mime_type').notNull(),
     status: text('status').$type<'pending' | 'uploaded' | 'failed'>().default('uploaded').notNull(),
     uploadedBy: text('uploaded_by').notNull().references(() => users.id),
-    uploadedAt: integer('uploaded_at', { mode: 'timestamp_ms' }).$defaultFn(() => Date.now()),
+    uploadedAt: integer('uploaded_at', { mode: 'timestamp_ms' }).$defaultFn(() => new Date()),
 }, (table) => ({
     qaRecordIdx: index('idx_attachments_qa_record').on(table.qaRecordId),
 }));
@@ -123,7 +123,7 @@ export const notifications = sqliteTable('notifications', {
     resourceId: text('resource_id'),
     actionUrl: text('action_url'),
     isRead: integer('is_read', { mode: 'boolean' }).default(false).notNull(),
-    createdAt: integer('created_at', { mode: 'timestamp_ms' }).$defaultFn(() => Date.now()),
+    createdAt: integer('created_at', { mode: 'timestamp_ms' }).$defaultFn(() => new Date()),
 }, (table) => ({
     userIdx: index('idx_notifications_user').on(table.userId),
     unreadIdx: index('idx_notifications_unread').on(table.userId, table.isRead),
