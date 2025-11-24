@@ -1,16 +1,12 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-    experimental: {
-        // Allow sync usage of headers/cookies for NextAuth compatibility
-        dynamicIO: false,
-    },
     images: {
         remotePatterns: [
             { protocol: 'https', hostname: 'gitlab.com' },
             { protocol: 'https', hostname: '*.gitlab.com' },
+            { protocol: 'https', hostname: 'api.dicebear.com' }, // Needed for mock avatars
         ],
     },
-    // Suppress Next.js 15 async headers warnings for NextAuth until they update
     webpack: (config, { isServer }) => {
         if (isServer) {
             config.ignoreWarnings = [

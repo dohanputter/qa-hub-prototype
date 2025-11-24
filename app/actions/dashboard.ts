@@ -1,12 +1,11 @@
-import { getServerSession } from 'next-auth';
+import { auth } from '@/auth';
+import { env } from '@/lib/env';
+import { db } from '@/lib/db';
+import { qaRecords } from '@/db/schema';
+import { subDays, format } from 'date-fns';
 
 export async function getDashboardStats() {
-    let session;
-    if (env.NEXT_PUBLIC_MOCK_MODE === 'true') {
-        session = { user: { id: 'mock' }, accessToken: '' } as any;
-    } else {
-        session = await getServerSession(authOptions);
-    }
+    const session = await auth();
     if (!session?.user?.id) throw new Error('Unauthorized');
 
     // Get stats for the user's projects or all projects they have access to?
