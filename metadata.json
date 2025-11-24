@@ -1,0 +1,5 @@
+{
+  "name": "QA Hub Prototype Version 1.1",
+  "description": "A specialized QA workflow dashboard integrating with GitLab-style issue tracking, featuring dashboards, Kanban boards, and specific testing workflows.",
+  "requestFramePermissions": []
+}
