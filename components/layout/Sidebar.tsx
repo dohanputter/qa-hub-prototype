@@ -3,7 +3,7 @@
 import React, { Suspense } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { LayoutDashboard, ListTodo, KanbanSquare, Bell, Wrench, LogOut, FileCode, Wand2 } from 'lucide-react';
+import { LayoutDashboard, ListTodo, KanbanSquare, Bell, Wrench, LogOut } from 'lucide-react';
 import { signOut } from 'next-auth/react';
 import { cn } from '@/lib/utils';
 
@@ -17,8 +17,6 @@ export function Sidebar() {
         { href: '/issues', icon: ListTodo, label: 'Issues' },
         { href: '/board', icon: KanbanSquare, label: 'Issues Board' },
         { href: '/notifications', icon: Bell, label: 'Notifications' },
-        { href: '/snippets', icon: FileCode, label: 'Snippets' },
-        { href: '/generator', icon: Wand2, label: 'Test Data' },
     ];
 
     // Helper to check active state

@@ -1,52 +1,66 @@
 import { auth } from '@/auth';
-import { getIssue, getProjectMembers } from '@/lib/gitlab';
-import { db } from '@/lib/db';
-import { qaRecords, attachments } from '@/db/schema';
-import { eq, and } from 'drizzle-orm';
-import { QADetail } from '@/components/qa/QADetail';
+import { getIssue } from '@/lib/gitlab';
+import { TicketDetailPage } from '@/components/TicketDetailPage';
+import { Issue, IssueState, QAStatus } from '@/types';
 
 export default async function QAPage({ params }: { params: Promise<{ projectId: string, issueIid: string }> }) {
     const session = await auth();
-    if (!session?.accessToken) return <div>Unauthorized</div>;
+    const isMockMode = process.env.NEXT_PUBLIC_MOCK_MODE === 'true';
+    if (!session?.accessToken && !isMockMode) return <div>Unauthorized</div>;
 
     const { projectId: projectIdStr, issueIid: issueIidStr } = await params;
     const projectId = parseInt(projectIdStr);
     const issueIid = parseInt(issueIidStr);
 
     try {
-        const issue = await getIssue(projectId, issueIid, session.accessToken);
-        const members = await getProjectMembers(projectId, session.accessToken);
+        const gitlabIssue = await getIssue(projectId, issueIid, session?.accessToken || 'mock-token');
 
-        const qaRecordResults = await db
-            .select({
-                qaRecord: qaRecords,
-            })
-            .from(qaRecords)
-            .where(
-                and(
-                    eq(qaRecords.gitlabProjectId, projectId),
-                    eq(qaRecords.gitlabIssueIid, issueIid)
-                )
-            )
-            .limit(1);
+        // Map to App Issue (Same logic as in intercepted page)
+        const qaLabelMapping = {
+            pending: 'bug',
+            passed: 'feature',
+            failed: 'critical'
+        };
 
-        const qaRecord = qaRecordResults[0]?.qaRecord || null;
+        let qaStatus = QAStatus.TODO;
+        if (gitlabIssue.labels.includes(qaLabelMapping.pending)) qaStatus = QAStatus.READY_FOR_QA;
+        else if (gitlabIssue.labels.includes(qaLabelMapping.passed)) qaStatus = QAStatus.PASSED;
+        else if (gitlabIssue.labels.includes(qaLabelMapping.failed)) qaStatus = QAStatus.FAILED;
+        else qaStatus = QAStatus.TODO;
 
-        // Fetch attachments separately if qaRecord exists
-        let qaRecordWithAttachments = null;
-        if (qaRecord) {
-            const attachmentsResults = await db
-                .select()
-                .from(attachments)
-                .where(eq(attachments.qaRecordId, qaRecord.id));
+        const appIssue: Issue = {
+            id: gitlabIssue.id,
+            iid: gitlabIssue.iid,
+            projectId: gitlabIssue.project_id,
+            title: gitlabIssue.title,
+            description: gitlabIssue.description,
+            state: gitlabIssue.state === 'opened' ? IssueState.OPEN : IssueState.CLOSED,
+            createdAt: gitlabIssue.created_at,
+            updatedAt: gitlabIssue.updated_at,
+            assignee: gitlabIssue.assignees?.[0] ? {
+                id: gitlabIssue.assignees[0].id,
+                name: gitlabIssue.assignees[0].name,
+                username: gitlabIssue.assignees[0].username,
+                avatarUrl: gitlabIssue.assignees[0].avatar_url
+            } : undefined,
+            author: {
+                id: gitlabIssue.author.id,
+                name: gitlabIssue.author.name,
+                username: gitlabIssue.author.username,
+                avatarUrl: gitlabIssue.author.avatar_url
+            },
+            labels: gitlabIssue.labels.map((l: string, idx: number) => ({
+                id: idx,
+                title: l,
+                color: '#ccc',
+                textColor: '#000'
+            })),
+            qaStatus: qaStatus,
+            testCases: '',
+            issuesFound: ''
+        };
 
-            qaRecordWithAttachments = {
-                ...qaRecord,
-                attachments: attachmentsResults
-            };
-        }
-
-        return <QADetail issue={issue} qaRecord={qaRecordWithAttachments} members={members} projectId={projectId} />;
+        return <TicketDetailPage issue={appIssue} />;
     } catch (error) {
         console.error("Error loading QA page:", error);
         return (

@@ -12,7 +12,7 @@ export default function ToolsPage() {
                 </div>
             </div>
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                <Link href="/snippets">
+                <Link href="/tools/snippets">
                     <Card className="hover:bg-gray-50 cursor-pointer transition-colors h-full">
                         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                             <div className="p-2 bg-blue-100 rounded-lg">
@@ -28,7 +28,7 @@ export default function ToolsPage() {
                     </Card>
                 </Link>
 
-                <Link href="/generator">
+                <Link href="/tools/generator">
                     <Card className="hover:bg-gray-50 cursor-pointer transition-colors h-full">
                         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                             <div className="p-2 bg-purple-100 rounded-lg">

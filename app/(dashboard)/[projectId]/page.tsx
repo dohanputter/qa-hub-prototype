@@ -39,6 +39,7 @@ export default async function ProjectBoardPage({ params }: { params: Promise<{ p
                 }
             };
             const issues = await getIssues(projectId, session.accessToken, { state: 'opened' });
+            const labels = await getProjectLabels(projectId, session.accessToken);
             return (
                 <div className="flex flex-col h-screen overflow-hidden">
                     <div className="flex items-center justify-between px-6 py-4 border-b bg-white">
@@ -51,7 +52,11 @@ export default async function ProjectBoardPage({ params }: { params: Promise<{ p
                         </div>
                     </div>
                     <div className="flex-1 overflow-x-auto overflow-y-hidden p-6 bg-[#f9fafb]">
-                        <KanbanBoard project={mockProjectConfig as any} issues={issues} />
+                        <KanbanBoard
+                            project={mockProjectConfig as any}
+                            issues={issues}
+                            labels={labels}
+                        />
                     </div>
                 </div>
             );
@@ -71,8 +76,9 @@ export default async function ProjectBoardPage({ params }: { params: Promise<{ p
             return <ProjectConfiguration gitlabProject={gitlabProject} labels={labels} />;
         }
 
-        // Fetch issues
+        // Fetch issues and labels
         const issues = await getIssues(projectId, session.accessToken, { state: 'opened' });
+        const labels = await getProjectLabels(projectId, session.accessToken);
 
         return (
             <div className="flex flex-col h-screen overflow-hidden">
@@ -86,7 +92,11 @@ export default async function ProjectBoardPage({ params }: { params: Promise<{ p
                     </div>
                 </div>
                 <div className="flex-1 overflow-x-auto overflow-y-hidden p-6 bg-[#f9fafb]">
-                    <KanbanBoard project={project as typeof project & { qaLabelMapping: { pending: string; passed: string; failed: string } }} issues={issues} />
+                    <KanbanBoard
+                        project={project as typeof project & { qaLabelMapping: { pending: string; passed: string; failed: string } }}
+                        issues={issues}
+                        labels={labels}
+                    />
                 </div>
             </div>
         );
