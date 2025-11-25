@@ -48,8 +48,31 @@ export const verificationTokens = sqliteTable('verificationToken', {
 }));
 
 // ===== QA HUB TABLES =====
+export const groups = sqliteTable('groups', {
+    id: integer('id').primaryKey(),
+    name: text('name').notNull(),
+    fullPath: text('full_path').notNull(),
+    description: text('description'),
+    webUrl: text('web_url').notNull(),
+    avatarUrl: text('avatar_url'),
+    createdAt: integer('created_at', { mode: 'timestamp_ms' }).$defaultFn(() => new Date()),
+});
+
+export const userGroups = sqliteTable(
+    'user_groups',
+    {
+        userId: text('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+        groupId: integer('group_id').notNull().references(() => groups.id, { onDelete: 'cascade' }),
+        addedAt: integer('added_at', { mode: 'timestamp_ms' }).$defaultFn(() => new Date()),
+    },
+    (table) => ({
+        pk: primaryKey({ columns: [table.userId, table.groupId] }),
+    })
+);
+
 export const projects = sqliteTable('projects', {
     id: integer('id').primaryKey(),
+    groupId: integer('group_id').references(() => groups.id, { onDelete: 'set null' }),
     name: text('name').notNull(),
     description: text('description'),
     webUrl: text('web_url').notNull(),
@@ -130,7 +153,18 @@ export const notifications = sqliteTable('notifications', {
 }));
 
 // ===== RELATIONS =====
-export const projectsRelations = relations(projects, ({ many }) => ({
+export const groupsRelations = relations(groups, ({ many }) => ({
+    projects: many(projects),
+    userGroups: many(userGroups),
+}));
+
+export const userGroupsRelations = relations(userGroups, ({ one }) => ({
+    user: one(users, { fields: [userGroups.userId], references: [users.id] }),
+    group: one(groups, { fields: [userGroups.groupId], references: [groups.id] }),
+}));
+
+export const projectsRelations = relations(projects, ({ one, many }) => ({
+    group: one(groups, { fields: [projects.groupId], references: [groups.id] }),
     qaRecords: many(qaRecords),
     userProjects: many(userProjects),
 }));

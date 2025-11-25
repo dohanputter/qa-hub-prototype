@@ -2,15 +2,21 @@
 
 import React, { Suspense } from 'react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useSearchParams } from 'next/navigation';
 import { LayoutDashboard, ListTodo, KanbanSquare, Bell, Wrench, LogOut } from 'lucide-react';
 import { signOut } from 'next-auth/react';
 import { cn } from '@/lib/utils';
 
-import { ProjectSelector } from './ProjectSelector';
+import { GroupSelector } from './GroupSelector';
 
 export function Sidebar() {
     const pathname = usePathname();
+    const searchParams = useSearchParams();
+    const groupId = searchParams.get('groupId');
+
+    const getHref = (path: string) => {
+        return groupId ? `${path}?groupId=${groupId}` : path;
+    };
 
     const navItems = [
         { href: '/', icon: LayoutDashboard, label: 'Dashboard', exact: true },
@@ -37,7 +43,7 @@ export function Sidebar() {
                 <Suspense fallback={
                     <div className="w-full h-10 bg-gray-800 rounded-md animate-pulse" />
                 }>
-                    <ProjectSelector />
+                    <GroupSelector />
                 </Suspense>
             </div>
 
@@ -45,7 +51,7 @@ export function Sidebar() {
                 {navItems.map((item) => (
                     <Link
                         key={item.href}
-                        href={item.href}
+                        href={getHref(item.href)}
                         className={cn(
                             "w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-200",
                             isActive(item.href, item.exact)
@@ -61,7 +67,7 @@ export function Sidebar() {
 
             <div className="p-4 border-t border-gray-700">
                 <Link
-                    href="/tools"
+                    href={getHref('/tools')}
                     className={cn(
                         "w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-200",
                         isActive('/tools')

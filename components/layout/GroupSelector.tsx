@@ -10,72 +10,61 @@ import {
     DialogTrigger,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Folder, ChevronRight, Check } from 'lucide-react';
+import { Users, ChevronRight, Check } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { getUserProjects } from '@/app/actions/project';
+import { fetchUserGroups } from '@/app/actions/group';
 
-interface Project {
+interface Group {
     id: number;
     name: string;
+    full_path: string;
     description: string | null;
-    webUrl: string;
+    web_url: string;
+    avatar_url: string | null;
 }
 
-export function ProjectSelector() {
+export function GroupSelector() {
     const [open, setOpen] = useState(false);
-    const [projects, setProjects] = useState<Project[]>([]);
-    const [selectedProject, setSelectedProject] = useState<Project | null>(null);
+    const [groups, setGroups] = useState<Group[]>([]);
+    const [selectedGroup, setSelectedGroup] = useState<Group | null>(null);
     const router = useRouter();
     const searchParams = useSearchParams();
 
     useEffect(() => {
-        const fetchProjects = async () => {
+        const fetchGroups = async () => {
             try {
-                // Get groupId from URL params
+                const data = await fetchUserGroups();
+                setGroups(data);
+
+                // Check if there's a groupId in URL params
                 const groupIdParam = searchParams.get('groupId');
-                const groupId = groupIdParam ? Number(groupIdParam) : undefined;
-
-                const data = await getUserProjects(groupId);
-                setProjects(data);
-
-                // Check if current selected project is in the new project list
-                const projectIdParam = searchParams.get('projectId');
-                let projectToSelect: Project | null = null;
-
-                if (projectIdParam) {
-                    const project = data.find((p: Project) => p.id === Number(projectIdParam));
-                    if (project) {
-                        projectToSelect = project;
+                if (groupIdParam) {
+                    const group = data.find((g: Group) => g.id === Number(groupIdParam));
+                    if (group) {
+                        setSelectedGroup(group);
                     }
-                }
-
-                // If no valid project found, select the first one or clear selection
-                if (!projectToSelect && data.length > 0) {
-                    projectToSelect = data[0];
-                    // Update URL to reflect the new selection
+                } else if (data.length > 0 && !selectedGroup) {
+                    // Default to the first group if none selected
+                    setSelectedGroup(data[0]);
                     const params = new URLSearchParams(searchParams.toString());
-                    params.set('projectId', data[0].id.toString());
+                    params.set('groupId', data[0].id.toString());
                     router.push(`?${params.toString()}`);
                 }
-
-                setSelectedProject(projectToSelect);
             } catch (error) {
-                console.error('Failed to fetch projects', error);
+                console.error('Failed to fetch groups', error);
             }
         };
-        fetchProjects();
-    }, [searchParams]); // Re-fetch when URL params change (e.g., when group changes)
+        fetchGroups();
+    }, []); // Intentionally excluding selectedGroup from deps to avoid infinite loop
 
-    const handleSelect = (project: Project) => {
-        setSelectedProject(project);
+    const handleSelect = (group: Group) => {
+        setSelectedGroup(group);
         setOpen(false);
-        // In a real implementation, we might update a global context or redirect.
-        // For this prototype, we'll just refresh or maybe set a cookie/local storage?
-        // Let's assume the dashboard uses the first project or we need a way to pass this.
-        // The prompt says "Filter data based on selected project".
-        // We can add ?projectId=... to the URL.
+
+        // Update URL with selected group, remove projectId since it's no longer used for viewing
         const params = new URLSearchParams(searchParams.toString());
-        params.set('projectId', project.id.toString());
+        params.set('groupId', group.id.toString());
+        params.delete('projectId'); // Remove project filter from URL
         router.push(`?${params.toString()}`);
     };
 
@@ -85,13 +74,13 @@ export function ProjectSelector() {
                 <button className="w-full text-left px-3 py-2.5 rounded-lg bg-gray-800/50 hover:bg-gray-800 border border-gray-700/50 hover:border-gray-600 transition-all duration-200 group">
                     <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2 flex-1 min-w-0">
-                            <Folder className="h-4 w-4 text-gray-400 group-hover:text-gray-300 flex-shrink-0" />
+                            <Users className="h-4 w-4 text-gray-400 group-hover:text-gray-300 flex-shrink-0" />
                             <div className="flex flex-col min-w-0 flex-1">
-                                <span className="text-xs text-gray-500 font-medium">Project</span>
-                                {selectedProject ? (
-                                    <span className="text-sm text-gray-200 font-medium truncate">{selectedProject.name}</span>
+                                <span className="text-xs text-gray-500 font-medium">Group</span>
+                                {selectedGroup ? (
+                                    <span className="text-sm text-gray-200 font-medium truncate">{selectedGroup.name}</span>
                                 ) : (
-                                    <span className="text-sm text-gray-400">Select Project</span>
+                                    <span className="text-sm text-gray-400">Select Group</span>
                                 )}
                             </div>
                         </div>
@@ -101,43 +90,43 @@ export function ProjectSelector() {
             </DialogTrigger>
             <DialogContent className="sm:max-w-[600px] bg-[#1e1e2f] border-gray-700 text-gray-100">
                 <DialogHeader>
-                    <DialogTitle className="text-gray-100">Select Project</DialogTitle>
+                    <DialogTitle className="text-gray-100">Select Group</DialogTitle>
                 </DialogHeader>
                 <div className="grid gap-4 py-4">
                     <p className="text-sm text-gray-400">
-                        Choose the project where you want to create the issue.
+                        Choose the GitLab group you want to work with. Projects will be filtered by the selected group.
                     </p>
                     <div className="space-y-2">
-                        {projects.map((project) => (
+                        {groups.map((group) => (
                             <div
-                                key={project.id}
+                                key={group.id}
                                 className={cn(
                                     "flex items-center justify-between p-4 border rounded-lg cursor-pointer transition-all duration-200",
-                                    selectedProject?.id === project.id
+                                    selectedGroup?.id === group.id
                                         ? "border-indigo-500 bg-indigo-500/10 hover:bg-indigo-500/20"
                                         : "border-gray-700 hover:bg-gray-800 hover:border-gray-600"
                                 )}
-                                onClick={() => handleSelect(project)}
+                                onClick={() => handleSelect(group)}
                             >
                                 <div className="flex items-center gap-4">
                                     <div className={cn(
                                         "p-2 rounded-md",
-                                        selectedProject?.id === project.id ? "bg-indigo-500/20" : "bg-gray-800"
+                                        selectedGroup?.id === group.id ? "bg-indigo-500/20" : "bg-gray-800"
                                     )}>
-                                        <Folder className={cn(
+                                        <Users className={cn(
                                             "h-5 w-5",
-                                            selectedProject?.id === project.id ? "text-indigo-400" : "text-gray-400"
+                                            selectedGroup?.id === group.id ? "text-indigo-400" : "text-gray-400"
                                         )} />
                                     </div>
                                     <div>
-                                        <h4 className="font-medium text-gray-100">{project.name}</h4>
+                                        <h4 className="font-medium text-gray-100">{group.name}</h4>
                                         <p className="text-sm text-gray-400">
-                                            {project.description || 'No description'}
+                                            {group.description || group.full_path}
                                         </p>
                                     </div>
                                 </div>
                                 <div className="flex items-center gap-2">
-                                    {selectedProject?.id === project.id && (
+                                    {selectedGroup?.id === group.id && (
                                         <Check className="h-4 w-4 text-indigo-400" />
                                     )}
                                     <ChevronRight className="h-4 w-4 text-gray-500" />

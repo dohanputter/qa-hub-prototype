@@ -14,9 +14,7 @@ import { KanbanColumn } from "./KanbanColumn";
 import { KanbanCard, IssueCard } from "./KanbanCard";
 import { moveIssue } from "@/app/actions/board";
 import { toast } from "@/components/ui/use-toast";
-import { Search, X, Plus } from "lucide-react";
-import Link from "next/link";
-import { Button } from "@/components/ui/button";
+import { Search, X } from "lucide-react";
 
 interface KanbanBoardProps {
     project: {
@@ -222,67 +220,55 @@ export function KanbanBoard({
     return (
         <div className="flex flex-col h-full">
             {/* Sticky Header */}
-            <div className="flex justify-between items-center mb-6 sticky top-0 z-10 bg-[#f9fafb] py-2">
-                <div className="flex flex-col">
-                    <h2 className="text-2xl font-bold text-gray-800">Issues Board</h2>
-                    <div className="text-sm text-gray-500">Drag tickets to update status</div>
-                </div>
+            <div className="flex justify-end items-center mb-6 sticky top-0 z-10 bg-[#f9fafb] py-2">
 
-                <div className="flex items-center gap-4">
-                    {/* Search Input Container */}
-                    <div className="relative w-80" ref={searchContainerRef}>
-                        <div className="relative">
-                            <Search className="absolute left-3 top-2.5 text-gray-400" size={16} />
-                            <input
-                                ref={searchInputRef}
-                                type="text"
-                                placeholder="Search or type @label..."
-                                value={searchQuery}
-                                onChange={handleSearchInput}
-                                onKeyDown={handleKeyDown}
-                                className="w-full pl-10 pr-8 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white shadow-sm text-gray-900"
-                            />
-                            {searchQuery && (
-                                <button
-                                    onClick={() => { setSearchQuery(''); setShowLabelSuggestions(false); }}
-                                    className="absolute right-2 top-2.5 text-gray-400 hover:text-gray-600"
-                                >
-                                    <X size={16} />
-                                </button>
-                            )}
-                        </div>
-
-                        {/* Autocomplete Dropdown */}
-                        {showLabelSuggestions && filteredLabels.length > 0 && (
-                            <div className="absolute top-full left-0 right-0 mt-2 bg-white border border-gray-200 rounded-lg shadow-lg z-50 overflow-hidden">
-                                <div className="px-3 py-2 bg-gray-50 border-b border-gray-100 text-xs font-semibold text-gray-500 uppercase">
-                                    Select Label
-                                </div>
-                                <ul className="max-h-48 overflow-y-auto">
-                                    {filteredLabels.map((label: any, index: number) => (
-                                        <li
-                                            key={label.id}
-                                            onClick={() => selectLabel(label.name)}
-                                            className={`px-3 py-2 flex items-center gap-2 cursor-pointer text-sm ${index === activeSuggestionIndex ? 'bg-indigo-50 text-indigo-900' : 'hover:bg-gray-50 text-gray-700'
-                                                }`}
-                                        >
-                                            <span
-                                                className="w-3 h-3 rounded-full border border-black/10"
-                                                style={{ backgroundColor: label.color }}
-                                            ></span>
-                                            <span className="font-medium">{label.name}</span>
-                                        </li>
-                                    ))}
-                                </ul>
-                            </div>
+                {/* Search Input Container */}
+                <div className="relative w-80" ref={searchContainerRef}>
+                    <div className="relative">
+                        <Search className="absolute left-3 top-2.5 text-gray-400" size={16} />
+                        <input
+                            ref={searchInputRef}
+                            type="text"
+                            placeholder="Search or type @label..."
+                            value={searchQuery}
+                            onChange={handleSearchInput}
+                            onKeyDown={handleKeyDown}
+                            className="w-full pl-10 pr-8 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white shadow-sm text-gray-900"
+                        />
+                        {searchQuery && (
+                            <button
+                                onClick={() => { setSearchQuery(''); setShowLabelSuggestions(false); }}
+                                className="absolute right-2 top-2.5 text-gray-400 hover:text-gray-600"
+                            >
+                                <X size={16} />
+                            </button>
                         )}
                     </div>
 
-                    <Button asChild>
-                        <Link href={`/${project.id}/issues/new`}>
-                            <Plus size={16} className="mr-2" /> Create Issue
-                        </Link>
-                    </Button>
+                    {/* Autocomplete Dropdown */}
+                    {showLabelSuggestions && filteredLabels.length > 0 && (
+                        <div className="absolute top-full left-0 right-0 mt-2 bg-white border border-gray-200 rounded-lg shadow-lg z-50 overflow-hidden">
+                            <div className="px-3 py-2 bg-gray-50 border-b border-gray-100 text-xs font-semibold text-gray-500 uppercase">
+                                Select Label
+                            </div>
+                            <ul className="max-h-48 overflow-y-auto">
+                                {filteredLabels.map((label: any, index: number) => (
+                                    <li
+                                        key={label.id}
+                                        onClick={() => selectLabel(label.name)}
+                                        className={`px-3 py-2 flex items-center gap-2 cursor-pointer text-sm ${index === activeSuggestionIndex ? 'bg-indigo-50 text-indigo-900' : 'hover:bg-gray-50 text-gray-700'
+                                            }`}
+                                    >
+                                        <span
+                                            className="w-3 h-3 rounded-full border border-black/10"
+                                            style={{ backgroundColor: label.color }}
+                                        ></span>
+                                        <span className="font-medium">{label.name}</span>
+                                    </li>
+                                ))}
+                            </ul>
+                        </div>
+                    )}
                 </div>
             </div>
 

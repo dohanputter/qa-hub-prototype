@@ -4,6 +4,33 @@ import { Gitlab } from '@gitbeaker/rest';
 import { env } from '@/lib/env';
 
 // Mock Data Constants
+const MOCK_GROUPS = [
+    {
+        id: 10,
+        name: 'QA Hub Team',
+        full_path: 'qa-hub',
+        description: 'Main QA Hub organization with all core projects',
+        web_url: 'https://gitlab.com/groups/qa-hub',
+        avatar_url: null,
+    },
+    {
+        id: 11,
+        name: 'Mobile Development',
+        full_path: 'qa-hub/mobile',
+        description: 'Mobile application projects (iOS and Android)',
+        web_url: 'https://gitlab.com/groups/qa-hub/mobile',
+        avatar_url: null,
+    },
+    {
+        id: 12,
+        name: 'Infrastructure',
+        full_path: 'qa-hub/infrastructure',
+        description: 'DevOps, CI/CD, and infrastructure projects',
+        web_url: 'https://gitlab.com/groups/qa-hub/infrastructure',
+        avatar_url: null,
+    },
+];
+
 const MOCK_PROJECTS = [
     {
         id: 1,
@@ -15,6 +42,18 @@ const MOCK_PROJECTS = [
         star_count: 12,
         forks_count: 4,
         last_activity_at: new Date().toISOString(),
+        namespace: {
+            id: 10,
+            name: 'QA Hub Team',
+            path: 'qa-hub',
+            kind: 'group',
+            full_path: 'qa-hub',
+        },
+        qaLabelMapping: {
+            pending: 'bug',
+            passed: 'feature',
+            failed: 'critical',
+        },
     },
     {
         id: 2,
@@ -26,6 +65,18 @@ const MOCK_PROJECTS = [
         star_count: 8,
         forks_count: 2,
         last_activity_at: new Date(Date.now() - 86400000).toISOString(),
+        namespace: {
+            id: 10,
+            name: 'QA Hub Team',
+            path: 'qa-hub',
+            kind: 'group',
+            full_path: 'qa-hub',
+        },
+        qaLabelMapping: {
+            pending: 'bug',
+            passed: 'feature',
+            failed: 'critical',
+        },
     },
     {
         id: 3,
@@ -37,6 +88,18 @@ const MOCK_PROJECTS = [
         star_count: 5,
         forks_count: 1,
         last_activity_at: new Date(Date.now() - 172800000).toISOString(),
+        namespace: {
+            id: 11,
+            name: 'Mobile Development',
+            path: 'mobile',
+            kind: 'group',
+            full_path: 'qa-hub/mobile',
+        },
+        qaLabelMapping: {
+            pending: 'bug',
+            passed: 'feature',
+            failed: 'critical',
+        },
     },
 ];
 
@@ -317,6 +380,32 @@ export const getAccessibleProjects = async (token: string) => {
     } catch (error) {
         console.error('GitLab API Error (getAccessibleProjects):', error);
         throw new Error('Failed to fetch projects from GitLab');
+    }
+};
+
+export const getUserGroups = async (token: string) => {
+    if (isMock()) return MOCK_GROUPS;
+    try {
+        const gitlab = getGitlabClient(token);
+        // Use minAccessLevel to filter groups where user is a member
+        return await gitlab.Groups.all({ minAccessLevel: 10 } as any);
+    } catch (error) {
+        console.error('GitLab API Error (getUserGroups):', error);
+        throw new Error('Failed to fetch groups from GitLab');
+    }
+};
+
+export const getGroupProjects = async (groupId: number, token: string) => {
+    if (isMock()) {
+        return MOCK_PROJECTS.filter(p => p.namespace.id === Number(groupId));
+    }
+    try {
+        const gitlab = getGitlabClient(token);
+        // Groups API supports listing projects
+        return await (gitlab.Groups as any).projects.all(groupId);
+    } catch (error) {
+        console.error('GitLab API Error (getGroupProjects):', error);
+        throw new Error('Failed to fetch group projects');
     }
 };
 

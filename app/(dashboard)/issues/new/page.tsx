@@ -15,14 +15,17 @@ import {
 import { createIssue } from '@/app/actions/issues';
 import { ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
+import { CreateIssueProjectSelector } from '@/components/issues/CreateIssueProjectSelector';
 
 export const dynamic = 'force-dynamic';
 
 function NewIssueForm() {
     const router = useRouter();
     const searchParams = useSearchParams();
-    const projectId = searchParams.get('projectId') || '1'; // Default to 1 if not set
+    const projectIdParam = searchParams.get('projectId');
 
+    const [showProjectSelector, setShowProjectSelector] = useState(!projectIdParam);
+    const [selectedProjectId, setSelectedProjectId] = useState(projectIdParam || '');
     const [isLoading, setIsLoading] = useState(false);
     const [formData, setFormData] = useState({
         title: '',
@@ -32,11 +35,21 @@ function NewIssueForm() {
         labelId: '',
     });
 
+    const handleProjectSelect = (projectId: number) => {
+        setSelectedProjectId(projectId.toString());
+        setShowProjectSelector(false);
+
+        // Update URL with selected project
+        const params = new URLSearchParams(searchParams.toString());
+        params.set('projectId', projectId.toString());
+        router.push(`/issues/new?${params.toString()}`);
+    };
+
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setIsLoading(true);
         try {
-            await createIssue(Number(projectId), formData);
+            await createIssue(Number(selectedProjectId), formData);
             router.push('/issues');
             router.refresh();
         } catch (error) {
@@ -45,6 +58,34 @@ function NewIssueForm() {
             setIsLoading(false);
         }
     };
+
+    // Show project selector modal if no project is selected
+    if (!selectedProjectId) {
+        return (
+            <>
+                <CreateIssueProjectSelector
+                    open={showProjectSelector}
+                    onSelect={handleProjectSelect}
+                    onOpenChange={setShowProjectSelector}
+                />
+                <div className="flex-1 space-y-4 p-8 pt-6">
+                    <div className="flex items-center justify-between space-y-2">
+                        <div className="flex items-center gap-4">
+                            <Button variant="ghost" size="icon" asChild>
+                                <Link href="/issues">
+                                    <ArrowLeft className="h-4 w-4" />
+                                </Link>
+                            </Button>
+                            <div>
+                                <h2 className="text-3xl font-bold tracking-tight">New Issue</h2>
+                                <p className="text-muted-foreground">Select a project to create an issue</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </>
+        );
+    }
 
     return (
         <div className="flex-1 space-y-4 p-8 pt-6">
@@ -57,7 +98,7 @@ function NewIssueForm() {
                     </Button>
                     <div>
                         <h2 className="text-3xl font-bold tracking-tight">New Issue</h2>
-                        <p className="text-muted-foreground">Create a new issue in Project {projectId}</p>
+                        <p className="text-muted-foreground">Create a new issue in Project {selectedProjectId}</p>
                     </div>
                 </div>
             </div>
