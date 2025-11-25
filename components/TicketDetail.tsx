@@ -1,13 +1,14 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Issue, QAStatus, Label, Snippet } from '../types';
-import { USERS, LABELS, getSnippets } from '../lib/mockData';
+import { Issue, QAStatus, Label, Snippet, User } from '../types';
 import {
     X, CheckCircle, XCircle, Upload, Copy,
     Calendar, Tag, Flag, Paperclip, Image as ImageIcon,
     Bold, Italic, List, MoreHorizontal, ChevronRight,
-    User, Clock, ArrowRight, Link as LinkIcon, ScrollText
+    Clock, ArrowRight, Link as LinkIcon, ScrollText
 } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
+import { getSnippetsAction } from '@/app/actions/snippets';
+import { getProjectUsers, getProjectLabelsAction } from '@/app/actions/project';
 
 interface TicketDetailProps {
     issue: Issue;
@@ -62,16 +63,17 @@ const getCaretCoordinates = (element: HTMLTextAreaElement, position: number) => 
 interface MentionTextAreaProps extends React.TextareaHTMLAttributes<HTMLTextAreaElement> {
     value: string;
     onChangeValue: (val: string) => void;
+    users: User[];
 }
 
-const MentionTextArea: React.FC<MentionTextAreaProps> = ({ value, onChangeValue, className, ...props }) => {
+const MentionTextArea: React.FC<MentionTextAreaProps> = ({ value, onChangeValue, users, className, ...props }) => {
     const textareaRef = useRef<HTMLTextAreaElement>(null);
     const [showSuggestions, setShowSuggestions] = useState(false);
     const [suggestionPos, setSuggestionPos] = useState({ top: 0, left: 0 });
     const [query, setQuery] = useState('');
     const [selectedIndex, setSelectedIndex] = useState(0);
 
-    const filteredUsers = USERS.filter(u =>
+    const filteredUsers = users.filter(u =>
         u.username.toLowerCase().includes(query.toLowerCase()) ||
         u.name.toLowerCase().includes(query.toLowerCase())
     );
@@ -227,11 +229,25 @@ export const TicketDetail: React.FC<TicketDetailProps> = ({ issue, onClose, onUp
     const [showLabelDropdown, setShowLabelDropdown] = useState(false);
     const [successLink, setSuccessLink] = useState<string | null>(null);
 
+    // Data State
+    const [users, setUsers] = useState<User[]>([]);
+    const [labels, setLabels] = useState<Label[]>([]);
+    const [snippets, setSnippets] = useState<Snippet[]>([]);
+
     // Snippet Selection State
     const [showSnippetSelector, setShowSnippetSelector] = useState(false);
     const [targetSnippetField, setTargetSnippetField] = useState<'testCases' | 'issuesFound' | null>(null);
 
     const labelDropdownRef = useRef<HTMLDivElement>(null);
+
+    // Fetch Data
+    useEffect(() => {
+        if (issue.projectId) {
+            getProjectUsers(issue.projectId).then(setUsers).catch(console.error);
+            getProjectLabelsAction(issue.projectId).then(setLabels).catch(console.error);
+        }
+        getSnippetsAction().then(setSnippets).catch(console.error);
+    }, [issue.projectId]);
 
     // Close dropdown when clicking outside
     useEffect(() => {
@@ -360,7 +376,7 @@ export const TicketDetail: React.FC<TicketDetailProps> = ({ issue, onClose, onUp
     };
 
     // Get filtered snippets based on active field
-    const availableSnippets = getSnippets().filter(s => {
+    const availableSnippets = snippets.filter(s => {
         if (targetSnippetField === 'testCases') return s.type === 'test_case';
         if (targetSnippetField === 'issuesFound') return s.type === 'issue';
         return false;
@@ -444,7 +460,7 @@ export const TicketDetail: React.FC<TicketDetailProps> = ({ issue, onClose, onUp
                                                 <div className="absolute top-full left-0 mt-2 w-56 bg-white border border-gray-200 shadow-xl rounded-lg z-20 py-1">
                                                     <div className="px-3 py-2 border-b border-gray-100 text-xs font-bold text-gray-500">Add Labels</div>
                                                     <div className="max-h-48 overflow-y-auto">
-                                                        {LABELS.map(l => {
+                                                        {labels.map(l => {
                                                             const isSelected = !!issue.labels.find(sl => sl.id === l.id);
                                                             return (
                                                                 <button
@@ -549,6 +565,7 @@ export const TicketDetail: React.FC<TicketDetailProps> = ({ issue, onClose, onUp
                                     placeholder="1. Navigate to... (Type @ to mention)"
                                     value={testCases}
                                     onChangeValue={setTestCases}
+                                    users={users}
                                 />
                             </div>
 
@@ -569,6 +586,7 @@ export const TicketDetail: React.FC<TicketDetailProps> = ({ issue, onClose, onUp
                                     placeholder="Describe any bugs... (Type @ to mention)"
                                     value={issuesFound}
                                     onChangeValue={setIssuesFound}
+                                    users={users}
                                 />
                             </div>
 

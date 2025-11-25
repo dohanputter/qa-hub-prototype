@@ -4,12 +4,18 @@ import { useEditor, EditorContent, ReactRenderer } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Mention from '@tiptap/extension-mention';
 import { Button } from '@/components/ui/button';
-import { Bold, Italic, List, ListOrdered, Code } from 'lucide-react';
+import { Bold, Italic, List, ListOrdered, Code, ScrollText } from 'lucide-react';
 import tippy from 'tippy.js';
 // import 'tippy.js/dist/tippy.css';
 import { MentionList } from './MentionList';
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
-export function TiptapEditor({ content, onChange, members, placeholder }: any) {
+export function TiptapEditor({ content, onChange, members, placeholder, snippets = [] }: any) {
     const editor = useEditor({
         extensions: [
             StarterKit,
@@ -89,6 +95,10 @@ export function TiptapEditor({ content, onChange, members, placeholder }: any) {
 
     if (!editor) return null;
 
+    const insertSnippet = (snippetContent: string) => {
+        editor.chain().focus().insertContent(snippetContent).run();
+    };
+
     return (
         <div className="space-y-2">
             <div className="flex items-center gap-1 border-b pb-2">
@@ -107,6 +117,31 @@ export function TiptapEditor({ content, onChange, members, placeholder }: any) {
                 <Button variant="ghost" size="sm" onClick={() => editor.chain().focus().toggleCodeBlock().run()} className={editor.isActive('codeBlock') ? 'bg-muted' : ''}>
                     <Code className="h-4 w-4" />
                 </Button>
+
+                <div className="ml-auto">
+                    <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="sm" className="gap-2 text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50">
+                                <ScrollText className="h-4 w-4" />
+                                <span className="text-xs font-medium">Snippets</span>
+                            </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="w-56">
+                            {snippets && snippets.length > 0 ? (
+                                snippets.map((snippet: any) => (
+                                    <DropdownMenuItem key={snippet.id} onClick={() => insertSnippet(snippet.content)}>
+                                        <div className="flex flex-col gap-1">
+                                            <span className="font-medium">{snippet.title}</span>
+                                            <span className="text-xs text-muted-foreground line-clamp-1">{snippet.content}</span>
+                                        </div>
+                                    </DropdownMenuItem>
+                                ))
+                            ) : (
+                                <div className="p-2 text-xs text-muted-foreground text-center">No snippets available</div>
+                            )}
+                        </DropdownMenuContent>
+                    </DropdownMenu>
+                </div>
             </div>
             <EditorContent editor={editor} />
         </div>

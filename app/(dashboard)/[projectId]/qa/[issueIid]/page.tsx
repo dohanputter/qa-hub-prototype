@@ -23,9 +23,10 @@ export default async function QAPage({ params }: { params: Promise<{ projectId: 
         };
 
         let qaStatus = QAStatus.TODO;
-        if (gitlabIssue.labels.includes(qaLabelMapping.pending)) qaStatus = QAStatus.READY_FOR_QA;
-        else if (gitlabIssue.labels.includes(qaLabelMapping.passed)) qaStatus = QAStatus.PASSED;
-        else if (gitlabIssue.labels.includes(qaLabelMapping.failed)) qaStatus = QAStatus.FAILED;
+        const issueLabels = gitlabIssue.labels || [];
+        if (issueLabels.includes(qaLabelMapping.pending)) qaStatus = QAStatus.READY_FOR_QA;
+        else if (issueLabels.includes(qaLabelMapping.passed)) qaStatus = QAStatus.PASSED;
+        else if (issueLabels.includes(qaLabelMapping.failed)) qaStatus = QAStatus.FAILED;
         else qaStatus = QAStatus.TODO;
 
         const appIssue: Issue = {
@@ -49,7 +50,7 @@ export default async function QAPage({ params }: { params: Promise<{ projectId: 
                 username: gitlabIssue.author.username,
                 avatarUrl: gitlabIssue.author.avatar_url
             },
-            labels: gitlabIssue.labels.map((l: string, idx: number) => ({
+            labels: (gitlabIssue.labels || []).map((l: string, idx: number) => ({
                 id: idx,
                 title: l,
                 color: '#ccc',

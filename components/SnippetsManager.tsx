@@ -1,16 +1,16 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { ScrollText, Plus, Search, Trash2, Edit2, Save, X, CheckSquare, AlertCircle, Clock, ArrowLeft } from 'lucide-react';
 import { Snippet } from '@/types';
-import { getSnippets, createSnippet, updateSnippet, deleteSnippet } from '@/lib/mockData';
+import { getSnippetsAction, createSnippetAction, updateSnippetAction, deleteSnippetAction } from '@/app/actions/snippets';
 import { useToast } from '@/components/ui/use-toast';
 import { useRouter } from 'next/navigation';
 
 export const SnippetsManager: React.FC = () => {
     const { toast } = useToast();
     const router = useRouter();
-    const [snippets, setSnippets] = useState<Snippet[]>(getSnippets());
+    const [snippets, setSnippets] = useState<Snippet[]>([]);
     const [filter, setFilter] = useState<'all' | 'test_case' | 'issue'>('all');
     const [search, setSearch] = useState('');
     const [isEditing, setIsEditing] = useState(false);
@@ -23,8 +23,26 @@ export const SnippetsManager: React.FC = () => {
     // Deletion State (Custom Modal)
     const [snippetToDelete, setSnippetToDelete] = useState<number | null>(null);
 
+    useEffect(() => {
+        loadSnippets();
+    }, []);
+
+    const loadSnippets = async () => {
+        try {
+            const data = await getSnippetsAction();
+            setSnippets(data);
+        } catch (error) {
+            console.error("Failed to load snippets", error);
+            toast({
+                title: "Error",
+                description: "Failed to load snippets",
+                variant: "destructive"
+            });
+        }
+    };
+
     const refreshSnippets = () => {
-        setSnippets([...getSnippets()]);
+        loadSnippets();
     };
 
     const filteredSnippets = snippets.filter(s => {
@@ -52,25 +70,33 @@ export const SnippetsManager: React.FC = () => {
         setSnippetToDelete(id);
     };
 
-    const confirmDelete = () => {
+    const confirmDelete = async () => {
         if (snippetToDelete !== null) {
-            deleteSnippet(snippetToDelete);
-            refreshSnippets();
-            toast({
-                title: "Snippet deleted",
-                description: "Snippet deleted successfully",
-                variant: "default",
-            });
-            // Close editor if we deleted the currently edited snippet
-            if (currentSnippet.id === snippetToDelete) {
-                setIsEditing(false);
-                setCurrentSnippet({});
+            try {
+                await deleteSnippetAction(snippetToDelete);
+                refreshSnippets();
+                toast({
+                    title: "Snippet deleted",
+                    description: "Snippet deleted successfully",
+                    variant: "default",
+                });
+                // Close editor if we deleted the currently edited snippet
+                if (currentSnippet.id === snippetToDelete) {
+                    setIsEditing(false);
+                    setCurrentSnippet({});
+                }
+            } catch (error) {
+                toast({
+                    title: "Error",
+                    description: "Failed to delete snippet",
+                    variant: "destructive"
+                });
             }
             setSnippetToDelete(null);
         }
     };
 
-    const handleSave = () => {
+    const handleSave = async () => {
         let isValid = true;
 
         if (!currentSnippet.title?.trim()) {
@@ -89,23 +115,31 @@ export const SnippetsManager: React.FC = () => {
 
         if (!isValid) return;
 
-        if (currentSnippet.id) {
-            updateSnippet(currentSnippet as Snippet);
+        try {
+            if (currentSnippet.id) {
+                await updateSnippetAction(currentSnippet as Snippet);
+                toast({
+                    title: "Snippet updated",
+                    description: "Snippet updated successfully",
+                    variant: "default",
+                });
+            } else {
+                await createSnippetAction(currentSnippet as Omit<Snippet, 'id' | 'updatedAt'>);
+                toast({
+                    title: "Snippet created",
+                    description: "Snippet created successfully",
+                    variant: "default",
+                });
+            }
+            setIsEditing(false);
+            refreshSnippets();
+        } catch (error) {
             toast({
-                title: "Snippet updated",
-                description: "Snippet updated successfully",
-                variant: "default",
-            });
-        } else {
-            createSnippet(currentSnippet as Omit<Snippet, 'id' | 'updatedAt'>);
-            toast({
-                title: "Snippet created",
-                description: "Snippet created successfully",
-                variant: "default",
+                title: "Error",
+                description: "Failed to save snippet",
+                variant: "destructive"
             });
         }
-        setIsEditing(false);
-        refreshSnippets();
     };
 
     const handleBack = () => {
@@ -182,8 +216,8 @@ export const SnippetsManager: React.FC = () => {
                                         <div className="flex justify-between items-start mb-2">
                                             <h4 className="font-semibold text-gray-800 text-sm">{snippet.title}</h4>
                                             <span className={`text-[10px] font-bold uppercase px-1.5 py-0.5 rounded border ${snippet.type === 'test_case'
-                                                    ? 'bg-blue-50 text-blue-600 border-blue-200'
-                                                    : 'bg-orange-50 text-orange-600 border-orange-200'
+                                                ? 'bg-blue-50 text-blue-600 border-blue-200'
+                                                : 'bg-orange-50 text-orange-600 border-orange-200'
                                                 }`}>
                                                 {snippet.type === 'test_case' ? 'Test Case' : 'Issue'}
                                             </span>

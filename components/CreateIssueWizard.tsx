@@ -6,10 +6,11 @@ import {
     Tag, Folder, ArrowLeft, ChevronRight
 } from 'lucide-react';
 import { Project, User, Label, QAStatus } from '@/types';
-import { PROJECTS, USERS, LABELS, createIssue as createMockIssue } from '@/lib/mockData';
 import { useToast } from '@/components/ui/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useRouter } from 'next/navigation';
+import { getUserProjects, getProjectUsers, getProjectLabelsAction } from '@/app/actions/project';
+import { createIssue } from '@/app/actions/issues';
 
 interface CreateIssueWizardProps {
     onClose?: () => void;
@@ -24,6 +25,7 @@ export const CreateIssueWizard: React.FC<CreateIssueWizardProps> = ({ onClose, o
     const [step, setStep] = useState<'project' | 'form'>('project');
     const [selectedProject, setSelectedProject] = useState<Project | null>(null);
     const [isLoadingProjects, setIsLoadingProjects] = useState(true);
+    const [projects, setProjects] = useState<Project[]>([]);
 
     // Form State
     const [title, setTitle] = useState('');
@@ -33,6 +35,10 @@ export const CreateIssueWizard: React.FC<CreateIssueWizardProps> = ({ onClose, o
     // Sidebar State
     const [assignee, setAssignee] = useState<User | undefined>(undefined);
     const [selectedLabels, setSelectedLabels] = useState<Label[]>([]);
+
+    // Data State
+    const [users, setUsers] = useState<User[]>([]);
+    const [labels, setLabels] = useState<Label[]>([]);
 
     // Dropdown Toggles
     const [showAssigneeDropdown, setShowAssigneeDropdown] = useState(false);
@@ -55,14 +61,27 @@ export const CreateIssueWizard: React.FC<CreateIssueWizardProps> = ({ onClose, o
         return () => document.removeEventListener('mousedown', handleClickOutside);
     }, []);
 
-    // Simulate project loading
+    // Load projects
     useEffect(() => {
         if (step === 'project') {
             setIsLoadingProjects(true);
-            const timer = setTimeout(() => setIsLoadingProjects(false), 600);
-            return () => clearTimeout(timer);
+            getUserProjects().then((data) => {
+                setProjects(data);
+                setIsLoadingProjects(false);
+            }).catch(err => {
+                console.error("Failed to load projects", err);
+                setIsLoadingProjects(false);
+            });
         }
     }, [step]);
+
+    // Load project data (users, labels) when project is selected
+    useEffect(() => {
+        if (selectedProject) {
+            getProjectUsers(selectedProject.id).then(setUsers);
+            getProjectLabelsAction(selectedProject.id).then(setLabels);
+        }
+    }, [selectedProject]);
 
     const handleClose = () => {
         if (onClose) onClose();
@@ -88,26 +107,36 @@ export const CreateIssueWizard: React.FC<CreateIssueWizardProps> = ({ onClose, o
             return;
         }
 
+        if (!selectedProject) return;
+
         const issueData = {
-            projectId: selectedProject?.id,
+            projectId: selectedProject.id,
             title,
             description,
-            assignee,
-            labels: selectedLabels,
+            assigneeId: assignee?.id,
+            labels: selectedLabels.map(l => l.title).join(','), // Send comma separated string as expected by action
         };
 
         if (onCreate) {
             await onCreate(issueData);
             handleClose();
         } else {
-            // Default behavior: create in mock data and navigate
-            createMockIssue(issueData);
-            toast({
-                title: "Issue created",
-                description: "The issue has been created successfully.",
-            });
-            // Navigate to the project board
-            router.push(`/${selectedProject?.id}`);
+            try {
+                await createIssue(selectedProject.id, issueData);
+                toast({
+                    title: "Issue created",
+                    description: "The issue has been created successfully.",
+                });
+                // Navigate to the project board
+                router.push(`/${selectedProject.id}`);
+            } catch (error) {
+                console.error(error);
+                toast({
+                    title: "Error",
+                    description: "Failed to create issue.",
+                    variant: "destructive"
+                });
+            }
         }
     };
 
@@ -137,7 +166,7 @@ export const CreateIssueWizard: React.FC<CreateIssueWizardProps> = ({ onClose, o
                                     </div>
                                 ))
                             ) : (
-                                PROJECTS.map(proj => (
+                                projects.map(proj => (
                                     <button
                                         key={proj.id}
                                         onClick={() => handleProjectSelect(proj)}
@@ -285,13 +314,13 @@ export const CreateIssueWizard: React.FC<CreateIssueWizardProps> = ({ onClose, o
                                     <button onClick={() => setAssignee(undefined)} className="ml-auto text-gray-400 hover:text-red-500"><X size={14} /></button>
                                 </div>
                             ) : (
-                                <div className="text-sm text-gray-500 mt-1">None - <span className="cursor-pointer hover:text-indigo-600" onClick={() => setAssignee(USERS[0])}>assign yourself</span></div>
+                                <div className="text-sm text-gray-500 mt-1">None - <span className="cursor-pointer hover:text-indigo-600" onClick={() => setAssignee(users[0])}>assign yourself</span></div>
                             )}
 
                             {showAssigneeDropdown && (
                                 <div className="absolute top-8 right-0 w-64 bg-white border border-gray-200 shadow-xl rounded-lg z-10 py-1">
                                     <div className="px-3 py-2 border-b border-gray-100 text-xs font-bold text-gray-500">Assign to</div>
-                                    {USERS.map(u => (
+                                    {users.map(u => (
                                         <button
                                             key={u.id}
                                             onClick={() => { setAssignee(u); setShowAssigneeDropdown(false); }}
@@ -338,7 +367,7 @@ export const CreateIssueWizard: React.FC<CreateIssueWizardProps> = ({ onClose, o
                             {showLabelDropdown && (
                                 <div className="absolute top-8 right-0 w-64 bg-white border border-gray-200 shadow-xl rounded-lg z-10 py-1">
                                     <div className="px-3 py-2 border-b border-gray-100 text-xs font-bold text-gray-500">Add Labels</div>
-                                    {LABELS.map(l => {
+                                    {labels.map(l => {
                                         const isSelected = !!selectedLabels.find(sl => sl.id === l.id);
                                         return (
                                             <button

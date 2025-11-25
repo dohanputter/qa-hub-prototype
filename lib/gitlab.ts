@@ -3,51 +3,52 @@ import 'server-only';
 import { Gitlab } from '@gitbeaker/rest';
 import { env } from '@/lib/env';
 
-// Mock Data Constants
+// --- MOCK DATA CONSTANTS ---
+
 const MOCK_GROUPS = [
     {
         id: 10,
-        name: 'QA Hub Team',
-        full_path: 'qa-hub',
+        name: 'Acme Corporation',
+        full_path: 'acme-corp',
         description: 'Main QA Hub organization with all core projects',
-        web_url: 'https://gitlab.com/groups/qa-hub',
-        avatar_url: null,
+        web_url: 'https://gitlab.com/groups/acme-corp',
+        avatar_url: 'https://picsum.photos/48/48?random=10',
     },
     {
         id: 11,
-        name: 'Mobile Development',
-        full_path: 'qa-hub/mobile',
-        description: 'Mobile application projects (iOS and Android)',
-        web_url: 'https://gitlab.com/groups/qa-hub/mobile',
-        avatar_url: null,
+        name: 'Platform Engineering',
+        full_path: 'acme-corp/platform',
+        description: 'DevOps, CI/CD, and infrastructure projects',
+        web_url: 'https://gitlab.com/groups/acme-corp/platform',
+        avatar_url: 'https://picsum.photos/48/48?random=11',
     },
     {
         id: 12,
-        name: 'Infrastructure',
-        full_path: 'qa-hub/infrastructure',
-        description: 'DevOps, CI/CD, and infrastructure projects',
-        web_url: 'https://gitlab.com/groups/qa-hub/infrastructure',
-        avatar_url: null,
+        name: 'Mobile Division',
+        full_path: 'acme-corp/mobile',
+        description: 'Mobile application projects (iOS and Android)',
+        web_url: 'https://gitlab.com/groups/acme-corp/mobile',
+        avatar_url: 'https://picsum.photos/48/48?random=12',
     },
 ];
 
 const MOCK_PROJECTS = [
     {
-        id: 1,
+        id: 500,
         name: 'Frontend / Web App',
         description: 'Main customer facing application',
-        path_with_namespace: 'qa-hub/frontend',
-        web_url: 'https://gitlab.com/qa-hub/frontend',
+        path_with_namespace: 'acme-corp/frontend',
+        web_url: 'https://gitlab.com/acme-corp/frontend',
         avatar_url: null,
         star_count: 12,
         forks_count: 4,
         last_activity_at: new Date().toISOString(),
         namespace: {
             id: 10,
-            name: 'QA Hub Team',
-            path: 'qa-hub',
+            name: 'Acme Corporation',
+            path: 'acme-corp',
             kind: 'group',
-            full_path: 'qa-hub',
+            full_path: 'acme-corp',
         },
         qaLabelMapping: {
             pending: 'bug',
@@ -56,21 +57,21 @@ const MOCK_PROJECTS = [
         },
     },
     {
-        id: 2,
+        id: 501,
         name: 'Backend / API',
         description: 'Core API services and database',
-        path_with_namespace: 'qa-hub/backend',
-        web_url: 'https://gitlab.com/qa-hub/backend',
+        path_with_namespace: 'acme-corp/backend',
+        web_url: 'https://gitlab.com/acme-corp/backend',
         avatar_url: null,
         star_count: 8,
         forks_count: 2,
         last_activity_at: new Date(Date.now() - 86400000).toISOString(),
         namespace: {
             id: 10,
-            name: 'QA Hub Team',
-            path: 'qa-hub',
+            name: 'Acme Corporation',
+            path: 'acme-corp',
             kind: 'group',
-            full_path: 'qa-hub',
+            full_path: 'acme-corp',
         },
         qaLabelMapping: {
             pending: 'bug',
@@ -79,21 +80,21 @@ const MOCK_PROJECTS = [
         },
     },
     {
-        id: 3,
+        id: 502,
         name: 'Mobile / iOS',
         description: 'Native iOS Application',
-        path_with_namespace: 'qa-hub/mobile-ios',
-        web_url: 'https://gitlab.com/qa-hub/mobile-ios',
+        path_with_namespace: 'acme-corp/mobile-ios',
+        web_url: 'https://gitlab.com/acme-corp/mobile-ios',
         avatar_url: null,
         star_count: 5,
         forks_count: 1,
         last_activity_at: new Date(Date.now() - 172800000).toISOString(),
         namespace: {
-            id: 11,
-            name: 'Mobile Development',
+            id: 12,
+            name: 'Mobile Division',
             path: 'mobile',
             kind: 'group',
-            full_path: 'qa-hub/mobile',
+            full_path: 'acme-corp/mobile',
         },
         qaLabelMapping: {
             pending: 'bug',
@@ -104,264 +105,129 @@ const MOCK_PROJECTS = [
 ];
 
 const MOCK_USERS = [
-    {
-        id: 99,
-        name: 'Mock Tester',
-        username: 'mock_tester',
-        state: 'active',
-        avatar_url: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Felix',
-        web_url: 'https://gitlab.com/mock-tester',
-    },
-    {
-        id: 100,
-        name: 'Jane Doe',
-        username: 'jane_doe',
-        state: 'active',
-        avatar_url: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Jane',
-        web_url: 'https://gitlab.com/jane-doe',
-    },
-    {
-        id: 101,
-        name: 'John Smith',
-        username: 'john_smith',
-        state: 'active',
-        avatar_url: 'https://api.dicebear.com/7.x/avataaars/svg?seed=John',
-        web_url: 'https://gitlab.com/john-smith',
-    },
+    { id: 1, name: 'Jane Doe', username: 'jdoe', state: 'active', avatar_url: 'https://picsum.photos/32/32?random=1', web_url: 'https://gitlab.com/jdoe' },
+    { id: 2, name: 'John Smith', username: 'jsmith', state: 'active', avatar_url: 'https://picsum.photos/32/32?random=2', web_url: 'https://gitlab.com/jsmith' },
+    { id: 3, name: 'QA Lead', username: 'qalead', state: 'active', avatar_url: 'https://picsum.photos/32/32?random=3', web_url: 'https://gitlab.com/qalead' },
+    { id: 4, name: 'Sarah Connor', username: 'sconnor', state: 'active', avatar_url: 'https://picsum.photos/32/32?random=4', web_url: 'https://gitlab.com/sconnor' },
+    { id: 5, name: 'Michael Chen', username: 'mchen', state: 'active', avatar_url: 'https://picsum.photos/32/32?random=5', web_url: 'https://gitlab.com/mchen' },
+    { id: 6, name: 'Emily Davis', username: 'edavis', state: 'active', avatar_url: 'https://picsum.photos/32/32?random=6', web_url: 'https://gitlab.com/edavis' },
+    { id: 7, name: 'David Wilson', username: 'dwilson', state: 'active', avatar_url: 'https://picsum.photos/32/32?random=7', web_url: 'https://gitlab.com/dwilson' },
+    { id: 8, name: 'Olivia Martinez', username: 'omartinez', state: 'active', avatar_url: 'https://picsum.photos/32/32?random=8', web_url: 'https://gitlab.com/omartinez' },
+    { id: 9, name: 'James Rodriguez', username: 'jrodriguez', state: 'active', avatar_url: 'https://picsum.photos/32/32?random=9', web_url: 'https://gitlab.com/jrodriguez' },
+    { id: 10, name: 'Sophia Anderson', username: 'sanderson', state: 'active', avatar_url: 'https://picsum.photos/32/32?random=10', web_url: 'https://gitlab.com/sanderson' },
+    { id: 11, name: 'Lucas Brown', username: 'lbrown', state: 'active', avatar_url: 'https://picsum.photos/32/32?random=11', web_url: 'https://gitlab.com/lbrown' },
+    { id: 12, name: 'Mia White', username: 'mwhite', state: 'active', avatar_url: 'https://picsum.photos/32/32?random=12', web_url: 'https://gitlab.com/mwhite' },
+    { id: 13, name: 'Alexander Hall', username: 'ahall', state: 'active', avatar_url: 'https://picsum.photos/32/32?random=13', web_url: 'https://gitlab.com/ahall' },
+    { id: 14, name: 'Charlotte King', username: 'cking', state: 'active', avatar_url: 'https://picsum.photos/32/32?random=14', web_url: 'https://gitlab.com/cking' },
+    { id: 15, name: 'Benjamin Wright', username: 'bwright', state: 'active', avatar_url: 'https://picsum.photos/32/32?random=15', web_url: 'https://gitlab.com/bwright' },
 ];
 
 const MOCK_LABELS = [
-    { id: 1, name: 'bug', color: '#FF0000', description: 'Something is not working' },
-    { id: 2, name: 'feature', color: '#00FF00', description: 'New functionality' },
-    { id: 3, name: 'ui', color: '#0000FF', description: 'User Interface' },
-    { id: 4, name: 'high-priority', color: '#FFA500', description: 'Urgent task' },
-    { id: 5, name: 'frontend', color: '#4287f5', description: 'Frontend related' },
-    { id: 6, name: 'backend', color: '#f542aa', description: 'Backend related' },
-    { id: 7, name: 'critical', color: '#7a0000', description: 'Critical severity' },
+    { id: 1, name: 'bug', color: '#dc2626', text_color: '#fff', description: 'Something is not working' },
+    { id: 2, name: 'feature', color: '#2563eb', text_color: '#fff', description: 'New functionality' },
+    { id: 3, name: 'critical', color: '#7f1d1d', text_color: '#fff', description: 'Critical severity' },
+    { id: 4, name: 'frontend', color: '#0891b2', text_color: '#fff', description: 'Frontend related' },
+    { id: 5, name: 'backend', color: '#6366f1', text_color: '#fff', description: 'Backend related' },
 ];
 
 const MOCK_ISSUES = [
-    // Bugs (Pending)
     {
         id: 101,
         iid: 1,
-        project_id: 1,
+        project_id: 500,
         title: 'Fix login page crash on mobile safari',
-        description: 'Login page crashes on submit when using Safari on iOS.',
+        description: 'When a user tries to login via Safari on iOS 16, the page freezes.',
         state: 'opened',
-        created_at: new Date(Date.now() - 2592000000).toISOString(),
-        updated_at: new Date().toISOString(),
+        created_at: '2023-10-25T10:00:00Z',
+        updated_at: '2023-10-26T14:30:00Z',
         author: MOCK_USERS[1],
         assignees: [MOCK_USERS[0]],
         labels: ['bug', 'frontend'],
-        web_url: 'https://gitlab.com/qa-hub/frontend/-/issues/1',
+        web_url: 'https://gitlab.com/acme-corp/frontend/-/issues/1',
     },
-    {
-        id: 106,
-        iid: 6,
-        project_id: 1,
-        title: 'Fix navigation menu on mobile',
-        description: 'Menu does not collapse when clicking outside.',
-        state: 'opened',
-        created_at: new Date(Date.now() - 100000000).toISOString(),
-        updated_at: new Date().toISOString(),
-        author: MOCK_USERS[0],
-        assignees: [MOCK_USERS[1]],
-        labels: ['bug', 'frontend'],
-        web_url: 'https://gitlab.com/qa-hub/frontend/-/issues/6',
-    },
-    {
-        id: 111,
-        iid: 11,
-        project_id: 1,
-        title: 'Fix typo in landing page',
-        description: 'Correct "welocme" to "welcome".',
-        state: 'opened',
-        created_at: new Date(Date.now() - 600000000).toISOString(),
-        updated_at: new Date().toISOString(),
-        author: MOCK_USERS[2],
-        assignees: [],
-        labels: ['bug', 'frontend'],
-        web_url: 'https://gitlab.com/qa-hub/frontend/-/issues/11',
-    },
-    {
-        id: 114,
-        iid: 14,
-        project_id: 1,
-        title: 'Add unit tests for utils',
-        description: 'Increase test coverage for utility functions.',
-        state: 'opened',
-        created_at: new Date(Date.now() - 900000000).toISOString(),
-        updated_at: new Date().toISOString(),
-        author: MOCK_USERS[2],
-        assignees: [],
-        labels: ['bug', 'backend'],
-        web_url: 'https://gitlab.com/qa-hub/frontend/-/issues/14',
-    },
-    {
-        id: 115,
-        iid: 15,
-        project_id: 1,
-        title: 'Fix broken link in footer',
-        description: 'Terms of service link is 404.',
-        state: 'opened',
-        created_at: new Date(Date.now() - 1000000000).toISOString(),
-        updated_at: new Date().toISOString(),
-        author: MOCK_USERS[0],
-        assignees: [MOCK_USERS[1]],
-        labels: ['bug', 'frontend'],
-        web_url: 'https://gitlab.com/qa-hub/frontend/-/issues/15',
-    },
-
-    // Features (Passed)
     {
         id: 102,
         iid: 2,
-        project_id: 1,
+        project_id: 500,
         title: 'Implement Dark Mode toggle',
-        description: 'Add dark mode support to the UI based on system preference.',
+        description: 'Add a toggle in the user settings to switch between light and dark themes.',
         state: 'opened',
-        created_at: new Date(Date.now() - 172800000).toISOString(),
-        updated_at: new Date().toISOString(),
+        created_at: '2023-10-20T09:00:00Z',
+        updated_at: '2023-10-25T11:00:00Z',
         author: MOCK_USERS[2],
-        assignees: [],
+        assignees: [MOCK_USERS[1]],
         labels: ['feature', 'frontend'],
-        web_url: 'https://gitlab.com/qa-hub/frontend/-/issues/2',
+        web_url: 'https://gitlab.com/acme-corp/frontend/-/issues/2',
     },
     {
         id: 103,
         iid: 3,
-        project_id: 1,
+        project_id: 500,
         title: 'API rate limiting middleware',
-        description: 'Implement rate limiting to prevent abuse.',
+        description: 'Ensure users cannot exceed 100 req/min.',
         state: 'opened',
-        created_at: new Date(Date.now() - 86400000).toISOString(),
-        updated_at: new Date().toISOString(),
+        created_at: '2023-10-27T15:00:00Z',
+        updated_at: '2023-10-27T15:00:00Z',
         author: MOCK_USERS[0],
-        assignees: [MOCK_USERS[2]],
-        labels: ['feature', 'backend'],
-        web_url: 'https://gitlab.com/qa-hub/backend/-/issues/3',
-    },
-    {
-        id: 107,
-        iid: 7,
-        project_id: 1,
-        title: 'Add user profile page',
-        description: 'Create a page for users to view and edit their profile.',
-        state: 'opened',
-        created_at: new Date(Date.now() - 200000000).toISOString(),
-        updated_at: new Date().toISOString(),
-        author: MOCK_USERS[1],
-        assignees: [MOCK_USERS[2]],
-        labels: ['feature', 'frontend'],
-        web_url: 'https://gitlab.com/qa-hub/frontend/-/issues/7',
-    },
-    {
-        id: 108,
-        iid: 8,
-        project_id: 1,
-        title: 'Optimize image loading',
-        description: 'Use lazy loading for images below the fold.',
-        state: 'opened',
-        created_at: new Date(Date.now() - 300000000).toISOString(),
-        updated_at: new Date().toISOString(),
-        author: MOCK_USERS[2],
         assignees: [],
-        labels: ['feature', 'frontend'],
-        web_url: 'https://gitlab.com/qa-hub/frontend/-/issues/8',
-    },
-    {
-        id: 110,
-        iid: 10,
-        project_id: 1,
-        title: 'Update dependency versions',
-        description: 'Update React and Next.js to latest versions.',
-        state: 'opened',
-        created_at: new Date(Date.now() - 500000000).toISOString(),
-        updated_at: new Date().toISOString(),
-        author: MOCK_USERS[1],
-        assignees: [MOCK_USERS[1]],
-        labels: ['feature', 'backend'],
-        web_url: 'https://gitlab.com/qa-hub/frontend/-/issues/10',
-    },
-    {
-        id: 112,
-        iid: 12,
-        project_id: 1,
-        title: 'Implement search functionality',
-        description: 'Add search bar to the header.',
-        state: 'opened',
-        created_at: new Date(Date.now() - 700000000).toISOString(),
-        updated_at: new Date().toISOString(),
-        author: MOCK_USERS[0],
-        assignees: [MOCK_USERS[2]],
-        labels: ['feature', 'frontend'],
-        web_url: 'https://gitlab.com/qa-hub/frontend/-/issues/12',
-    },
-    {
-        id: 113,
-        iid: 13,
-        project_id: 1,
-        title: 'Refactor auth middleware',
-        description: 'Simplify authentication logic.',
-        state: 'opened',
-        created_at: new Date(Date.now() - 800000000).toISOString(),
-        updated_at: new Date().toISOString(),
-        author: MOCK_USERS[1],
-        assignees: [MOCK_USERS[0]],
-        labels: ['feature', 'backend'],
-        web_url: 'https://gitlab.com/qa-hub/frontend/-/issues/13',
-    },
-
-    // Critical (Failed)
-    {
-        id: 105,
-        iid: 5,
-        project_id: 1,
-        title: 'Update payment gateway API key',
-        description: 'Key rotation required.',
-        state: 'opened',
-        created_at: new Date(Date.now() - 43200000).toISOString(),
-        updated_at: new Date().toISOString(),
-        author: MOCK_USERS[2],
-        assignees: [],
-        labels: ['critical'],
-        web_url: 'https://gitlab.com/qa-hub/frontend/-/issues/5',
-    },
-    {
-        id: 109,
-        iid: 9,
-        project_id: 1,
-        title: 'Database connection timeout',
-        description: 'Investigate intermittent connection timeouts.',
-        state: 'opened',
-        created_at: new Date(Date.now() - 400000000).toISOString(),
-        updated_at: new Date().toISOString(),
-        author: MOCK_USERS[0],
-        assignees: [MOCK_USERS[0]],
-        labels: ['critical', 'backend'],
-        web_url: 'https://gitlab.com/qa-hub/frontend/-/issues/9',
+        labels: ['feature'],
+        web_url: 'https://gitlab.com/acme-corp/frontend/-/issues/3',
     },
     {
         id: 104,
         iid: 4,
-        project_id: 1,
+        project_id: 500,
         title: 'Legacy data migration script',
-        description: 'Script to migrate old data to new schema.',
+        description: 'Migrate old user table to new schema.',
+        state: 'closed',
+        created_at: '2023-09-15T10:00:00Z',
+        updated_at: '2023-09-20T14:30:00Z',
+        author: MOCK_USERS[0],
+        assignees: [MOCK_USERS[2]],
+        labels: [],
+        web_url: 'https://gitlab.com/acme-corp/frontend/-/issues/4',
+    },
+    {
+        id: 105,
+        iid: 5,
+        project_id: 500,
+        title: 'Update payment gateway API key',
+        description: 'Key expired, need to rotate.',
         state: 'opened',
-        created_at: new Date(Date.now() - 604800000).toISOString(),
-        updated_at: new Date(Date.now() - 86400000).toISOString(),
-        author: MOCK_USERS[1],
-        assignees: [MOCK_USERS[1]],
-        labels: ['critical', 'backend'],
-        web_url: 'https://gitlab.com/qa-hub/backend/-/issues/4',
+        created_at: '2023-10-28T08:00:00Z',
+        updated_at: '2023-10-28T08:30:00Z',
+        author: MOCK_USERS[2],
+        assignees: [MOCK_USERS[0]],
+        labels: ['critical'],
+        web_url: 'https://gitlab.com/acme-corp/frontend/-/issues/5',
     },
 ];
 
+const MOCK_SNIPPETS = [
+    {
+        id: 1,
+        title: 'Login Test Case',
+        content: '1. Go to login page\n2. Enter valid credentials\n3. Click Login\n4. Verify dashboard loads',
+        type: 'test_case',
+        updatedAt: new Date().toISOString()
+    },
+    {
+        id: 2,
+        title: 'Bug Report Template',
+        content: '### Steps to Reproduce\n1. \n2. \n\n### Expected Behavior\n\n### Actual Behavior',
+        type: 'issue',
+        updatedAt: new Date().toISOString()
+    }
+];
+
 // Mutable store for mock issues (so we can update labels in mock mode)
+// We use a global variable here to simulate persistence in memory during the session
 let mockIssuesStore = JSON.parse(JSON.stringify(MOCK_ISSUES));
+let mockSnippetsStore = JSON.parse(JSON.stringify(MOCK_SNIPPETS));
 
 export const getAllMockIssues = () => mockIssuesStore;
+
+// --- HELPER FUNCTIONS ---
 
 const isMock = () => process.env.NEXT_PUBLIC_MOCK_MODE === 'true';
 
@@ -371,6 +237,8 @@ export function getGitlabClient(token: string) {
         host: env.GITLAB_BASE_URL,
     });
 }
+
+// --- API METHODS ---
 
 export const getAccessibleProjects = async (token: string) => {
     if (isMock()) return MOCK_PROJECTS;
@@ -433,6 +301,19 @@ export const getProjectLabels = async (projectId: number, token: string) => {
     }
 };
 
+export const getProjectMembers = async (projectId: number, token: string) => {
+    if (isMock()) {
+        return MOCK_USERS;
+    }
+    try {
+        const gitlab = getGitlabClient(token);
+        return await gitlab.ProjectMembers.all(projectId);
+    } catch (error) {
+        console.error('GitLab API Error (getProjectMembers):', error);
+        throw new Error('Failed to fetch project members');
+    }
+};
+
 export const getIssues = async (projectId: number, token: string, params?: { state?: 'opened' | 'closed'; labels?: string; search?: string }) => {
     if (isMock()) {
         let issues = mockIssuesStore.filter((i: any) => i.project_id === Number(projectId));
@@ -479,28 +360,6 @@ export const getIssue = async (projectId: number, issueIid: number, token: strin
     }
 };
 
-export const getProjectMembers = async (projectId: number, token: string) => {
-    if (isMock()) {
-        return [
-            {
-                id: 99,
-                name: 'Mock Tester',
-                username: 'mock_tester',
-                state: 'active',
-                avatar_url: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Felix',
-                web_url: 'https://gitlab.com/mock-tester',
-            }
-        ];
-    }
-    try {
-        const gitlab = getGitlabClient(token);
-        return await gitlab.ProjectMembers.all(projectId);
-    } catch (error) {
-        console.error('GitLab API Error (getProjectMembers):', error);
-        throw new Error('Failed to fetch project members');
-    }
-};
-
 export const updateIssueLabels = async (
     projectId: number,
     issueIid: number,
@@ -541,11 +400,7 @@ export const createIssueNote = async (projectId: number, issueIid: number, token
             id: Math.floor(Math.random() * 1000),
             body,
             created_at: new Date().toISOString(),
-            author: {
-                id: 99,
-                name: 'Mock Tester',
-                avatar_url: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Felix',
-            }
+            author: MOCK_USERS[0]
         };
     }
     try {
@@ -603,3 +458,56 @@ export async function createProjectWebhook(projectId: number, token: string) {
         throw new Error('Failed to create webhook');
     }
 }
+
+// --- NEW MOCK MUTATION METHODS ---
+
+export const createMockIssue = (issueData: any) => {
+    const newId = Math.max(0, ...mockIssuesStore.map((i: any) => i.id)) + 1;
+    const newIid = Math.max(0, ...mockIssuesStore.filter((i: any) => i.project_id === issueData.project_id).map((i: any) => i.iid)) + 1;
+
+    const newIssue = {
+        id: newId,
+        iid: newIid,
+        project_id: issueData.project_id,
+        title: issueData.title,
+        description: issueData.description,
+        state: 'opened',
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        author: MOCK_USERS[0], // Current mock user
+        assignees: issueData.assignee_id ? [MOCK_USERS.find(u => u.id === issueData.assignee_id)] : [],
+        labels: issueData.labels || [],
+        web_url: `https://gitlab.com/mock/issues/${newId}`
+    };
+
+    mockIssuesStore.unshift(newIssue);
+    return newIssue;
+};
+
+// --- SNIPPET METHODS ---
+
+export const getMockSnippets = () => mockSnippetsStore;
+
+export const createMockSnippet = (snippet: any) => {
+    const newSnippet = {
+        ...snippet,
+        id: Math.max(0, ...mockSnippetsStore.map((s: any) => s.id)) + 1,
+        updatedAt: new Date().toISOString()
+    };
+    mockSnippetsStore.unshift(newSnippet);
+    return newSnippet;
+};
+
+export const updateMockSnippet = (snippet: any) => {
+    const index = mockSnippetsStore.findIndex((s: any) => s.id === snippet.id);
+    if (index !== -1) {
+        mockSnippetsStore[index] = { ...mockSnippetsStore[index], ...snippet, updatedAt: new Date().toISOString() };
+        return mockSnippetsStore[index];
+    }
+    return null;
+};
+
+export const deleteMockSnippet = (id: number) => {
+    mockSnippetsStore = mockSnippetsStore.filter((s: any) => s.id !== id);
+    return true;
+};

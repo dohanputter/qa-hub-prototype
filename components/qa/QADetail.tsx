@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { TiptapEditor } from './TiptapEditor';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -8,6 +8,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Separator } from '@/components/ui/separator';
 import { createOrUpdateQARecord, submitQAResult } from '@/app/actions/qaRecords';
 import { uploadAttachment } from '@/app/actions/uploadAttachment';
+import { getSnippetsAction } from '@/app/actions/snippets';
 import { toast } from '@/components/ui/use-toast';
 import { Loader2, Paperclip, CheckCircle, XCircle, ExternalLink, Save } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
@@ -19,9 +20,14 @@ export function QADetail({ issue, qaRecord, members, projectId }: any) {
     const [attachments, setAttachments] = useState(qaRecord?.attachments || []);
     const [saving, setSaving] = useState(false);
     const [submitting, setSubmitting] = useState(false);
+    const [snippets, setSnippets] = useState<any[]>([]);
 
     // If we have a record ID, we use it for uploads immediately. If not, we wait until save.
     const [recordId, setRecordId] = useState(qaRecord?.id || null);
+
+    useEffect(() => {
+        getSnippetsAction().then(setSnippets).catch(err => console.error("Failed to load snippets", err));
+    }, []);
 
     const handleSave = async (silent = false) => {
         setSaving(true);
@@ -74,15 +80,6 @@ export function QADetail({ issue, qaRecord, members, projectId }: any) {
         formData.append('file', file);
         formData.append('projectId', projectId.toString());
 
-        // If we don't have a record ID yet, we must create one first to link attachment?
-        // Or we can upload to GitLab first, and link later?
-        // The backend `uploadAttachment` takes optional `qaRecordId`.
-        // If null, it's an orphan attachment until linked?
-        // But `attachments` table has `qaRecordId` foreign key (nullable?).
-        // Schema says: `qaRecordId: text('qa_record_id').references(...)`. It is nullable?
-        // Let's check schema. `qaRecordId: text('qa_record_id').references(...)`. It's nullable by default in Drizzle if not `notNull()`.
-        // I didn't put `notNull()`.
-
         if (recordId) formData.append('qaRecordId', recordId);
 
         try {
@@ -93,6 +90,9 @@ export function QADetail({ issue, qaRecord, members, projectId }: any) {
             toast({ title: "Upload failed", description: error.message, variant: "destructive" });
         }
     };
+
+    const testCaseSnippets = snippets.filter(s => s.type === 'test_case');
+    const issueSnippets = snippets.filter(s => s.type === 'issue');
 
     return (
         <div className="flex h-screen overflow-hidden bg-white">
@@ -156,12 +156,24 @@ export function QADetail({ issue, qaRecord, members, projectId }: any) {
                 <div className="flex-1 overflow-y-auto p-6 space-y-8">
                     <div className="space-y-2">
                         <h3 className="font-medium text-gray-900">Test Cases Executed</h3>
-                        <TiptapEditor content={testCases} onChange={setTestCases} members={members} placeholder="List test cases..." />
+                        <TiptapEditor
+                            content={testCases}
+                            onChange={setTestCases}
+                            members={members}
+                            placeholder="List test cases..."
+                            snippets={testCaseSnippets}
+                        />
                     </div>
 
                     <div className="space-y-2">
                         <h3 className="font-medium text-red-600">Issues Found</h3>
-                        <TiptapEditor content={issuesFound} onChange={setIssuesFound} members={members} placeholder="Describe any issues found..." />
+                        <TiptapEditor
+                            content={issuesFound}
+                            onChange={setIssuesFound}
+                            members={members}
+                            placeholder="Describe any issues found..."
+                            snippets={issueSnippets}
+                        />
                     </div>
 
                     <div className="space-y-2">

@@ -69,7 +69,6 @@ export async function configureProjectLabels(
 }
 
 export async function getUserProjects(groupId?: number) {
-    // Check for mock mode environment variable directly or via a helper if available in this scope
     if (process.env.NEXT_PUBLIC_MOCK_MODE === 'true') {
         const { getAccessibleProjects, getGroupProjects } = await import('@/lib/gitlab');
 
@@ -95,4 +94,53 @@ export async function getUserProjects(groupId?: number) {
         );
 
     return result.map((row: { project: typeof projects.$inferSelect }) => row.project);
+}
+
+export async function getProjectUsers(projectId: number) {
+    if (process.env.NEXT_PUBLIC_MOCK_MODE === 'true') {
+        const { getProjectMembers } = await import('@/lib/gitlab');
+        const members = await getProjectMembers(projectId, 'mock-token');
+        return members.map((m: any) => ({
+            id: m.id,
+            name: m.name,
+            username: m.username,
+            avatarUrl: m.avatar_url
+        }));
+    }
+
+    const session = await auth();
+    if (!session?.accessToken) throw new Error('Unauthorized');
+
+    const { getProjectMembers } = await import('@/lib/gitlab');
+    const members = await getProjectMembers(projectId, session.accessToken);
+    return members.map((m: any) => ({
+        id: m.id,
+        name: m.name,
+        username: m.username,
+        avatarUrl: m.avatar_url
+    }));
+}
+
+export async function getProjectLabelsAction(projectId: number) {
+    if (process.env.NEXT_PUBLIC_MOCK_MODE === 'true') {
+        const { getProjectLabels } = await import('@/lib/gitlab');
+        const labels = await getProjectLabels(projectId, 'mock-token');
+        return labels.map((l: any) => ({
+            id: l.id,
+            title: l.name,
+            color: l.color,
+            textColor: l.text_color || '#fff'
+        }));
+    }
+
+    const session = await auth();
+    if (!session?.accessToken) throw new Error('Unauthorized');
+
+    const labels = await getProjectLabels(projectId, session.accessToken);
+    return labels.map((l: any) => ({
+        id: l.id,
+        title: l.name,
+        color: l.color,
+        textColor: l.text_color || '#fff'
+    }));
 }
