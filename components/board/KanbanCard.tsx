@@ -5,31 +5,99 @@ import { CSS } from '@dnd-kit/utilities';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Button } from '@/components/ui/button';
 import { formatDistanceToNow } from 'date-fns';
 import Link from 'next/link';
+import { Trash2 } from 'lucide-react';
+import { deleteIssue } from '@/app/actions/issues';
+import { useRouter } from 'next/navigation';
+import { useState } from 'react';
+
+const isMockMode = process.env.NEXT_PUBLIC_MOCK_MODE === 'true';
+
+// Mock label definitions with colors
+const MOCK_LABELS = [
+    { id: 1, name: 'bug', color: '#dc2626', text_color: '#fff' },
+    { id: 2, name: 'feature', color: '#2563eb', text_color: '#fff' },
+    { id: 3, name: 'critical', color: '#7f1d1d', text_color: '#fff' },
+    { id: 4, name: 'frontend', color: '#0891b2', text_color: '#fff' },
+    { id: 5, name: 'backend', color: '#6366f1', text_color: '#fff' },
+    { id: 6, name: 'qa::ready', color: '#f59e0b', text_color: '#fff' },
+    { id: 7, name: 'qa::passed', color: '#10b981', text_color: '#fff' },
+    { id: 8, name: 'qa::failed', color: '#ef4444', text_color: '#fff' },
+];
+
+const getLabelColor = (labelName: string) => {
+    const label = MOCK_LABELS.find(l => l.name === labelName);
+    return label ? { bg: label.color, text: label.text_color } : { bg: '#6b7280', text: '#fff' };
+};
 
 // Pure UI component for the issue card
 export function IssueCard({ issue, projectId, isOverlay = false }: { issue: any, projectId: number, isOverlay?: boolean }) {
+    const router = useRouter();
+    const [isDeleting, setIsDeleting] = useState(false);
+
+    const handleDelete = async (e: React.MouseEvent) => {
+        e.stopPropagation();
+        e.preventDefault();
+
+        if (!confirm('Are you sure you want to delete this issue? This action cannot be undone.')) {
+            return;
+        }
+
+        setIsDeleting(true);
+        try {
+            await deleteIssue(projectId, issue.iid);
+            router.refresh();
+        } catch (error) {
+            console.error('Failed to delete issue:', error);
+            alert('Failed to delete issue. See console for details.');
+            setIsDeleting(false);
+        }
+    };
+
     return (
         <Card className={`cursor-grab active:cursor-grabbing hover:shadow-md transition-shadow bg-white ${isOverlay ? 'shadow-xl cursor-grabbing' : ''}`}>
             <CardContent className="p-3 space-y-3">
                 <div className="flex justify-between items-start gap-2">
                     <Link
                         href={`/${projectId}/qa/${issue.iid}`}
-                        className="font-medium text-sm hover:text-indigo-600 hover:underline line-clamp-2 leading-tight"
+                        className="font-medium text-sm hover:text-indigo-600 hover:underline line-clamp-2 leading-tight flex-1"
                         onPointerDown={(e) => e.stopPropagation()} // Allow clicking link without dragging
                     >
                         {issue.title}
                     </Link>
-                    <span className="text-xs text-muted-foreground whitespace-nowrap font-mono">#{issue.iid}</span>
+                    <div className="flex items-center gap-1">
+                        <span className="text-xs text-muted-foreground whitespace-nowrap font-mono">#{issue.iid}</span>
+                        {isMockMode && !isOverlay && (
+                            <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-5 w-5 text-red-600 hover:text-red-700 hover:bg-red-50 -mr-1"
+                                onClick={handleDelete}
+                                onPointerDown={(e) => e.stopPropagation()} // Prevent drag when clicking delete
+                                disabled={isDeleting}
+                            >
+                                <Trash2 className="h-3 w-3" />
+                            </Button>
+                        )}
+                    </div>
                 </div>
 
                 <div className="flex flex-wrap gap-1">
-                    {issue.labels.slice(0, 3).map((l: string) => (
-                        <Badge key={l} variant="outline" className="text-[10px] px-1.5 py-0 h-5 font-normal text-muted-foreground border-gray-200 bg-gray-50">
-                            {l}
-                        </Badge>
-                    ))}
+                    {issue.labels.slice(0, 3).map((l: string) => {
+                        const colors = getLabelColor(l);
+                        return (
+                            <Badge
+                                key={l}
+                                variant="outline"
+                                className="text-[10px] px-1.5 py-0 h-5 font-normal border-0"
+                                style={{ backgroundColor: colors.bg, color: colors.text }}
+                            >
+                                {l}
+                            </Badge>
+                        );
+                    })}
                     {issue.labels.length > 3 && (
                         <span className="text-[10px] text-muted-foreground">+{issue.labels.length - 3}</span>
                     )}

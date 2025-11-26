@@ -316,6 +316,54 @@ export const getProjectMembers = async (projectId: number, token: string) => {
 
 export const getIssues = async (projectId: number, token: string, params?: { state?: 'opened' | 'closed'; labels?: string; search?: string }) => {
     if (isMock()) {
+        // In mock mode, sync with database to get any newly created issues
+        try {
+            const { db } = await import('@/lib/db');
+            const { qaRecords, projects } = await import('@/db/schema');
+            const { eq } = await import('drizzle-orm');
+
+            // Get project's QA label mapping
+            const projectData = await db.select().from(projects).where(eq(projects.id, projectId)).limit(1);
+            const qaLabelMapping = projectData[0]?.qaLabelMapping || {
+                pending: 'qa::ready',
+                passed: 'qa::passed',
+                failed: 'qa::failed'
+            };
+
+            // Fetch issues from database for this project
+            const dbIssues = await db.select().from(qaRecords).where(eq(qaRecords.gitlabProjectId, projectId));
+
+            // Sync database issues into mockIssuesStore if they don't exist
+            for (const dbIssue of dbIssues) {
+                const existsInMemory = mockIssuesStore.find(
+                    (i: any) => i.project_id === dbIssue.gitlabProjectId && i.iid === dbIssue.gitlabIssueIid
+                );
+
+                if (!existsInMemory) {
+                    // Map status back to QA label
+                    const qaLabel = qaLabelMapping[dbIssue.status as keyof typeof qaLabelMapping] || qaLabelMapping.pending;
+
+                    // Reconstruct issue from database record
+                    mockIssuesStore.push({
+                        id: dbIssue.gitlabIssueId,
+                        iid: dbIssue.gitlabIssueIid,
+                        project_id: dbIssue.gitlabProjectId,
+                        title: dbIssue.issueTitle,
+                        description: dbIssue.issueDescription || '',
+                        state: 'opened',
+                        created_at: dbIssue.createdAt?.toISOString() || new Date().toISOString(),
+                        updated_at: dbIssue.updatedAt?.toISOString() || new Date().toISOString(),
+                        author: MOCK_USERS[0],
+                        assignees: [],
+                        labels: [qaLabel], // Reconstruct label from status
+                        web_url: dbIssue.issueUrl,
+                    });
+                }
+            }
+        } catch (error) {
+            console.error('[MOCK] Failed to sync issues from database:', error);
+        }
+
         let issues = mockIssuesStore.filter((i: any) => i.project_id === Number(projectId));
         if (params?.state) {
             issues = issues.filter((i: any) => i.state === params.state);
@@ -525,6 +573,18 @@ export const createMockIssue = (issueData: any) => {
 
     mockIssuesStore.unshift(newIssue);
     return newIssue;
+};
+
+export const deleteMockIssue = (projectId: number, issueIid: number) => {
+    const initialLength = mockIssuesStore.length;
+    mockIssuesStore = mockIssuesStore.filter(
+        (i: any) => !(i.project_id === Number(projectId) && i.iid === Number(issueIid))
+    );
+    const deleted = mockIssuesStore.length < initialLength;
+    if (deleted) {
+        console.log(`[MOCK] Deleted issue ${issueIid} from project ${projectId}`);
+    }
+    return deleted;
 };
 
 // --- SNIPPET METHODS ---

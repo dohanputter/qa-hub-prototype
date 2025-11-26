@@ -29,6 +29,7 @@ export async function getAllIssues(params?: { state?: 'opened' | 'closed'; searc
                     ...i.author,
                     avatarUrl: i.author?.avatar_url
                 },
+                assignee: i.assignees?.[0] || null, // Transform assignees array to single assignee
                 project
             }));
         });
@@ -104,15 +105,103 @@ export async function getAllIssues(params?: { state?: 'opened' | 'closed'; searc
 
 export async function createIssue(projectId: number, data: any) {
     if (process.env.NEXT_PUBLIC_MOCK_MODE === 'true') {
-        const { createMockIssue } = await import('@/lib/gitlab');
+        const { createMockIssue, getProject } = await import('@/lib/gitlab');
+        const { db } = await import('@/lib/db');
+        const { qaRecords, users, projects } = await import('@/db/schema');
+        const { mapLabelToStatus } = await import('@/lib/utils');
+        const { eq } = await import('drizzle-orm');
+
+        // Create the mock issue in memory
+        // Handle both 'labels' (comma-separated) and 'labelId' (single label) from form
+        const issueLabels = data.labels
+            ? data.labels.split(',')
+            : (data.labelId ? [data.labelId] : []);
+
         const newIssue = createMockIssue({
             project_id: projectId,
             title: data.title,
             description: data.description,
             assignee_id: data.assigneeId ? Number(data.assigneeId) : undefined,
-            labels: data.labels ? data.labels.split(',') : []
+            labels: issueLabels
         });
-        return { success: true, id: newIssue.id };
+
+        // Ensure mock user exists in database (for foreign key constraint)
+        const mockUserId = 'mock-user-00000000-0000-0000-0000-000000000001';
+        const existingUser = await db.select().from(users).where(eq(users.id, mockUserId)).limit(1);
+
+        if (existingUser.length === 0) {
+            await db.insert(users).values({
+                id: mockUserId,
+                email: 'mock@example.com',
+                name: 'Mock User',
+                image: 'https://picsum.photos/32/32?random=999',
+            });
+        }
+
+        // Get project data from mock store
+        const project = await getProject(projectId, 'mock-token');
+
+        // Ensure mock group exists in database (for nested foreign key constraint)
+        if (project.namespace?.id) {
+            const { groups } = await import('@/db/schema');
+            const existingGroup = await db.select().from(groups).where(eq(groups.id, project.namespace.id)).limit(1);
+
+            if (existingGroup.length === 0) {
+                await db.insert(groups).values({
+                    id: project.namespace.id,
+                    name: project.namespace.name || 'Mock Group',
+                    fullPath: project.namespace.full_path || project.namespace.path || 'mock-group',
+                    description: null,
+                    webUrl: `https://gitlab.com/groups/${project.namespace.path || 'mock-group'}`,
+                    avatarUrl: null,
+                    createdAt: new Date(),
+                });
+            }
+        }
+
+        // Ensure mock project exists in database (for foreign key constraint)
+        const existingProject = await db.select().from(projects).where(eq(projects.id, projectId)).limit(1);
+
+        if (existingProject.length === 0) {
+            await db.insert(projects).values({
+                id: projectId,
+                groupId: project.namespace?.id || null,
+                name: project.name,
+                description: project.description || null,
+                webUrl: project.web_url,
+                qaLabelMapping: (project.qaLabelMapping || {
+                    pending: 'qa::ready',
+                    passed: 'qa::passed',
+                    failed: 'qa::failed'
+                }) as { pending: string; passed: string; failed: string },
+                isConfigured: true,
+                createdAt: new Date(),
+            });
+        }
+
+        // Determine status from labels
+        const labelMapping = (project.qaLabelMapping ?? {
+            pending: 'qa::ready',
+            passed: 'qa::passed',
+            failed: 'qa::failed'
+        }) as { pending: string; passed: string; failed: string };
+        const status = mapLabelToStatus(newIssue.labels, labelMapping);
+
+        await db.insert(qaRecords).values({
+            gitlabIssueId: newIssue.id,
+            gitlabIssueIid: newIssue.iid,
+            gitlabProjectId: projectId,
+            issueTitle: newIssue.title,
+            issueDescription: newIssue.description || '',
+            issueUrl: newIssue.web_url,
+            status,
+            createdBy: mockUserId,
+            createdAt: new Date(newIssue.created_at),
+            updatedAt: new Date(newIssue.updated_at),
+        });
+
+        console.log(`[MOCK] Created issue ${newIssue.iid} and persisted to database`);
+        return { success: true, id: newIssue.id, iid: newIssue.iid };
     }
 
     const session = await auth();
@@ -132,3 +221,33 @@ export async function createIssue(projectId: number, data: any) {
         throw new Error('Failed to create issue');
     }
 }
+
+export async function deleteIssue(projectId: number, issueIid: number) {
+    // Only allow deletion in mock mode - GitLab API doesn't support issue deletion
+    if (process.env.NEXT_PUBLIC_MOCK_MODE !== 'true') {
+        throw new Error('Issue deletion is not supported in production mode. GitLab does not allow deleting issues via API.');
+    }
+
+    const { deleteMockIssue } = await import('@/lib/gitlab');
+    const { db } = await import('@/lib/db');
+    const { qaRecords } = await import('@/db/schema');
+    const { eq, and } = await import('drizzle-orm');
+
+    // Delete from in-memory mock store
+    const deletedFromMemory = deleteMockIssue(projectId, issueIid);
+
+    // Also delete from database
+    await db
+        .delete(qaRecords)
+        .where(
+            and(
+                eq(qaRecords.gitlabProjectId, projectId),
+                eq(qaRecords.gitlabIssueIid, issueIid)
+            )
+        );
+
+    console.log(`[MOCK] Deleted issue ${issueIid} from project ${projectId} - Memory: ${deletedFromMemory}`);
+
+    return { success: true, deletedFromMemory };
+}
+
