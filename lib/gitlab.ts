@@ -378,6 +378,49 @@ export const updateIssueLabels = async (
                 issue.labels = [...issue.labels, ...options.addLabels.filter((l: string) => !issue.labels.includes(l))];
             }
             issue.updated_at = new Date().toISOString();
+
+            // --- TASK 1 FIX: Sync database to match in-memory store ---
+            // Import db and related modules dynamically to avoid circular dependencies
+            (async () => {
+                try {
+                    const { db } = await import('@/lib/db');
+                    const { qaRecords, projects } = await import('@/db/schema');
+                    const { eq, and } = await import('drizzle-orm');
+                    const { mapLabelToStatus } = await import('@/lib/utils');
+
+                    // Get the project's QA label mapping
+                    const projectResults = await db
+                        .select()
+                        .from(projects)
+                        .where(eq(projects.id, projectId))
+                        .limit(1);
+
+                    const project = projectResults[0];
+
+                    if (project?.qaLabelMapping) {
+                        // Determine the new status based on updated labels
+                        const newStatus = mapLabelToStatus(issue.labels, project.qaLabelMapping);
+
+                        // Update the database record to match
+                        await db
+                            .update(qaRecords)
+                            .set({
+                                status: newStatus,
+                                updatedAt: new Date(),
+                            })
+                            .where(
+                                and(
+                                    eq(qaRecords.gitlabProjectId, projectId),
+                                    eq(qaRecords.gitlabIssueIid, issueIid)
+                                )
+                            );
+
+                        console.log(`[MOCK] Synced DB status to "${newStatus}" for issue ${issueIid}`);
+                    }
+                } catch (error) {
+                    console.error('[MOCK] Failed to sync database:', error);
+                }
+            })();
         }
         return { success: true };
     }

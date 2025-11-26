@@ -1,34 +1,57 @@
 'use server';
 
-import { getMockSnippets, createMockSnippet, updateMockSnippet, deleteMockSnippet } from '@/lib/gitlab';
+import { db } from '@/lib/db';
+import { snippets } from '@/db/schema';
+import { eq, desc } from 'drizzle-orm';
 import { Snippet } from '@/types';
 
 export async function getSnippetsAction(): Promise<Snippet[]> {
-    if (process.env.NEXT_PUBLIC_MOCK_MODE === 'true') {
-        return getMockSnippets();
-    }
-    // Real implementation would go here (e.g. DB or GitLab Snippets)
-    // For now, we only have mock snippets
-    return [];
+    const results = await db
+        .select()
+        .from(snippets)
+        .orderBy(desc(snippets.updatedAt));
+
+    return results.map(s => ({
+        id: s.id!,
+        title: s.title,
+        content: s.content,
+        type: s.type,
+        updatedAt: s.updatedAt?.toISOString() || new Date().toISOString(),
+    }));
 }
 
 export async function createSnippetAction(snippet: Omit<Snippet, 'id' | 'updatedAt'>) {
-    if (process.env.NEXT_PUBLIC_MOCK_MODE === 'true') {
-        return createMockSnippet(snippet);
-    }
-    throw new Error('Not implemented in production mode');
+    const result = await db
+        .insert(snippets)
+        .values({
+            title: snippet.title,
+            content: snippet.content,
+            type: snippet.type,
+        })
+        .returning();
+
+    return result[0];
 }
 
 export async function updateSnippetAction(snippet: Snippet) {
-    if (process.env.NEXT_PUBLIC_MOCK_MODE === 'true') {
-        return updateMockSnippet(snippet);
-    }
-    throw new Error('Not implemented in production mode');
+    const result = await db
+        .update(snippets)
+        .set({
+            title: snippet.title,
+            content: snippet.content,
+            type: snippet.type,
+            updatedAt: new Date(),
+        })
+        .where(eq(snippets.id, snippet.id))
+        .returning();
+
+    return result[0];
 }
 
 export async function deleteSnippetAction(id: number) {
-    if (process.env.NEXT_PUBLIC_MOCK_MODE === 'true') {
-        return deleteMockSnippet(id);
-    }
-    throw new Error('Not implemented in production mode');
+    await db
+        .delete(snippets)
+        .where(eq(snippets.id, id));
+
+    return true;
 }

@@ -58,7 +58,23 @@ export async function getAllIssues(params?: { state?: 'opened' | 'closed'; searc
 
     if (projects.length === 0) return [];
 
-    const issuesPromises = projects.map((p: any) =>
+    // --- TASK 3 FIX: Batch API calls to prevent thundering herd ---
+    // Helper function to execute promises in batches
+    async function executeBatched<T>(
+        tasks: (() => Promise<T>)[],
+        batchSize: number
+    ): Promise<T[]> {
+        const results: T[] = [];
+        for (let i = 0; i < tasks.length; i += batchSize) {
+            const batch = tasks.slice(i, i + batchSize);
+            const batchResults = await Promise.all(batch.map(task => task()));
+            results.push(...batchResults);
+        }
+        return results;
+    }
+
+    // Create task functions for fetching issues (not executing yet)
+    const issueTasks = projects.map((p: any) => () =>
         getIssues(p.id, session.accessToken!, { ...params })
             .then(issues => issues.map((i: any) => ({
                 ...i,
@@ -78,7 +94,8 @@ export async function getAllIssues(params?: { state?: 'opened' | 'closed'; searc
             })
     );
 
-    const results = await Promise.all(issuesPromises);
+    // Execute in batches of 3 to prevent rate limiting
+    const results = await executeBatched(issueTasks, 3);
 
     return results.flat().sort((a: any, b: any) =>
         new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()

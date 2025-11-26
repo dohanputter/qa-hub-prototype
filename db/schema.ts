@@ -188,3 +188,12 @@ export const attachmentsRelations = relations(attachments, ({ one }) => ({
 export const notificationsRelations = relations(notifications, ({ one }) => ({
     user: one(users, { fields: [notifications.userId], references: [users.id] }),
 }));
+
+// ===== SNIPPETS TABLE =====
+export const snippets = sqliteTable('snippets', {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    title: text('title').notNull(),
+    content: text('content').notNull(),
+    type: text('type').$type<'test_case' | 'issue'>().notNull(),
+    updatedAt: integer('updated_at', { mode: 'timestamp_ms' }).$defaultFn(() => new Date()),
+});
