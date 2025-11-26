@@ -9,10 +9,16 @@ export async function moveIssue(projectId: number, issueIid: number, newLabel: s
     if (!session?.accessToken) throw new Error('Unauthorized');
 
     try {
-        await updateIssueLabels(projectId, issueIid, session.accessToken, {
+        const updateOptions: { addLabels?: string[]; removeLabels?: string[] } = {
             addLabels: [newLabel],
-            removeLabels: [oldLabel]
-        });
+        };
+
+        // Only remove old label if it exists (not from backlog)
+        if (oldLabel) {
+            updateOptions.removeLabels = [oldLabel];
+        }
+
+        await updateIssueLabels(projectId, issueIid, session.accessToken, updateOptions);
 
         revalidatePath(`/${projectId}`);
         return { success: true };

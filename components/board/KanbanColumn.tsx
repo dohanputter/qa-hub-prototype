@@ -25,9 +25,10 @@ export function KanbanColumn({ id, title, issues, projectId }: KanbanColumnProps
             <div className="p-4 flex items-center justify-between border-b border-gray-100">
                 <div className="flex items-center gap-2">
                     <div className={cn("w-2 h-2 rounded-full",
-                        id === 'pending' ? "bg-yellow-400" :
-                            id === 'passed' ? "bg-green-500" :
-                                id === 'failed' ? "bg-red-500" : "bg-gray-400"
+                        id === 'backlog' ? "bg-gray-400" :
+                            id === 'pending' ? "bg-yellow-400" :
+                                id === 'passed' ? "bg-green-500" :
+                                    id === 'failed' ? "bg-red-500" : "bg-gray-400"
                     )} />
                     <h3 className="font-semibold text-sm text-gray-700">{title}</h3>
                 </div>
@@ -39,12 +40,12 @@ export function KanbanColumn({ id, title, issues, projectId }: KanbanColumnProps
                     <div className="p-2 h-full">
                         <SortableContext
                             id={id}
-                            items={issues.map(i => i.id.toString())}
+                            items={issues.map(i => `${i.project_id || projectId}-${i.iid}`)}
                             strategy={verticalListSortingStrategy}
                         >
                             <div ref={setNodeRef} className="min-h-[calc(100vh-250px)] space-y-3 pb-4">
                                 {issues.map((issue) => (
-                                    <KanbanCard key={issue.id} issue={issue} projectId={projectId} />
+                                    <KanbanCard key={`${issue.project_id || projectId}-${issue.iid}`} issue={issue} projectId={projectId} />
                                 ))}
                             </div>
                         </SortableContext>

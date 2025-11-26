@@ -135,7 +135,7 @@ export function KanbanCard({ issue, projectId }: { issue: any, projectId: number
         transform,
         transition,
         isDragging
-    } = useSortable({ id: issue.id.toString(), data: { ...issue, type: 'Issue' } });
+    } = useSortable({ id: `${issue.project_id || projectId}-${issue.iid}`, data: { ...issue, type: 'Issue' } });
 
     const style = {
         transform: CSS.Transform.toString(transform),

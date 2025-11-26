@@ -397,7 +397,63 @@ export const getIssues = async (projectId: number, token: string, params?: { sta
 
 export const getIssue = async (projectId: number, issueIid: number, token: string) => {
     if (isMock()) {
-        return mockIssuesStore.find((i: any) => i.project_id === Number(projectId) && i.iid === Number(issueIid));
+        // First check in-memory store
+        let issue = mockIssuesStore.find((i: any) => i.project_id === Number(projectId) && i.iid === Number(issueIid));
+
+        // If not found in memory, check database and sync to memory
+        if (!issue) {
+            try {
+                const { db } = await import('@/lib/db');
+                const { qaRecords, projects } = await import('@/db/schema');
+                const { eq, and } = await import('drizzle-orm');
+
+                const dbIssues = await db.select()
+                    .from(qaRecords)
+                    .where(and(
+                        eq(qaRecords.gitlabProjectId, projectId),
+                        eq(qaRecords.gitlabIssueIid, issueIid)
+                    ))
+                    .limit(1);
+
+                if (dbIssues.length > 0) {
+                    const dbIssue = dbIssues[0];
+
+                    // Get project's QA label mapping
+                    const projectData = await db.select().from(projects).where(eq(projects.id, projectId)).limit(1);
+                    const qaLabelMapping = projectData[0]?.qaLabelMapping || {
+                        pending: 'qa::ready',
+                        passed: 'qa::passed',
+                        failed: 'qa::failed'
+                    };
+
+                    // Map status back to QA label
+                    const qaLabel = qaLabelMapping[dbIssue.status as keyof typeof qaLabelMapping] || qaLabelMapping.pending;
+
+                    // Reconstruct issue from database and add to memory
+                    issue = {
+                        id: dbIssue.gitlabIssueId,
+                        iid: dbIssue.gitlabIssueIid,
+                        project_id: dbIssue.gitlabProjectId,
+                        title: dbIssue.issueTitle,
+                        description: dbIssue.issueDescription || '',
+                        state: 'opened',
+                        created_at: dbIssue.createdAt?.toISOString() || new Date().toISOString(),
+                        updated_at: dbIssue.updatedAt?.toISOString() || new Date().toISOString(),
+                        author: MOCK_USERS[0],
+                        assignees: [],
+                        labels: [qaLabel],
+                        web_url: dbIssue.issueUrl,
+                    };
+
+                    // Add to memory store for future lookups
+                    mockIssuesStore.push(issue);
+                }
+            } catch (error) {
+                console.error('[MOCK] Failed to sync issue from database:', error);
+            }
+        }
+
+        return issue;
     }
     try {
         const gitlab = getGitlabClient(token);
@@ -553,7 +609,9 @@ export async function createProjectWebhook(projectId: number, token: string) {
 // --- NEW MOCK MUTATION METHODS ---
 
 export const createMockIssue = (issueData: any) => {
-    const newId = Math.max(0, ...mockIssuesStore.map((i: any) => i.id)) + 1;
+    // Use IDs starting from 1000 to avoid conflicts with database-synced issues (which use actual GitLab IDs)
+    const existingMockIds = mockIssuesStore.map((i: any) => i.id).filter((id: number) => id >= 1000);
+    const newId = existingMockIds.length > 0 ? Math.max(...existingMockIds) + 1 : 1000;
     const newIid = Math.max(0, ...mockIssuesStore.filter((i: any) => i.project_id === issueData.project_id).map((i: any) => i.iid)) + 1;
 
     const newIssue = {

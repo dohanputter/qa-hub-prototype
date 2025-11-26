@@ -14,8 +14,9 @@ import {
     DropdownMenuItem,
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { toast } from '@/components/ui/use-toast';
 
-export function TiptapEditor({ content, onChange, members, placeholder, snippets = [] }: any) {
+export function TiptapEditor({ content, onChange, members, placeholder, snippets = [], onImagePaste }: any) {
     const editor = useEditor({
         extensions: [
             StarterKit,
@@ -24,7 +25,7 @@ export function TiptapEditor({ content, onChange, members, placeholder, snippets
                     class: 'mention font-medium text-indigo-600 bg-indigo-50 px-1 rounded-sm',
                 },
                 suggestion: {
-                    items: ({ query }) => {
+                    items: ({ query }: any) => {
                         return members
                             .filter((m: any) => m.name.toLowerCase().includes(query.toLowerCase()) || m.username.toLowerCase().includes(query.toLowerCase()))
                             .slice(0, 5)
@@ -83,12 +84,72 @@ export function TiptapEditor({ content, onChange, members, placeholder, snippets
             }),
         ],
         content,
+        immediatelyRender: false, // Fix for SSR hydration in Next.js with React 19
         onUpdate: ({ editor }) => {
             onChange(editor.getJSON());
         },
         editorProps: {
             attributes: {
                 class: 'prose prose-sm sm:prose lg:prose-lg xl:prose-2xl mx-auto focus:outline-none min-h-[150px] p-4 border rounded-md bg-white',
+            },
+            handlePaste: (view, event, slice) => {
+                // Check if there are files in the clipboard
+                const items = event.clipboardData?.items;
+                if (!items) return false;
+
+                for (let i = 0; i < items.length; i++) {
+                    const item = items[i];
+
+                    // Check if it's an image
+                    if (item.type.indexOf('image') !== -1) {
+                        event.preventDefault(); // Prevent default paste
+
+                        const file = item.getAsFile();
+                        if (!file) continue;
+
+                        // Show upload toast
+                        toast({
+                            title: "Uploading image...",
+                            description: file.name,
+                        });
+
+                        // Call the onImagePaste handler if provided
+                        if (onImagePaste) {
+                            onImagePaste(file)
+                                .then((result: any) => {
+                                    if (result?.markdown) {
+                                        // Insert the markdown at cursor position using the view
+                                        const { state } = view;
+                                        const { tr } = state;
+                                        tr.insertText(result.markdown, state.selection.from);
+                                        view.dispatch(tr);
+
+                                        toast({
+                                            title: "Image uploaded",
+                                            description: file.name,
+                                        });
+                                    }
+                                })
+                                .catch((error: any) => {
+                                    toast({
+                                        title: "Upload failed",
+                                        description: error.message || "Failed to upload image",
+                                        variant: "destructive",
+                                    });
+                                });
+                        } else {
+                            toast({
+                                title: "Upload not configured",
+                                description: "Image paste handler not available",
+                                variant: "destructive",
+                            });
+                        }
+
+                        return true; // Handled
+                    }
+                }
+
+                return false; // Not handled, use default behavior
             },
         },
     });

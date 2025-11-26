@@ -32,6 +32,7 @@ export function KanbanBoard({
 }: KanbanBoardProps) {
     const [issues, setIssues] = useState(initialIssues);
     const [activeId, setActiveId] = useState<string | null>(null);
+    const [isSyncing, setIsSyncing] = useState(false);
 
     // Search & Filter State
     const [searchQuery, setSearchQuery] = useState('');
@@ -88,6 +89,14 @@ export function KanbanBoard({
         return filteredIssues.filter((i: any) => i.labels.includes(label));
     };
 
+    // Get issues that don't have any of the status labels (Backlog)
+    const getBacklogIssues = () => {
+        const statusLabels = Object.values(columns);
+        return filteredIssues.filter((i: any) =>
+            !statusLabels.some(label => i.labels.includes(label))
+        );
+    };
+
     // Autocomplete Logic
     const filteredLabels = labels.filter((l: any) =>
         l.name.toLowerCase().includes(searchQuery.toLowerCase().replace('@', ''))
@@ -139,9 +148,15 @@ export function KanbanBoard({
         const activeIssue = issues.find((i: any) => i.id.toString() === active.id);
         if (!activeIssue) return;
 
+        // Start syncing feedback
+        setIsSyncing(true);
+        const syncStartTime = Date.now();
+
+        // Determine source status (can be undefined if in backlog)
         const sourceStatus = Object.keys(columns).find((key) =>
             activeIssue.labels.includes(columns[key as keyof typeof columns])
         ) as keyof typeof columns | undefined;
+        const isFromBacklog = !sourceStatus;
 
         let destStatus: keyof typeof columns | undefined;
         let droppedOnCard = false;
@@ -153,13 +168,64 @@ export function KanbanBoard({
                 overIssue.labels.includes(columns[key as keyof typeof columns])
             ) as keyof typeof columns;
         } else {
+            // Check if dropped on a column
+            if (over.id === 'backlog') {
+                // Can't drop back to backlog
+                setIsSyncing(false);
+                return;
+            }
             const isColumn = Object.keys(columns).includes(over.id);
             if (isColumn) {
                 destStatus = over.id as keyof typeof columns;
             }
         }
 
-        if (!sourceStatus || !destStatus) return;
+        if (!destStatus) {
+            setIsSyncing(false);
+            return;
+        }
+
+        // If from backlog, we only add the new label
+        if (isFromBacklog && destStatus) {
+            const newLabel = columns[destStatus];
+            const updatedIssue = {
+                ...activeIssue,
+                updated_at: new Date().toISOString(),
+                labels: [...activeIssue.labels, newLabel],
+            };
+
+            const activeIndex = issues.findIndex((i: any) => i.id.toString() === active.id);
+            let newIssues = [...issues];
+            newIssues[activeIndex] = updatedIssue;
+            setIssues(newIssues);
+
+            const result = await moveIssue(
+                project.id,
+                activeIssue.iid,
+                newLabel,
+                '' // Empty old label for backlog
+            );
+
+            // Keep syncing badge visible for minimum 2.5 seconds
+            const elapsed = Date.now() - syncStartTime;
+            const remainingTime = Math.max(0, 2500 - elapsed);
+            setTimeout(() => setIsSyncing(false), remainingTime);
+
+            if (!result.success) {
+                toast({
+                    title: "Error moving issue",
+                    description: result.error,
+                    variant: "destructive",
+                });
+                setIssues(issues);
+            }
+            return;
+        }
+
+        if (!sourceStatus || !destStatus) {
+            setIsSyncing(false);
+            return;
+        }
 
         if (sourceStatus === destStatus && droppedOnCard) {
             const activeIndex = issues.findIndex((i: any) => i.id.toString() === active.id);
@@ -203,6 +269,11 @@ export function KanbanBoard({
             oldLabel
         );
 
+        // Keep syncing badge visible for minimum 2.5 seconds
+        const elapsed = Date.now() - syncStartTime;
+        const remainingTime = Math.max(0, 2500 - elapsed);
+        setTimeout(() => setIsSyncing(false), remainingTime);
+
         if (!result.success) {
             toast({
                 title: "Error moving issue",
@@ -220,7 +291,18 @@ export function KanbanBoard({
     return (
         <div className="flex flex-col h-full">
             {/* Sticky Header */}
-            <div className="flex justify-end items-center mb-6 sticky top-0 z-10 bg-[#f9fafb] py-2">
+            <div className="flex justify-between items-center mb-6 sticky top-0 z-10 bg-[#f9fafb] py-2">
+                {/* Syncing Badge */}
+                {isSyncing && (
+                    <div className="flex items-center gap-2 px-3 py-1.5 bg-indigo-50 border border-indigo-200 rounded-lg">
+                        <svg className="animate-spin h-4 w-4 text-indigo-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        <span className="text-sm font-medium text-indigo-700">Syncing...</span>
+                    </div>
+                )}
+                {!isSyncing && <div></div>}
 
                 {/* Search Input Container */}
                 <div className="relative w-80" ref={searchContainerRef}>
@@ -280,6 +362,13 @@ export function KanbanBoard({
                 onDragEnd={handleDragEnd}
             >
                 <div className="flex h-full gap-6 overflow-x-auto pb-4 items-start">
+                    <KanbanColumn
+                        id="backlog"
+                        title="Backlog"
+                        issues={getBacklogIssues()}
+                        projectId={project.id}
+                    />
+
                     <KanbanColumn
                         id="pending"
                         title="Ready for QA"

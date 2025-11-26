@@ -91,6 +91,28 @@ export function QADetail({ issue, qaRecord, members, projectId }: any) {
         }
     };
 
+    const handleImagePaste = async (file: File) => {
+        // If no record ID yet, save first
+        let currentRecordId = recordId;
+        if (!currentRecordId) {
+            const record = await handleSave(true);
+            if (record) {
+                currentRecordId = record.id;
+            } else {
+                throw new Error('Failed to create QA record');
+            }
+        }
+
+        const formData = new FormData();
+        formData.append('file', file);
+        formData.append('projectId', projectId.toString());
+        formData.append('qaRecordId', currentRecordId);
+
+        const result = await uploadAttachment(formData);
+        setAttachments([...attachments, result]);
+        return result;
+    };
+
     const testCaseSnippets = snippets.filter(s => s.type === 'test_case');
     const issueSnippets = snippets.filter(s => s.type === 'issue');
 
@@ -162,6 +184,7 @@ export function QADetail({ issue, qaRecord, members, projectId }: any) {
                             members={members}
                             placeholder="List test cases..."
                             snippets={testCaseSnippets}
+                            onImagePaste={handleImagePaste}
                         />
                     </div>
 
@@ -173,6 +196,7 @@ export function QADetail({ issue, qaRecord, members, projectId }: any) {
                             members={members}
                             placeholder="Describe any issues found..."
                             snippets={issueSnippets}
+                            onImagePaste={handleImagePaste}
                         />
                     </div>
 

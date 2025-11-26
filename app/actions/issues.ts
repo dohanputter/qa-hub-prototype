@@ -3,6 +3,7 @@
 import { auth } from '@/auth';
 import { getUserProjects } from './project';
 import { getIssues } from '@/lib/gitlab';
+import { revalidatePath } from 'next/cache';
 
 export async function getAllIssues(params?: { state?: 'opened' | 'closed'; search?: string; projectId?: string }) {
     if (process.env.NEXT_PUBLIC_MOCK_MODE === 'true') {
@@ -201,6 +202,12 @@ export async function createIssue(projectId: number, data: any) {
         });
 
         console.log(`[MOCK] Created issue ${newIssue.iid} and persisted to database`);
+
+        // Revalidate pages to show the new issue
+        revalidatePath('/issues');
+        revalidatePath('/board');
+        revalidatePath(`/${projectId}`);
+
         return { success: true, id: newIssue.id, iid: newIssue.iid };
     }
 

@@ -9,6 +9,9 @@ import {
 import { useToast } from '@/components/ui/use-toast';
 import { getSnippetsAction } from '@/app/actions/snippets';
 import { getProjectUsers, getProjectLabelsAction } from '@/app/actions/project';
+import { TiptapEditor } from './qa/TiptapEditor';
+import { createOrUpdateQARecord } from '@/app/actions/qaRecords';
+import { uploadAttachment } from '@/app/actions/uploadAttachment';
 
 interface TicketDetailProps {
     issue: Issue;
@@ -16,196 +19,7 @@ interface TicketDetailProps {
     onUpdate: (issue: Issue) => void;
 }
 
-// --- Helper: Get Caret Coordinates for Mention Popup ---
-const getCaretCoordinates = (element: HTMLTextAreaElement, position: number) => {
-    const div = document.createElement('div');
-    const style = window.getComputedStyle(element);
 
-    // Copy styling to mirror the textarea
-    Array.from(style).forEach(prop => {
-        if (!['position', 'top', 'left', 'visibility', 'height'].includes(prop)) {
-            div.style.setProperty(prop, style.getPropertyValue(prop), style.getPropertyPriority(prop));
-        }
-    });
-
-    div.style.position = 'absolute';
-    div.style.visibility = 'hidden';
-    div.style.whiteSpace = 'pre-wrap';
-    div.style.top = '0';
-    div.style.left = '0';
-    div.style.width = style.width;
-    div.style.font = style.font;
-    div.style.padding = style.padding;
-    div.style.border = style.border;
-    div.style.boxSizing = style.boxSizing;
-
-    // Content up to cursor
-    div.textContent = element.value.substring(0, position);
-
-    // Span to locate cursor
-    const span = document.createElement('span');
-    span.textContent = element.value.substring(position) || '.';
-    div.appendChild(span);
-
-    document.body.appendChild(div);
-
-    const coordinates = {
-        top: span.offsetTop + parseInt(style.borderTopWidth) - element.scrollTop,
-        left: span.offsetLeft + parseInt(style.borderLeftWidth) - element.scrollLeft,
-        height: parseInt(style.lineHeight) || 20
-    };
-
-    document.body.removeChild(div);
-    return coordinates;
-};
-
-// --- Component: Smart Textarea with Mentions ---
-interface MentionTextAreaProps extends React.TextareaHTMLAttributes<HTMLTextAreaElement> {
-    value: string;
-    onChangeValue: (val: string) => void;
-    users: User[];
-}
-
-const MentionTextArea: React.FC<MentionTextAreaProps> = ({ value, onChangeValue, users, className, ...props }) => {
-    const textareaRef = useRef<HTMLTextAreaElement>(null);
-    const [showSuggestions, setShowSuggestions] = useState(false);
-    const [suggestionPos, setSuggestionPos] = useState({ top: 0, left: 0 });
-    const [query, setQuery] = useState('');
-    const [selectedIndex, setSelectedIndex] = useState(0);
-
-    const filteredUsers = users.filter(u =>
-        u.username.toLowerCase().includes(query.toLowerCase()) ||
-        u.name.toLowerCase().includes(query.toLowerCase())
-    );
-
-    const handleInput = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-        const newValue = e.target.value;
-        const newCursorPos = e.target.selectionStart;
-        onChangeValue(newValue);
-
-        // Check for trigger
-        const textBeforeCursor = newValue.slice(0, newCursorPos);
-        // Match @ followed by word chars at end of string
-        const match = textBeforeCursor.match(/@(\w*)$/);
-
-        if (match) {
-            const matchQuery = match[1];
-            setQuery(matchQuery);
-            setShowSuggestions(true);
-
-            if (textareaRef.current) {
-                const coords = getCaretCoordinates(textareaRef.current, newCursorPos);
-                // Adjust for toolbar height (approx 40px) + some padding
-                setSuggestionPos({ top: coords.top + 20, left: coords.left });
-            }
-            setSelectedIndex(0);
-        } else {
-            setShowSuggestions(false);
-        }
-    };
-
-    const insertMention = (username: string) => {
-        if (!textareaRef.current) return;
-        const cursor = textareaRef.current.selectionStart;
-        const textBefore = value.slice(0, cursor);
-        const textAfter = value.slice(cursor);
-        const match = textBefore.match(/@(\w*)$/);
-
-        if (match) {
-            const start = match.index!;
-            const newText = value.slice(0, start) + `@${username} ` + textAfter;
-            onChangeValue(newText);
-            setShowSuggestions(false);
-
-            // Restore focus and move cursor
-            setTimeout(() => {
-                if (textareaRef.current) {
-                    textareaRef.current.focus();
-                    textareaRef.current.setSelectionRange(start + username.length + 2, start + username.length + 2);
-                }
-            }, 0);
-        }
-    };
-
-    const handleKeyDown = (e: React.KeyboardEvent) => {
-        if (showSuggestions && filteredUsers.length > 0) {
-            if (e.key === 'ArrowDown') {
-                e.preventDefault();
-                setSelectedIndex(prev => (prev + 1) % filteredUsers.length);
-            } else if (e.key === 'ArrowUp') {
-                e.preventDefault();
-                setSelectedIndex(prev => (prev - 1 + filteredUsers.length) % filteredUsers.length);
-            } else if (e.key === 'Enter' || e.key === 'Tab') {
-                e.preventDefault();
-                insertMention(filteredUsers[selectedIndex].username);
-            } else if (e.key === 'Escape') {
-                setShowSuggestions(false);
-            }
-        }
-    };
-
-    return (
-        <div className="relative flex-1 flex flex-col">
-            <textarea
-                ref={textareaRef}
-                value={value}
-                onChange={handleInput}
-                onKeyDown={handleKeyDown}
-                className={className}
-                {...props}
-            />
-            {showSuggestions && filteredUsers.length > 0 && (
-                <div
-                    className="absolute z-50 bg-white border border-gray-200 rounded-lg shadow-lg w-64 overflow-hidden"
-                    style={{ top: suggestionPos.top, left: suggestionPos.left }}
-                >
-                    <ul className="max-h-48 overflow-y-auto">
-                        {filteredUsers.map((user, index) => (
-                            <li
-                                key={user.id}
-                                onClick={() => insertMention(user.username)}
-                                className={`px-3 py-2 flex items-center gap-2 cursor-pointer text-sm ${index === selectedIndex ? 'bg-indigo-50 text-indigo-900' : 'hover:bg-gray-50 text-gray-700'
-                                    }`}
-                            >
-                                <img src={user.avatarUrl} className="w-5 h-5 rounded-full" alt="" />
-                                <div className="flex flex-col">
-                                    <span className="font-medium leading-none">{user.username}</span>
-                                    <span className="text-xs text-gray-400 leading-none mt-1">{user.name}</span>
-                                </div>
-                            </li>
-                        ))}
-                    </ul>
-                </div>
-            )}
-        </div>
-    );
-};
-
-// --- Editor Toolbar ---
-interface EditorToolbarProps {
-    onInsertSnippet: () => void;
-}
-
-const EditorToolbar: React.FC<EditorToolbarProps> = ({ onInsertSnippet }) => (
-    <div className="flex items-center justify-between px-2 py-1.5 border-b border-gray-100 bg-gray-50/50 text-gray-500">
-        <div className="flex items-center gap-1">
-            <button className="p-1 hover:bg-gray-200 rounded" title="Bold"><Bold size={14} /></button>
-            <button className="p-1 hover:bg-gray-200 rounded" title="Italic"><Italic size={14} /></button>
-            <div className="w-px h-4 bg-gray-300 mx-1"></div>
-            <button className="p-1 hover:bg-gray-200 rounded" title="List"><List size={14} /></button>
-            <button className="p-1 hover:bg-gray-200 rounded" title="Image"><ImageIcon size={14} /></button>
-            <button className="p-1 hover:bg-gray-200 rounded" title="Attachment"><Paperclip size={14} /></button>
-        </div>
-        <button
-            onClick={onInsertSnippet}
-            className="flex items-center gap-1.5 px-2 py-1 hover:bg-indigo-50 hover:text-indigo-600 rounded text-xs font-medium transition-colors"
-            title="Insert Snippet"
-        >
-            <ScrollText size={14} />
-            <span>Snippets</span>
-        </button>
-    </div>
-);
 
 // --- Main Ticket Detail Component ---
 export const TicketDetail: React.FC<TicketDetailProps> = ({ issue, onClose, onUpdate }) => {
@@ -221,8 +35,17 @@ export const TicketDetail: React.FC<TicketDetailProps> = ({ issue, onClose, onUp
     };
     const draft = getDraft();
 
-    const [testCases, setTestCases] = useState(draft?.testCases ?? issue.testCases ?? '');
-    const [issuesFound, setIssuesFound] = useState(draft?.issuesFound ?? issue.issuesFound ?? '');
+    const parseContent = (content: string | undefined) => {
+        if (!content) return null;
+        try {
+            return JSON.parse(content);
+        } catch (e) {
+            return content;
+        }
+    };
+
+    const [testCases, setTestCases] = useState(parseContent(draft?.testCases) ?? parseContent(issue.testCases) ?? null);
+    const [issuesFound, setIssuesFound] = useState(parseContent(draft?.issuesFound) ?? parseContent(issue.issuesFound) ?? null);
 
     const [saveStatus, setSaveStatus] = useState<'saved' | 'saving' | 'unsaved'>('saved');
     const [lastSavedTime, setLastSavedTime] = useState<Date>(new Date());
@@ -235,8 +58,7 @@ export const TicketDetail: React.FC<TicketDetailProps> = ({ issue, onClose, onUp
     const [snippets, setSnippets] = useState<Snippet[]>([]);
 
     // Snippet Selection State
-    const [showSnippetSelector, setShowSnippetSelector] = useState(false);
-    const [targetSnippetField, setTargetSnippetField] = useState<'testCases' | 'issuesFound' | null>(null);
+
 
     const labelDropdownRef = useRef<HTMLDivElement>(null);
 
@@ -283,13 +105,19 @@ export const TicketDetail: React.FC<TicketDetailProps> = ({ issue, onClose, onUp
         setSaveStatus('unsaved');
         const timer = setTimeout(() => {
             setSaveStatus('saving');
-            onUpdate({
-                ...issue,
-                testCases,
-                issuesFound
+            setSaveStatus('saving');
+            createOrUpdateQARecord({
+                projectId: issue.projectId,
+                issueIid: issue.iid,
+                testCasesContent: testCases,
+                issuesFoundContent: issuesFound
+            }).then(() => {
+                setSaveStatus('saved');
+                setLastSavedTime(new Date());
+            }).catch(() => {
+                setSaveStatus('unsaved');
+                showToast({ title: "Error saving", variant: "destructive" });
             });
-            setSaveStatus('saved');
-            setLastSavedTime(new Date());
         }, 1000); // 1s debounce
 
         return () => clearTimeout(timer);
@@ -298,10 +126,11 @@ export const TicketDetail: React.FC<TicketDetailProps> = ({ issue, onClose, onUp
     const handleClose = () => {
         // Force final save if pending changes exist before closing
         if (testCases !== issue.testCases || issuesFound !== issue.issuesFound) {
-            onUpdate({
-                ...issue,
-                testCases,
-                issuesFound
+            createOrUpdateQARecord({
+                projectId: issue.projectId,
+                issueIid: issue.iid,
+                testCasesContent: testCases,
+                issuesFoundContent: issuesFound
             });
         }
         onClose();
@@ -310,11 +139,18 @@ export const TicketDetail: React.FC<TicketDetailProps> = ({ issue, onClose, onUp
     const handleSave = (status?: QAStatus) => {
         const updatedIssue = {
             ...issue,
-            testCases,
-            issuesFound,
+            testCases: JSON.stringify(testCases),
+            issuesFound: JSON.stringify(issuesFound),
             qaStatus: status || issue.qaStatus
         };
         onUpdate(updatedIssue);
+
+        createOrUpdateQARecord({
+            projectId: issue.projectId,
+            issueIid: issue.iid,
+            testCasesContent: testCases,
+            issuesFoundContent: issuesFound
+        });
 
         if (status === QAStatus.PASSED) {
             // Generate a mock UUID link
@@ -350,20 +186,21 @@ export const TicketDetail: React.FC<TicketDetailProps> = ({ issue, onClose, onUp
         onUpdate({ ...issue, labels: newLabels });
     };
 
-    const handleOpenSnippetSelector = (field: 'testCases' | 'issuesFound') => {
-        setTargetSnippetField(field);
-        setShowSnippetSelector(true);
+    const handleImagePaste = async (file: File) => {
+        const formData = new FormData();
+        formData.append('file', file);
+        formData.append('projectId', issue.projectId.toString());
+
+        try {
+            const result = await uploadAttachment(formData);
+            return result;
+        } catch (error: any) {
+            throw new Error(error.message);
+        }
     };
 
-    const handleInsertSnippet = (content: string) => {
-        if (targetSnippetField === 'testCases') {
-            setTestCases((prev: string) => prev ? `${prev}\n\n${content}` : content);
-        } else if (targetSnippetField === 'issuesFound') {
-            setIssuesFound((prev: string) => prev ? `${prev}\n\n${content}` : content);
-        }
-        setShowSnippetSelector(false);
-        setTargetSnippetField(null);
-    };
+    const testCaseSnippets = snippets.filter(s => s.type === 'test_case');
+    const issueSnippets = snippets.filter(s => s.type === 'issue');
 
     const handleCopyLink = () => {
         if (successLink) {
@@ -375,12 +212,7 @@ export const TicketDetail: React.FC<TicketDetailProps> = ({ issue, onClose, onUp
         }
     };
 
-    // Get filtered snippets based on active field
-    const availableSnippets = snippets.filter(s => {
-        if (targetSnippetField === 'testCases') return s.type === 'test_case';
-        if (targetSnippetField === 'issuesFound') return s.type === 'issue';
-        return false;
-    });
+
 
     return (
         <div className="fixed inset-0 bg-gray-100/50 backdrop-blur-sm z-50 flex justify-end">
@@ -558,14 +390,13 @@ export const TicketDetail: React.FC<TicketDetailProps> = ({ issue, onClose, onUp
                                     </div>
                                 </div>
 
-                                <EditorToolbar onInsertSnippet={() => handleOpenSnippetSelector('testCases')} />
-
-                                <MentionTextArea
-                                    className="flex-1 w-full p-5 focus:outline-none resize-none text-sm font-mono leading-relaxed text-gray-700 bg-white rounded-b-xl"
+                                <TiptapEditor
+                                    content={testCases}
+                                    onChange={setTestCases}
+                                    members={users}
                                     placeholder="1. Navigate to... (Type @ to mention)"
-                                    value={testCases}
-                                    onChangeValue={setTestCases}
-                                    users={users}
+                                    snippets={testCaseSnippets}
+                                    onImagePaste={handleImagePaste}
                                 />
                             </div>
 
@@ -579,14 +410,13 @@ export const TicketDetail: React.FC<TicketDetailProps> = ({ issue, onClose, onUp
                                     <span className="text-xs text-gray-400 font-medium">Markdown supported</span>
                                 </div>
 
-                                <EditorToolbar onInsertSnippet={() => handleOpenSnippetSelector('issuesFound')} />
-
-                                <MentionTextArea
-                                    className="flex-1 w-full p-5 focus:outline-none resize-none text-sm font-mono leading-relaxed text-gray-700 bg-white rounded-b-xl"
+                                <TiptapEditor
+                                    content={issuesFound}
+                                    onChange={setIssuesFound}
+                                    members={users}
                                     placeholder="Describe any bugs... (Type @ to mention)"
-                                    value={issuesFound}
-                                    onChangeValue={setIssuesFound}
-                                    users={users}
+                                    snippets={issueSnippets}
+                                    onImagePaste={handleImagePaste}
                                 />
                             </div>
 
@@ -624,48 +454,7 @@ export const TicketDetail: React.FC<TicketDetailProps> = ({ issue, onClose, onUp
                     </div>
                 </footer>
 
-                {/* Snippet Selection Modal (Z-Index > 50 to sit on top of ticket modal) */}
-                {showSnippetSelector && (
-                    <div className="fixed inset-0 bg-black/50 z-[60] flex items-center justify-center p-4 animate-in fade-in duration-200">
-                        <div className="bg-white rounded-xl shadow-xl w-full max-w-lg flex flex-col max-h-[80vh] animate-in zoom-in-95 duration-200">
-                            <div className="p-4 border-b border-gray-200 flex items-center justify-between bg-gray-50 rounded-t-xl">
-                                <div>
-                                    <h3 className="font-bold text-gray-800">Insert Snippet</h3>
-                                    <p className="text-xs text-gray-500">
-                                        Showing {targetSnippetField === 'testCases' ? 'Test Case' : 'Issue'} snippets
-                                    </p>
-                                </div>
-                                <button onClick={() => setShowSnippetSelector(false)} className="text-gray-400 hover:text-gray-600">
-                                    <X size={20} />
-                                </button>
-                            </div>
-                            <div className="overflow-y-auto p-2">
-                                {availableSnippets.length > 0 ? (
-                                    availableSnippets.map(snippet => (
-                                        <button
-                                            key={snippet.id}
-                                            onClick={() => handleInsertSnippet(snippet.content)}
-                                            className="w-full text-left p-3 hover:bg-indigo-50 rounded-lg group transition-colors border border-transparent hover:border-indigo-100 mb-1"
-                                        >
-                                            <h4 className="font-semibold text-gray-800 text-sm group-hover:text-indigo-700 mb-1">
-                                                {snippet.title}
-                                            </h4>
-                                            <p className="text-xs text-gray-500 line-clamp-2 font-mono bg-gray-50 p-1.5 rounded border border-gray-100">
-                                                {snippet.content}
-                                            </p>
-                                        </button>
-                                    ))
-                                ) : (
-                                    <div className="p-8 text-center text-gray-400 text-sm flex flex-col items-center">
-                                        <ScrollText size={32} className="mb-2 opacity-50" />
-                                        <p>No snippets found for this type.</p>
-                                        <p className="text-xs mt-1">Go to Tools &gt; Snippets to create one.</p>
-                                    </div>
-                                )}
-                            </div>
-                        </div>
-                    </div>
-                )}
+
 
                 {/* Success Overlay for QA Passed */}
                 {successLink && (

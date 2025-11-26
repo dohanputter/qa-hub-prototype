@@ -67,7 +67,7 @@ export function IssuesTable({ issues }: { issues: any[] }) {
                 </TableHeader>
                 <TableBody>
                     {issues.map((issue) => (
-                        <TableRow key={issue.id}>
+                        <TableRow key={`${issue.project.id}-${issue.iid}`}>
                             <TableCell className="font-medium text-muted-foreground">#{issue.iid}</TableCell>
                             <TableCell>
                                 <Link

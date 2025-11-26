@@ -2,13 +2,14 @@
 import 'server-only';
 import { auth } from '@/auth';
 import { db } from '@/lib/db';
-import { qaRecords, attachments, notifications, projects } from '@/db/schema';
+import { qaRecords, attachments, notifications, projects, groups, users } from '@/db/schema';
 import { eq, and, isNull } from 'drizzle-orm';
 import {
     getIssue,
     createIssueNote,
     updateIssueLabels,
     getProjectMembers,
+    getProject,
 } from '@/lib/gitlab';
 import { tiptapToMarkdown, extractMentions } from '@/lib/utils';
 import { revalidatePath, revalidateTag } from 'next/cache';
@@ -25,6 +26,46 @@ export async function createOrUpdateQARecord(data: {
     if (!session?.accessToken || !session.user?.id) throw new Error('Unauthorized');
 
     const issue = await getIssue(data.projectId, data.issueIid, session.accessToken);
+    if (!issue) {
+        throw new Error(`Issue not found: Project ${data.projectId}, IID ${data.issueIid}`);
+    }
+
+
+    // Ensure user exists in DB to satisfy foreign key
+    const [existingUser] = await db.select().from(users).where(eq(users.id, session.user.id));
+    if (!existingUser) {
+        await db.insert(users).values({
+            id: session.user.id,
+            name: session.user.name || 'Unknown User',
+            email: session.user.email || '',
+        });
+    }
+
+    // Ensure project exists in DB to satisfy foreign key
+    const [existingProject] = await db.select().from(projects).where(eq(projects.id, data.projectId));
+    if (!existingProject) {
+        const projectData = await getProject(data.projectId, session.accessToken);
+
+        if (projectData.namespace && projectData.namespace.kind === 'group') {
+            const [existingGroup] = await db.select().from(groups).where(eq(groups.id, projectData.namespace.id));
+            if (!existingGroup) {
+                await db.insert(groups).values({
+                    id: projectData.namespace.id,
+                    name: projectData.namespace.name,
+                    fullPath: projectData.namespace.full_path,
+                    webUrl: (projectData.namespace as any).web_url || '',
+                });
+            }
+        }
+
+        await db.insert(projects).values({
+            id: projectData.id,
+            groupId: projectData.namespace?.kind === 'group' ? projectData.namespace.id : null,
+            name: projectData.name,
+            description: projectData.description,
+            webUrl: projectData.web_url,
+        });
+    }
 
     const existingResults = await db
         .select()
