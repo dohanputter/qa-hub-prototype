@@ -85,21 +85,24 @@ export function IssueCard({ issue, projectId, isOverlay = false }: { issue: any,
                 </div>
 
                 <div className="flex flex-wrap gap-1">
-                    {issue.labels.slice(0, 3).map((l: string) => {
-                        const colors = getLabelColor(l);
-                        return (
-                            <Badge
-                                key={l}
-                                variant="outline"
-                                className="text-[10px] px-1.5 py-0 h-5 font-normal border-0"
-                                style={{ backgroundColor: colors.bg, color: colors.text }}
-                            >
-                                {l}
-                            </Badge>
-                        );
-                    })}
-                    {issue.labels.length > 3 && (
-                        <span className="text-[10px] text-muted-foreground">+{issue.labels.length - 3}</span>
+                    {issue.labels
+                        .filter((l: string) => !l.startsWith('qa::'))
+                        .slice(0, 3)
+                        .map((l: string) => {
+                            const colors = getLabelColor(l);
+                            return (
+                                <Badge
+                                    key={l}
+                                    variant="outline"
+                                    className="text-[10px] px-1.5 py-0 h-5 font-normal border-0"
+                                    style={{ backgroundColor: colors.bg, color: colors.text }}
+                                >
+                                    {l}
+                                </Badge>
+                            );
+                        })}
+                    {issue.labels.filter((l: string) => !l.startsWith('qa::')).length > 3 && (
+                        <span className="text-[10px] text-muted-foreground">+{issue.labels.filter((l: string) => !l.startsWith('qa::')).length - 3}</span>
                     )}
                 </div>
 
@@ -140,7 +143,7 @@ export function KanbanCard({ issue, projectId }: { issue: any, projectId: number
     const style = {
         transform: CSS.Transform.toString(transform),
         transition,
-        opacity: isDragging ? 0 : 1, // Hide original element while dragging to create a gap
+        opacity: isDragging ? 0.5 : 1, // Show semi-transparent ghost while dragging
     };
 
     return (

@@ -78,9 +78,9 @@ export async function getOrCreateQARun(data: {
         qaIssueId = existingIssue[0].id;
         // Sync title/desc
         await db.update(qaIssues).set({
-             issueTitle: issue.title,
-             issueDescription: issue.description || '',
-             updatedAt: new Date()
+            issueTitle: issue.title,
+            issueDescription: issue.description || '',
+            updatedAt: new Date()
         }).where(eq(qaIssues.id, qaIssueId));
     } else {
         const [createdIssue] = await db.insert(qaIssues).values({
@@ -107,7 +107,7 @@ export async function getOrCreateQARun(data: {
 
     if (activeRun && !data.forceNewRun) {
         if (data.testCasesContent || data.issuesFoundContent) {
-             const [updated] = await db.update(qaRuns).set({
+            const [updated] = await db.update(qaRuns).set({
                 testCasesContent: data.testCasesContent || activeRun.testCasesContent,
                 issuesFoundContent: data.issuesFoundContent || activeRun.issuesFoundContent,
                 updatedAt: new Date(),
@@ -157,9 +157,16 @@ export async function submitQARun(runId: string, result: 'passed' | 'failed') {
         .limit(1);
 
     const project = projectResults[0];
-    if (!project || !project.qaLabelMapping) throw new Error('Project labels not configured');
+    const isMockMode = process.env.NEXT_PUBLIC_MOCK_MODE === 'true';
 
-    const labelMapping = project.qaLabelMapping;
+    // Default label mapping for mock mode or when not configured
+    const defaultLabelMapping = {
+        pending: 'QA::Pending',
+        passed: 'QA::Passed',
+        failed: 'QA::Failed'
+    };
+
+    const labelMapping = project?.qaLabelMapping || defaultLabelMapping;
 
     const attachmentsResults = await db
         .select()
@@ -191,19 +198,34 @@ export async function submitQARun(runId: string, result: 'passed' | 'failed') {
     if (run.testCasesContent) mentions.push(...extractMentions(run.testCasesContent as JSONContent));
     if (run.issuesFoundContent) mentions.push(...extractMentions(run.issuesFoundContent as JSONContent));
 
+    // Only update GitLab if we have proper label configuration or in mock mode
     try {
-        await createIssueNote(issue.gitlabProjectId, issue.gitlabIssueIid, session.accessToken, commentBody);
+        if (isMockMode) {
+            console.log('[Mock Mode] Would create GitLab comment:', commentBody);
+            console.log('[Mock Mode] Would update labels:', {
+                add: result === 'passed' ? labelMapping.passed : labelMapping.failed,
+                remove: [labelMapping.pending, labelMapping.passed, labelMapping.failed].filter((l) => l !== (result === 'passed' ? labelMapping.passed : labelMapping.failed))
+            });
+        } else if (project?.qaLabelMapping) {
+            // Only update GitLab if labels are properly configured
+            await createIssueNote(issue.gitlabProjectId, issue.gitlabIssueIid, session.accessToken, commentBody);
 
-        const newLabel = result === 'passed' ? labelMapping.passed : labelMapping.failed;
-        const labelsToRemove = [labelMapping.pending, labelMapping.passed, labelMapping.failed].filter((l) => l !== newLabel);
+            const newLabel = result === 'passed' ? labelMapping.passed : labelMapping.failed;
+            const labelsToRemove = [labelMapping.pending, labelMapping.passed, labelMapping.failed].filter((l) => l !== newLabel);
 
-        await updateIssueLabels(issue.gitlabProjectId, issue.gitlabIssueIid, session.accessToken, {
-            addLabels: [newLabel],
-            removeLabels: labelsToRemove,
-        });
+            await updateIssueLabels(issue.gitlabProjectId, issue.gitlabIssueIid, session.accessToken, {
+                addLabels: [newLabel],
+                removeLabels: labelsToRemove,
+            });
+        } else {
+            console.warn('Project labels not configured, skipping GitLab updates. Please configure labels in project settings.');
+        }
     } catch (gitlabError) {
         console.error('GitLab update failed:', gitlabError);
-        throw new Error('Failed to update GitLab. Please try again.');
+        // Don't throw in mock mode, just log
+        if (!isMockMode) {
+            throw new Error('Failed to update GitLab. Please try again.');
+        }
     }
 
     await db.update(qaRuns)
@@ -241,6 +263,7 @@ export async function submitQARun(runId: string, result: 'passed' | 'failed') {
 
     revalidateTag(`issues-${issue.gitlabProjectId}`);
     revalidatePath(`/${issue.gitlabProjectId}/board`);
+    revalidatePath('/board'); // Also revalidate main board page
 
     return {
         success: true,

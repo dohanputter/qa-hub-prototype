@@ -1,5 +1,5 @@
 import { auth } from '@/auth';
-import { getIssue } from '@/lib/gitlab';
+import { getIssue, getProjectLabels } from '@/lib/gitlab';
 import { QADetail } from '@/components/qa/QADetail';
 import { getProjectUsers } from '@/app/actions/project';
 
@@ -56,15 +56,18 @@ export default async function QAPage({ params }: { params: Promise<{ projectId: 
             // Get all run IDs
             const runIds = runs.map(r => r.id);
             if (runIds.length > 0) {
-                 // Drizzle doesn't support "in" easily with array of strings in some versions, but map works.
-                 // Actually it does: inArray(column, values)
-                 const { inArray } = await import('drizzle-orm');
-                 attachmentsList = await db.select().from(attachments).where(inArray(attachments.qaRunId, runIds));
+                // Drizzle doesn't support "in" easily with array of strings in some versions, but map works.
+                // Actually it does: inArray(column, values)
+                const { inArray } = await import('drizzle-orm');
+                attachmentsList = await db.select().from(attachments).where(inArray(attachments.qaRunId, runIds));
             }
         }
 
         // Fetch project members for @ mentions
         const members = await getProjectUsers(projectId);
+
+        // Fetch project labels for label management
+        const labels = await getProjectLabels(projectId, session?.accessToken || 'mock-token');
 
         return (
             <QADetail
@@ -75,6 +78,7 @@ export default async function QAPage({ params }: { params: Promise<{ projectId: 
                 members={members}
                 projectId={projectId}
                 issueIid={issueIid}
+                labels={labels}
             />
         );
     } catch (error) {

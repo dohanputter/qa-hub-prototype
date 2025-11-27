@@ -143,10 +143,27 @@ export function KanbanBoard({
 
     const handleDragEnd = async (event: any) => {
         const { active, over } = event;
+
+        console.log('[Drag] handleDragEnd called', { activeId: active?.id, overId: over?.id });
+
         setActiveId(null);
-        if (!over) return;
-        const activeIssue = issues.find((i: any) => i.id.toString() === active.id);
-        if (!activeIssue) return;
+        if (!over) {
+            console.log('[Drag] No over target, aborting');
+            return;
+        }
+
+        // Active ID is in format "projectId-issueIid"
+        const [activeProjectId, activeIssueIid] = active.id.split('-').map(Number);
+        const activeIssue = issues.find((i: any) =>
+            (i.project_id || project.id) === activeProjectId && i.iid === activeIssueIid
+        );
+
+        if (!activeIssue) {
+            console.error('[Drag] Could not find active issue', { activeProjectId, activeIssueIid });
+            return;
+        }
+
+        console.log('[Drag] Found active issue', { iid: activeIssue.iid, labels: activeIssue.labels });
 
         // Start syncing feedback
         setIsSyncing(true);
@@ -158,29 +175,89 @@ export function KanbanBoard({
         ) as keyof typeof columns | undefined;
         const isFromBacklog = !sourceStatus;
 
+        console.log('[Drag] Source status:', { sourceStatus, isFromBacklog });
+
         let destStatus: keyof typeof columns | undefined;
         let droppedOnCard = false;
-        const overIssue = issues.find((i: any) => i.id.toString() === over.id);
+        let isMovingToBacklog = false;
+
+        // Check if dropped on another card (over ID will be in format "projectId-issueIid")
+        const overIssue = over.id.includes('-')
+            ? (() => {
+                const [overProjectId, overIssueIid] = over.id.split('-').map(Number);
+                return issues.find((i: any) =>
+                    (i.project_id || project.id) === overProjectId && i.iid === overIssueIid
+                );
+            })()
+            : null;
 
         if (overIssue) {
             droppedOnCard = true;
             destStatus = Object.keys(columns).find((key) =>
                 overIssue.labels.includes(columns[key as keyof typeof columns])
             ) as keyof typeof columns;
+            console.log('[Drag] Dropped on card', { destStatus });
         } else {
             // Check if dropped on a column
             if (over.id === 'backlog') {
-                // Can't drop back to backlog
-                setIsSyncing(false);
-                return;
-            }
-            const isColumn = Object.keys(columns).includes(over.id);
-            if (isColumn) {
-                destStatus = over.id as keyof typeof columns;
+                isMovingToBacklog = true;
+                console.log('[Drag] Moving to backlog');
+            } else {
+                const isColumn = Object.keys(columns).includes(over.id);
+                if (isColumn) {
+                    destStatus = over.id as keyof typeof columns;
+                    console.log('[Drag] Dropped on column', { destStatus });
+                }
             }
         }
 
+        // Handle moving to backlog
+        if (isMovingToBacklog && sourceStatus) {
+            const oldLabel = columns[sourceStatus];
+            // Only remove the QA status label, keep all other labels
+            const allQALabels = Object.values(columns);
+            const updatedIssue = {
+                ...activeIssue,
+                updated_at: new Date().toISOString(),
+                labels: activeIssue.labels.filter((l: string) => !allQALabels.includes(l)),
+            };
+
+            const activeIndex = issues.findIndex((i: any) =>
+                (i.project_id || project.id) === activeProjectId && i.iid === activeIssueIid
+            );
+            let newIssues = [...issues];
+            newIssues[activeIndex] = updatedIssue;
+            setIssues(newIssues);
+
+            console.log('[Drag] Removing label for backlog', { oldLabel });
+
+            const result = await moveIssue(
+                project.id,
+                activeIssue.iid,
+                '', // New label is empty for backlog
+                oldLabel
+            );
+
+            const elapsed = Date.now() - syncStartTime;
+            const remainingTime = Math.max(0, 2500 - elapsed);
+            setTimeout(() => setIsSyncing(false), remainingTime);
+
+            if (!result.success) {
+                console.error('[Drag] Failed to move to backlog', result.error);
+                toast({
+                    title: "Error moving issue",
+                    description: result.error,
+                    variant: "destructive",
+                });
+                setIssues(issues);
+            } else {
+                console.log('[Drag] Successfully moved to backlog');
+            }
+            return;
+        }
+
         if (!destStatus) {
+            console.log('[Drag] No destination status, aborting');
             setIsSyncing(false);
             return;
         }
@@ -188,16 +265,23 @@ export function KanbanBoard({
         // If from backlog, we only add the new label
         if (isFromBacklog && destStatus) {
             const newLabel = columns[destStatus];
+            // Add the new QA label, keeping all existing labels
+            const allQALabels = Object.values(columns);
+            const nonQALabels = activeIssue.labels.filter((l: string) => !allQALabels.includes(l));
             const updatedIssue = {
                 ...activeIssue,
                 updated_at: new Date().toISOString(),
-                labels: [...activeIssue.labels, newLabel],
+                labels: [...nonQALabels, newLabel],
             };
 
-            const activeIndex = issues.findIndex((i: any) => i.id.toString() === active.id);
+            const activeIndex = issues.findIndex((i: any) =>
+                (i.project_id || project.id) === activeProjectId && i.iid === activeIssueIid
+            );
             let newIssues = [...issues];
             newIssues[activeIndex] = updatedIssue;
             setIssues(newIssues);
+
+            console.log('[Drag] Moving from backlog, adding label', { newLabel });
 
             const result = await moveIssue(
                 project.id,
@@ -212,46 +296,66 @@ export function KanbanBoard({
             setTimeout(() => setIsSyncing(false), remainingTime);
 
             if (!result.success) {
+                console.error('[Drag] Failed to move from backlog', result.error);
                 toast({
                     title: "Error moving issue",
                     description: result.error,
                     variant: "destructive",
                 });
                 setIssues(issues);
+            } else {
+                console.log('[Drag] Successfully moved from backlog');
             }
             return;
         }
 
         if (!sourceStatus || !destStatus) {
+            console.log('[Drag] Missing source or dest status', { sourceStatus, destStatus });
             setIsSyncing(false);
             return;
         }
 
         if (sourceStatus === destStatus && droppedOnCard) {
-            const activeIndex = issues.findIndex((i: any) => i.id.toString() === active.id);
-            const overIndex = issues.findIndex((i: any) => i.id.toString() === over.id);
+            console.log('[Drag] Reordering within same column');
+            const activeIndex = issues.findIndex((i: any) =>
+                (i.project_id || project.id) === activeProjectId && i.iid === activeIssueIid
+            );
+            const [overProjectId, overIssueIid] = over.id.split('-').map(Number);
+            const overIndex = issues.findIndex((i: any) =>
+                (i.project_id || project.id) === overProjectId && i.iid === overIssueIid
+            );
             if (activeIndex !== overIndex) {
                 setIssues((items: any) => arrayMove(items, activeIndex, overIndex));
             }
+            setIsSyncing(false);
             return;
         }
 
         const oldLabel = columns[sourceStatus];
         const newLabel = columns[destStatus];
+
+        console.log('[Drag] Moving between columns', { from: sourceStatus, to: destStatus, oldLabel, newLabel });
+
+        // Remove old QA label, add new QA label, preserve all other labels
+        const allQALabels = Object.values(columns);
+        const nonQALabels = activeIssue.labels.filter((l: string) => !allQALabels.includes(l));
         const updatedIssue = {
             ...activeIssue,
             updated_at: new Date().toISOString(),
-            labels: activeIssue.labels
-                .filter((l: string) => l !== oldLabel)
-                .concat(newLabel),
+            labels: [...nonQALabels, newLabel],
         };
 
-        const activeIndex = issues.findIndex((i: any) => i.id.toString() === active.id);
+        const activeIndex = issues.findIndex((i: any) =>
+            (i.project_id || project.id) === activeProjectId && i.iid === activeIssueIid
+        );
         let newIssues = [...issues];
         newIssues.splice(activeIndex, 1);
         let insertIndex = 0;
         if (droppedOnCard && overIssue) {
-            const overIndex = issues.findIndex((i: any) => i.id.toString() === over.id);
+            const [overProjectId, overIssueIid] = over.id.split('-').map(Number);
+            const overIndex = issues.findIndex((i: any) =>
+                (i.project_id || project.id) === overProjectId && i.iid === overIssueIid
+            );
             insertIndex = overIndex;
             if (activeIndex < overIndex) {
                 insertIndex--;
@@ -275,17 +379,25 @@ export function KanbanBoard({
         setTimeout(() => setIsSyncing(false), remainingTime);
 
         if (!result.success) {
+            console.error('[Drag] Failed to move between columns', result.error);
             toast({
                 title: "Error moving issue",
                 description: result.error,
                 variant: "destructive",
             });
             setIssues(issues);
+        } else {
+            console.log('[Drag] Successfully moved between columns');
         }
     };
 
     const activeIssue = activeId
-        ? issues.find((i: any) => i.id.toString() === activeId)
+        ? (() => {
+            const [activeProjectId, activeIssueIid] = activeId.split('-').map(Number);
+            return issues.find((i: any) =>
+                (i.project_id || project.id) === activeProjectId && i.iid === activeIssueIid
+            );
+        })()
         : null;
 
     return (

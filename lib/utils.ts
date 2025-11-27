@@ -9,10 +9,11 @@ export function cn(...inputs: ClassValue[]) {
 export function mapLabelToStatus(
     labels: string[],
     mapping: { pending: string; passed: string; failed: string }
-): 'pending' | 'passed' | 'failed' {
+): 'pending' | 'passed' | 'failed' | null {
     if (labels.includes(mapping.passed)) return 'passed';
     if (labels.includes(mapping.failed)) return 'failed';
-    return 'pending';
+    if (labels.includes(mapping.pending)) return 'pending';
+    return null;
 }
 
 export function tiptapToMarkdown(content: JSONContent): string {

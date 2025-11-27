@@ -84,19 +84,21 @@ export function IssuesTable({ issues }: { issues: any[] }) {
                             </TableCell>
                             <TableCell>
                                 <div className="flex flex-wrap gap-1">
-                                    {issue.labels.map((label: string) => {
-                                        const colors = getLabelColor(label);
-                                        return (
-                                            <Badge
-                                                key={label}
-                                                variant="outline"
-                                                className="text-xs font-normal px-2 py-0 h-5 border-0"
-                                                style={{ backgroundColor: colors.bg, color: colors.text }}
-                                            >
-                                                {label}
-                                            </Badge>
-                                        );
-                                    })}
+                                    {issue.labels
+                                        .filter((l: string) => !l.startsWith('qa::'))
+                                        .map((label: string) => {
+                                            const colors = getLabelColor(label);
+                                            return (
+                                                <Badge
+                                                    key={label}
+                                                    variant="outline"
+                                                    className="text-xs font-normal px-2 py-0 h-5 border-0"
+                                                    style={{ backgroundColor: colors.bg, color: colors.text }}
+                                                >
+                                                    {label}
+                                                </Badge>
+                                            );
+                                        })}
                                 </div>
                             </TableCell>
                             <TableCell>

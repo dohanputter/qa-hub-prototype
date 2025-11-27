@@ -1,24 +1,39 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { TiptapEditor } from './TiptapEditor';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Label } from '@/components/ui/label';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Separator } from '@/components/ui/separator';
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuCheckboxItem,
+    DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { getOrCreateQARun, submitQARun } from '@/app/actions/qa';
 import { uploadAttachment } from '@/app/actions/uploadAttachment';
 import { getSnippetsAction } from '@/app/actions/snippets';
 import { toast } from '@/components/ui/use-toast';
-import { Loader2, Paperclip, CheckCircle, XCircle, ExternalLink, Save, History, PlayCircle, Clock } from 'lucide-react';
+import { Loader2, Paperclip, CheckCircle, XCircle, ExternalLink, Save, History, PlayCircle, Clock, Plus, X } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
-export function QADetail({ issue, qaIssue, runs = [], allAttachments = [], members, projectId, issueIid }: any) {
+export function QADetail({ issue, qaIssue, runs = [], allAttachments = [], members, projectId, issueIid, labels: projectLabels }: any) {
+    const router = useRouter();
     const activeRun = runs.find((r: any) => r.status === 'pending');
     const [viewMode, setViewMode] = useState(activeRun ? 'active' : 'history');
+
+    // Filter out QA labels from display and selection
+    const [issueLabels, setIssueLabels] = useState<string[]>((issue.labels || []).filter((l: string) => !l.startsWith('qa::')));
+    const filteredProjectLabels = projectLabels?.filter((l: any) => !l.name.startsWith('qa::')) || [];
+
+    const [isUpdatingLabels, setIsUpdatingLabels] = useState(false);
 
     // Editor state
     const [testCases, setTestCases] = useState(activeRun?.testCasesContent || null);
@@ -36,17 +51,24 @@ export function QADetail({ issue, qaIssue, runs = [], allAttachments = [], membe
         getSnippetsAction().then(setSnippets).catch(err => console.error("Failed to load snippets", err));
     }, []);
 
-    // Ensure state syncs if active run changes (e.g. created by saving)
+    // Ensure state syncs when active run changes (including when it becomes null after submission)
     useEffect(() => {
         if (activeRun) {
-            if (!testCases) setTestCases(activeRun.testCasesContent);
-            if (!issuesFound) setIssuesFound(activeRun.issuesFoundContent);
-            if (activeRun.id !== runId) {
-                setRunId(activeRun.id);
-                setAttachments(allAttachments.filter((a: any) => a.qaRunId === activeRun.id));
-            }
+            // There's an active run - sync state if needed
+            setTestCases(activeRun.testCasesContent || null);
+            setIssuesFound(activeRun.issuesFoundContent || null);
+            setRunId(activeRun.id);
+            setAttachments(allAttachments.filter((a: any) => a.qaRunId === activeRun.id));
+            setViewMode('active');
+        } else {
+            // No active run - reset state and switch to history
+            setRunId(null);
+            setTestCases(null);
+            setIssuesFound(null);
+            setAttachments([]);
+            setViewMode('history');
         }
-    }, [activeRun]);
+    }, [activeRun?.id, runs.length]);
 
     const handleSave = async (silent = false) => {
         setSaving(true);
@@ -79,7 +101,7 @@ export function QADetail({ issue, qaIssue, runs = [], allAttachments = [], membe
                 currentRunId = run.id;
             } else {
                 // Ensure content is saved
-                 await getOrCreateQARun({
+                await getOrCreateQARun({
                     projectId,
                     issueIid: issue.iid,
                     testCasesContent: testCases,
@@ -93,6 +115,8 @@ export function QADetail({ issue, qaIssue, runs = [], allAttachments = [], membe
                     title: result === 'passed' ? "QA Passed" : "QA Failed",
                     description: "Result submitted to GitLab",
                 });
+                // Refresh to show updated state
+                router.refresh();
             }
         } catch (error: any) {
             toast({ title: "Error submitting", description: error.message, variant: "destructive" });
@@ -158,10 +182,59 @@ export function QADetail({ issue, qaIssue, runs = [], allAttachments = [], membe
             setAttachments([]);
             setViewMode('active');
             toast({ title: "New Run Started", description: `Run #${result.run.runNumber} created` });
+            // Refresh to show updated state with active run
+            router.refresh();
         } catch (error) {
             toast({ title: "Error", description: "Failed to start new run", variant: "destructive" });
         } finally {
             setSaving(false);
+        }
+    };
+
+    const handleLabelToggle = async (labelName: string) => {
+        setIsUpdatingLabels(true);
+        try {
+            const isCurrentlySelected = issueLabels.includes(labelName);
+            const { updateLabelsAction } = await import('@/app/actions/labels');
+
+            if (isCurrentlySelected) {
+                // Remove the label
+                await updateLabelsAction(projectId, issueIid, {
+                    removeLabels: [labelName]
+                });
+                setIssueLabels(prev => prev.filter(l => l !== labelName));
+                toast({ title: "Label removed", description: `Removed ${labelName}` });
+            } else {
+                // Add the label
+                await updateLabelsAction(projectId, issueIid, {
+                    addLabels: [labelName]
+                });
+                setIssueLabels(prev => [...prev, labelName]);
+                toast({ title: "Label added", description: `Added ${labelName}` });
+            }
+
+            router.refresh();
+        } catch (error: any) {
+            toast({ title: "Error updating labels", description: error.message, variant: "destructive" });
+        } finally {
+            setIsUpdatingLabels(false);
+        }
+    };
+
+    const handleRemoveLabel = async (labelName: string) => {
+        setIsUpdatingLabels(true);
+        try {
+            const { updateLabelsAction } = await import('@/app/actions/labels');
+            await updateLabelsAction(projectId, issueIid, {
+                removeLabels: [labelName]
+            });
+            setIssueLabels(prev => prev.filter(l => l !== labelName));
+            toast({ title: "Label removed", description: `Removed ${labelName}` });
+            router.refresh();
+        } catch (error: any) {
+            toast({ title: "Error removing label", description: error.message, variant: "destructive" });
+        } finally {
+            setIsUpdatingLabels(false);
         }
     };
 
@@ -196,8 +269,67 @@ export function QADetail({ issue, qaIssue, runs = [], allAttachments = [], membe
 
                     <div className="prose prose-sm max-w-none text-gray-700" dangerouslySetInnerHTML={{ __html: issue.description_html || issue.description }} />
 
-                    <div className="flex flex-wrap gap-2">
-                        {issue.labels.map((l: string) => <Badge key={l} variant="outline" className="bg-white">{l}</Badge>)}
+                    <div className="space-y-2">
+                        <Label className="text-sm font-medium text-gray-700">Labels</Label>
+                        <div className="flex flex-wrap gap-2">
+                            {issueLabels.map((labelName: string) => {
+                                const labelInfo = projectLabels?.find((l: any) => l.name === labelName);
+                                return (
+                                    <Badge
+                                        key={labelName}
+                                        variant="outline"
+                                        className="flex items-center gap-1 pr-1"
+                                        style={{
+                                            backgroundColor: labelInfo?.color || '#e5e7eb',
+                                            color: labelInfo?.text_color || '#000',
+                                            borderColor: labelInfo?.color || '#e5e7eb'
+                                        }}
+                                    >
+                                        {labelName}
+                                        <X
+                                            className="h-3 w-3 cursor-pointer hover:opacity-70 ml-1"
+                                            onClick={() => handleRemoveLabel(labelName)}
+                                        />
+                                    </Badge>
+                                );
+                            })}
+                        </div>
+                        <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="sm"
+                                    className="w-full mt-2"
+                                    disabled={isUpdatingLabels}
+                                >
+                                    <Plus className="h-4 w-4 mr-2" />
+                                    Add label
+                                </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="start" className="w-56">
+                                {!filteredProjectLabels || filteredProjectLabels.length === 0 ? (
+                                    <div className="px-2 py-1.5 text-sm text-muted-foreground">No labels available</div>
+                                ) : (
+                                    filteredProjectLabels.map((label: any) => (
+                                        <DropdownMenuCheckboxItem
+                                            key={label.name}
+                                            checked={issueLabels.includes(label.name)}
+                                            onCheckedChange={() => handleLabelToggle(label.name)}
+                                            disabled={isUpdatingLabels}
+                                        >
+                                            <div className="flex items-center gap-2">
+                                                <div
+                                                    className="w-3 h-3 rounded-full"
+                                                    style={{ backgroundColor: label.color }}
+                                                />
+                                                <span>{label.name}</span>
+                                            </div>
+                                        </DropdownMenuCheckboxItem>
+                                    ))
+                                )}
+                            </DropdownMenuContent>
+                        </DropdownMenu>
                     </div>
 
                     <div className="pt-4">
@@ -220,7 +352,7 @@ export function QADetail({ issue, qaIssue, runs = [], allAttachments = [], membe
                                         className={cn(
                                             "w-2 h-2 rounded-full",
                                             r.status === 'passed' ? "bg-green-500" :
-                                            r.status === 'failed' ? "bg-red-500" : "bg-blue-500 animate-pulse"
+                                                r.status === 'failed' ? "bg-red-500" : "bg-blue-500 animate-pulse"
                                         )}
                                         title={`Run #${r.runNumber}: ${r.status}`}
                                     />
@@ -244,7 +376,7 @@ export function QADetail({ issue, qaIssue, runs = [], allAttachments = [], membe
                                 </Button>
                             </>
                         ) : (
-                             <Button onClick={handleStartNewRun} disabled={saving}>
+                            <Button onClick={handleStartNewRun} disabled={saving}>
                                 <PlayCircle className="h-4 w-4 mr-2" /> Start New Run
                             </Button>
                         )}
@@ -260,7 +392,7 @@ export function QADetail({ issue, qaIssue, runs = [], allAttachments = [], membe
                     </div>
 
                     <TabsContent value="active" className="flex-1 overflow-y-auto p-6 space-y-8 mt-0 data-[state=inactive]:hidden">
-                         <div className="space-y-2">
+                        <div className="space-y-2">
                             <h3 className="font-medium text-gray-900">Test Cases Executed</h3>
                             <TiptapEditor
                                 content={testCases}
@@ -305,27 +437,27 @@ export function QADetail({ issue, qaIssue, runs = [], allAttachments = [], membe
                     </TabsContent>
 
                     <TabsContent value="history" className="flex-1 overflow-y-auto p-6 mt-0 data-[state=inactive]:hidden">
-                         {runs.length === 0 ? (
+                        {runs.length === 0 ? (
                             <div className="text-center py-12 text-muted-foreground">
                                 <History className="h-12 w-12 mx-auto mb-4 opacity-20" />
                                 <p>No QA runs recorded yet.</p>
                             </div>
-                         ) : (
-                             <div className="space-y-6">
+                        ) : (
+                            <div className="space-y-6">
                                 {runs.map((run: any) => (
                                     <div key={run.id} className="border rounded-lg overflow-hidden bg-white shadow-sm">
                                         <div className={cn(
                                             "px-4 py-3 flex items-center justify-between border-b",
                                             run.status === 'passed' ? "bg-green-50/50" :
-                                            run.status === 'failed' ? "bg-red-50/50" : "bg-blue-50/50"
+                                                run.status === 'failed' ? "bg-red-50/50" : "bg-blue-50/50"
                                         )}>
                                             <div className="flex items-center gap-3">
                                                 <Badge variant={
                                                     run.status === 'passed' ? 'default' :
-                                                    run.status === 'failed' ? 'destructive' : 'secondary'
+                                                        run.status === 'failed' ? 'destructive' : 'secondary'
                                                 } className={cn(
-                                                     run.status === 'passed' && "bg-green-600 hover:bg-green-700",
-                                                     run.status === 'pending' && "bg-blue-500 hover:bg-blue-600"
+                                                    run.status === 'passed' && "bg-green-600 hover:bg-green-700",
+                                                    run.status === 'pending' && "bg-blue-500 hover:bg-blue-600"
                                                 )}>
                                                     {run.status.toUpperCase()}
                                                 </Badge>
@@ -338,11 +470,11 @@ export function QADetail({ issue, qaIssue, runs = [], allAttachments = [], membe
                                         </div>
                                         <div className="p-4 space-y-4 opacity-80 pointer-events-none">
                                             {/* Read only view of content (simplified) */}
-                                             {run.issuesFoundContent && (
+                                            {run.issuesFoundContent && (
                                                 <div>
                                                     <h4 className="text-xs font-semibold uppercase text-red-600 mb-2">Issues Found</h4>
                                                     <div className="text-sm border-l-2 border-red-200 pl-3">
-                                                        <TiptapEditor content={run.issuesFoundContent} onChange={() => {}} readOnly={true} />
+                                                        <TiptapEditor content={run.issuesFoundContent} onChange={() => { }} readOnly={true} />
                                                     </div>
                                                 </div>
                                             )}
@@ -350,15 +482,15 @@ export function QADetail({ issue, qaIssue, runs = [], allAttachments = [], membe
                                                 <div>
                                                     <h4 className="text-xs font-semibold uppercase text-gray-500 mb-2">Test Cases</h4>
                                                     <div className="text-sm border-l-2 border-gray-200 pl-3">
-                                                        <TiptapEditor content={run.testCasesContent} onChange={() => {}} readOnly={true} />
+                                                        <TiptapEditor content={run.testCasesContent} onChange={() => { }} readOnly={true} />
                                                     </div>
                                                 </div>
                                             )}
                                         </div>
                                     </div>
                                 ))}
-                             </div>
-                         )}
+                            </div>
+                        )}
                     </TabsContent>
                 </Tabs>
             </div>
