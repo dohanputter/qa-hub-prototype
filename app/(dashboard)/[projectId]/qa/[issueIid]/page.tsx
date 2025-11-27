@@ -4,8 +4,8 @@ import { QADetail } from '@/components/qa/QADetail';
 import { getProjectUsers } from '@/app/actions/project';
 
 import { db } from '@/lib/db';
-import { qaRecords } from '@/db/schema';
-import { eq, and } from 'drizzle-orm';
+import { qaIssues, qaRuns, attachments } from '@/db/schema';
+import { eq, and, desc } from 'drizzle-orm';
 
 export default async function QAPage({ params }: { params: Promise<{ projectId: string, issueIid: string }> }) {
     const session = await auth();
@@ -30,13 +30,38 @@ export default async function QAPage({ params }: { params: Promise<{ projectId: 
             );
         }
 
-        // Fetch QA record if it exists
-        const existingRecords = await db.select().from(qaRecords).where(and(
-            eq(qaRecords.gitlabProjectId, projectId),
-            eq(qaRecords.gitlabIssueIid, issueIid)
+        // Fetch QA Issue "Folder"
+        const existingIssues = await db.select().from(qaIssues).where(and(
+            eq(qaIssues.gitlabProjectId, projectId),
+            eq(qaIssues.gitlabIssueIid, issueIid)
         )).limit(1);
 
-        const qaRecord = existingRecords[0] || null;
+        const qaIssue = existingIssues[0] || null;
+        let runs: any[] = [];
+        let attachmentsList: any[] = [];
+
+        if (qaIssue) {
+            // Fetch all runs
+            runs = await db
+                .select()
+                .from(qaRuns)
+                .where(eq(qaRuns.qaIssueId, qaIssue.id))
+                .orderBy(desc(qaRuns.runNumber));
+
+            // Fetch attachments for all runs (or just active? good to have all)
+            // Ideally we fetch attachments per run or bulk fetch.
+            // For simplicity, let's just pass them down or let the client fetch?
+            // Passing down is better for SSR.
+
+            // Get all run IDs
+            const runIds = runs.map(r => r.id);
+            if (runIds.length > 0) {
+                 // Drizzle doesn't support "in" easily with array of strings in some versions, but map works.
+                 // Actually it does: inArray(column, values)
+                 const { inArray } = await import('drizzle-orm');
+                 attachmentsList = await db.select().from(attachments).where(inArray(attachments.qaRunId, runIds));
+            }
+        }
 
         // Fetch project members for @ mentions
         const members = await getProjectUsers(projectId);
@@ -44,9 +69,12 @@ export default async function QAPage({ params }: { params: Promise<{ projectId: 
         return (
             <QADetail
                 issue={gitlabIssue}
-                qaRecord={qaRecord}
+                qaIssue={qaIssue}
+                runs={runs}
+                allAttachments={attachmentsList}
                 members={members}
                 projectId={projectId}
+                issueIid={issueIid}
             />
         );
     } catch (error) {

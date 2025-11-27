@@ -319,7 +319,7 @@ export const getIssues = async (projectId: number, token: string, params?: { sta
         // In mock mode, sync with database to get any newly created issues
         try {
             const { db } = await import('@/lib/db');
-            const { qaRecords, projects } = await import('@/db/schema');
+            const { qaIssues, projects } = await import('@/db/schema');
             const { eq } = await import('drizzle-orm');
 
             // Get project's QA label mapping
@@ -331,7 +331,7 @@ export const getIssues = async (projectId: number, token: string, params?: { sta
             };
 
             // Fetch issues from database for this project
-            const dbIssues = await db.select().from(qaRecords).where(eq(qaRecords.gitlabProjectId, projectId));
+            const dbIssues = await db.select().from(qaIssues).where(eq(qaIssues.gitlabProjectId, projectId));
 
             // Sync database issues into mockIssuesStore if they don't exist
             for (const dbIssue of dbIssues) {
@@ -404,14 +404,14 @@ export const getIssue = async (projectId: number, issueIid: number, token: strin
         if (!issue) {
             try {
                 const { db } = await import('@/lib/db');
-                const { qaRecords, projects } = await import('@/db/schema');
+                const { qaIssues, projects } = await import('@/db/schema');
                 const { eq, and } = await import('drizzle-orm');
 
                 const dbIssues = await db.select()
-                    .from(qaRecords)
+                    .from(qaIssues)
                     .where(and(
-                        eq(qaRecords.gitlabProjectId, projectId),
-                        eq(qaRecords.gitlabIssueIid, issueIid)
+                        eq(qaIssues.gitlabProjectId, projectId),
+                        eq(qaIssues.gitlabIssueIid, issueIid)
                     ))
                     .limit(1);
 
@@ -488,8 +488,8 @@ export const updateIssueLabels = async (
             (async () => {
                 try {
                     const { db } = await import('@/lib/db');
-                    const { qaRecords, projects } = await import('@/db/schema');
-                    const { eq, and } = await import('drizzle-orm');
+                    const { qaIssues, qaRuns, projects, users } = await import('@/db/schema');
+                    const { eq, and, desc } = await import('drizzle-orm');
                     const { mapLabelToStatus } = await import('@/lib/utils');
 
                     // Get the project's QA label mapping
@@ -505,21 +505,61 @@ export const updateIssueLabels = async (
                         // Determine the new status based on updated labels
                         const newStatus = mapLabelToStatus(issue.labels, project.qaLabelMapping);
 
-                        // Update the database record to match
-                        await db
-                            .update(qaRecords)
-                            .set({
+                        // Use a consistent mock user ID for run creation
+                         const mockUserId = 'mock-user-id';
+
+                        // Find or Create QA Issue
+                        let qaIssueId;
+                        const existingIssue = await db.select().from(qaIssues).where(and(
+                            eq(qaIssues.gitlabProjectId, projectId),
+                            eq(qaIssues.gitlabIssueIid, issueIid)
+                        )).limit(1);
+
+                        if (existingIssue.length > 0) {
+                            qaIssueId = existingIssue[0].id;
+                            await db.update(qaIssues).set({
                                 status: newStatus,
                                 updatedAt: new Date(),
-                            })
-                            .where(
-                                and(
-                                    eq(qaRecords.gitlabProjectId, projectId),
-                                    eq(qaRecords.gitlabIssueIid, issueIid)
-                                )
-                            );
+                            }).where(eq(qaIssues.id, qaIssueId));
+                        } else {
+                             const [created] = await db.insert(qaIssues).values({
+                                gitlabIssueId: issue.id,
+                                gitlabIssueIid: issue.iid,
+                                gitlabProjectId: projectId,
+                                issueTitle: issue.title,
+                                issueDescription: issue.description || '',
+                                issueUrl: issue.web_url,
+                                status: newStatus,
+                            }).returning();
+                            qaIssueId = created.id;
+                        }
 
-                        console.log(`[MOCK] Synced DB status to "${newStatus}" for issue ${issueIid}`);
+                        // Handle Run Logic (Mock Version)
+                        if (newStatus === 'pending') {
+                            const runs = await db.select().from(qaRuns).where(eq(qaRuns.qaIssueId, qaIssueId)).orderBy(desc(qaRuns.runNumber));
+                            const activeRun = runs.find(r => r.status === 'pending');
+                            if (!activeRun) {
+                                const nextRunNumber = (runs[0]?.runNumber || 0) + 1;
+                                await db.insert(qaRuns).values({
+                                    qaIssueId: qaIssueId,
+                                    runNumber: nextRunNumber,
+                                    status: 'pending',
+                                    createdBy: mockUserId, // Mock User
+                                });
+                                console.log(`[MOCK DB] Started Run #${nextRunNumber}`);
+                            }
+                        } else if (newStatus === 'passed' || newStatus === 'failed') {
+                             const runs = await db.select().from(qaRuns).where(eq(qaRuns.qaIssueId, qaIssueId)).orderBy(desc(qaRuns.runNumber));
+                             const activeRun = runs.find(r => r.status === 'pending');
+                             if (activeRun) {
+                                await db.update(qaRuns).set({
+                                    status: newStatus,
+                                    completedAt: new Date(),
+                                    updatedAt: new Date()
+                                }).where(eq(qaRuns.id, activeRun.id));
+                                console.log(`[MOCK DB] Closed Run #${activeRun.runNumber} as ${newStatus}`);
+                             }
+                        }
                     }
                 } catch (error) {
                     console.error('[MOCK] Failed to sync database:', error);

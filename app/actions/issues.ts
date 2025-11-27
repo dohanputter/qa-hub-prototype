@@ -108,7 +108,7 @@ export async function createIssue(projectId: number, data: any) {
     if (process.env.NEXT_PUBLIC_MOCK_MODE === 'true') {
         const { createMockIssue, getProject } = await import('@/lib/gitlab');
         const { db } = await import('@/lib/db');
-        const { qaRecords, users, projects } = await import('@/db/schema');
+        const { qaIssues, users, projects } = await import('@/db/schema');
         const { mapLabelToStatus } = await import('@/lib/utils');
         const { eq } = await import('drizzle-orm');
 
@@ -188,7 +188,8 @@ export async function createIssue(projectId: number, data: any) {
         }) as { pending: string; passed: string; failed: string };
         const status = mapLabelToStatus(newIssue.labels, labelMapping);
 
-        await db.insert(qaRecords).values({
+        // REMOVED 'createdBy' as it is no longer in qaIssues table
+        await db.insert(qaIssues).values({
             gitlabIssueId: newIssue.id,
             gitlabIssueIid: newIssue.iid,
             gitlabProjectId: projectId,
@@ -196,7 +197,6 @@ export async function createIssue(projectId: number, data: any) {
             issueDescription: newIssue.description || '',
             issueUrl: newIssue.web_url,
             status,
-            createdBy: mockUserId,
             createdAt: new Date(newIssue.created_at),
             updatedAt: new Date(newIssue.updated_at),
         });
@@ -237,7 +237,7 @@ export async function deleteIssue(projectId: number, issueIid: number) {
 
     const { deleteMockIssue } = await import('@/lib/gitlab');
     const { db } = await import('@/lib/db');
-    const { qaRecords } = await import('@/db/schema');
+    const { qaIssues } = await import('@/db/schema');
     const { eq, and } = await import('drizzle-orm');
 
     // Delete from in-memory mock store
@@ -245,11 +245,11 @@ export async function deleteIssue(projectId: number, issueIid: number) {
 
     // Also delete from database
     await db
-        .delete(qaRecords)
+        .delete(qaIssues)
         .where(
             and(
-                eq(qaRecords.gitlabProjectId, projectId),
-                eq(qaRecords.gitlabIssueIid, issueIid)
+                eq(qaIssues.gitlabProjectId, projectId),
+                eq(qaIssues.gitlabIssueIid, issueIid)
             )
         );
 
