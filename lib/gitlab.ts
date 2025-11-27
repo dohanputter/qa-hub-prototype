@@ -609,9 +609,9 @@ export async function createProjectWebhook(projectId: number, token: string) {
 // --- NEW MOCK MUTATION METHODS ---
 
 export const createMockIssue = (issueData: any) => {
-    // Use IDs starting from 1000 to avoid conflicts with database-synced issues (which use actual GitLab IDs)
-    const existingMockIds = mockIssuesStore.map((i: any) => i.id).filter((id: number) => id >= 1000);
-    const newId = existingMockIds.length > 0 ? Math.max(...existingMockIds) + 1 : 1000;
+    // Use NEGATIVE IDs to avoid collision with real GitLab IDs (always positive)
+    const existingMockIds = mockIssuesStore.map((i: any) => i.id).filter((id: number) => id < 0);
+    const newId = existingMockIds.length > 0 ? Math.min(...existingMockIds) - 1 : -1;
     const newIid = Math.max(0, ...mockIssuesStore.filter((i: any) => i.project_id === issueData.project_id).map((i: any) => i.iid)) + 1;
 
     const newIssue = {
