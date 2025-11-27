@@ -1,7 +1,7 @@
 import { auth } from '@/auth';
 import { getIssue } from '@/lib/gitlab';
-import { TicketDetailPage } from '@/components/TicketDetailPage';
-import { Issue, IssueState, QAStatus } from '@/types';
+import { QADetail } from '@/components/qa/QADetail';
+import { getProjectUsers } from '@/app/actions/project';
 
 import { db } from '@/lib/db';
 import { qaRecords } from '@/db/schema';
@@ -30,60 +30,25 @@ export default async function QAPage({ params }: { params: Promise<{ projectId: 
             );
         }
 
-        // Map to App Issue (Same logic as in intercepted page)
-        const qaLabelMapping = {
-            pending: 'bug',
-            passed: 'feature',
-            failed: 'critical'
-        };
-
-        let qaStatus = QAStatus.TODO;
-        const issueLabels = gitlabIssue.labels || [];
-        if (issueLabels.includes(qaLabelMapping.pending)) qaStatus = QAStatus.READY_FOR_QA;
-        else if (issueLabels.includes(qaLabelMapping.passed)) qaStatus = QAStatus.PASSED;
-        else if (issueLabels.includes(qaLabelMapping.failed)) qaStatus = QAStatus.FAILED;
-        else qaStatus = QAStatus.TODO;
-
+        // Fetch QA record if it exists
         const existingRecords = await db.select().from(qaRecords).where(and(
             eq(qaRecords.gitlabProjectId, projectId),
             eq(qaRecords.gitlabIssueIid, issueIid)
         )).limit(1);
 
-        const existingRecord = existingRecords[0];
+        const qaRecord = existingRecords[0] || null;
 
-        const appIssue: Issue = {
-            id: gitlabIssue.id,
-            iid: gitlabIssue.iid,
-            projectId: gitlabIssue.project_id,
-            title: gitlabIssue.title,
-            description: gitlabIssue.description,
-            state: gitlabIssue.state === 'opened' ? IssueState.OPEN : IssueState.CLOSED,
-            createdAt: gitlabIssue.created_at,
-            updatedAt: gitlabIssue.updated_at,
-            assignee: gitlabIssue.assignees?.[0] ? {
-                id: gitlabIssue.assignees[0].id,
-                name: gitlabIssue.assignees[0].name,
-                username: gitlabIssue.assignees[0].username,
-                avatarUrl: gitlabIssue.assignees[0].avatar_url
-            } : undefined,
-            author: {
-                id: gitlabIssue.author.id,
-                name: gitlabIssue.author.name,
-                username: gitlabIssue.author.username,
-                avatarUrl: gitlabIssue.author.avatar_url
-            },
-            labels: (gitlabIssue.labels || []).map((l: string, idx: number) => ({
-                id: idx,
-                title: l,
-                color: '#ccc',
-                textColor: '#000'
-            })),
-            qaStatus: qaStatus,
-            testCases: existingRecord?.testCasesContent ? JSON.stringify(existingRecord.testCasesContent) : '',
-            issuesFound: existingRecord?.issuesFoundContent ? JSON.stringify(existingRecord.issuesFoundContent) : ''
-        };
+        // Fetch project members for @ mentions
+        const members = await getProjectUsers(projectId);
 
-        return <TicketDetailPage issue={appIssue} />;
+        return (
+            <QADetail
+                issue={gitlabIssue}
+                qaRecord={qaRecord}
+                members={members}
+                projectId={projectId}
+            />
+        );
     } catch (error) {
         console.error("Error loading QA page:", error);
         return (
