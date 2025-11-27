@@ -99,31 +99,50 @@ export const userProjects = sqliteTable(
     })
 );
 
-export const qaRecords = sqliteTable('qa_records', {
+// RENAMED & REFACTORED: qaRecords -> qaIssues
+export const qaIssues = sqliteTable('qa_issues', {
     id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
-    shareUuid: text('share_uuid').$defaultFn(() => crypto.randomUUID()).unique().notNull(),
     gitlabIssueId: integer('gitlab_issue_id').notNull(),
     gitlabIssueIid: integer('gitlab_issue_iid').notNull(),
     gitlabProjectId: integer('gitlab_project_id').notNull().references(() => projects.id),
     issueTitle: text('issue_title').notNull(),
     issueDescription: text('issue_description'),
     issueUrl: text('issue_url').notNull(),
+    // We keep a high-level status on the issue for quick filtering
     status: text('status').$type<'pending' | 'passed' | 'failed'>().default('pending').notNull(),
+    createdAt: integer('created_at', { mode: 'timestamp_ms' }).$defaultFn(() => new Date()),
+    updatedAt: integer('updated_at', { mode: 'timestamp_ms' }).$defaultFn(() => new Date()),
+}, (table) => ({
+    projectIdx: index('idx_qa_issues_project').on(table.gitlabProjectId),
+    issueIdx: index('idx_qa_issues_issue').on(table.gitlabIssueIid),
+    uniqueIssueIdx: index('idx_unique_issue').on(table.gitlabProjectId, table.gitlabIssueIid),
+}));
+
+// NEW TABLE: qaRuns
+export const qaRuns = sqliteTable('qa_runs', {
+    id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
+    qaIssueId: text('qa_issue_id').notNull().references(() => qaIssues.id, { onDelete: 'cascade' }),
+    runNumber: integer('run_number').notNull(),
+    status: text('status').$type<'pending' | 'passed' | 'failed'>().default('pending').notNull(),
+
     testCasesContent: text('test_cases_content', { mode: 'json' }),
     issuesFoundContent: text('issues_found_content', { mode: 'json' }),
+
+    shareUuid: text('share_uuid').$defaultFn(() => crypto.randomUUID()).unique().notNull(),
+
     createdBy: text('created_by').notNull().references(() => users.id),
     completedAt: integer('completed_at', { mode: 'timestamp_ms' }),
     createdAt: integer('created_at', { mode: 'timestamp_ms' }).$defaultFn(() => new Date()),
     updatedAt: integer('updated_at', { mode: 'timestamp_ms' }).$defaultFn(() => new Date()),
 }, (table) => ({
-    projectIdx: index('idx_records_project').on(table.gitlabProjectId),
-    issueIdx: index('idx_records_issue').on(table.gitlabIssueIid),
-    uniqueIssueIdx: index('idx_unique_issue').on(table.gitlabProjectId, table.gitlabIssueIid),
+    qaIssueIdx: index('idx_qa_runs_issue').on(table.qaIssueId),
+    runNumberIdx: index('idx_qa_runs_number').on(table.qaIssueId, table.runNumber),
 }));
 
 export const attachments = sqliteTable('attachments', {
     id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
-    qaRecordId: text('qa_record_id').references(() => qaRecords.id, { onDelete: 'cascade' }),
+    // CHANGED: References qaRuns instead of qaRecords
+    qaRunId: text('qa_run_id').references(() => qaRuns.id, { onDelete: 'cascade' }),
     filename: text('filename').notNull(),
     url: text('url').notNull(),
     markdown: text('markdown').notNull(),
@@ -133,7 +152,7 @@ export const attachments = sqliteTable('attachments', {
     uploadedBy: text('uploaded_by').notNull().references(() => users.id),
     uploadedAt: integer('uploaded_at', { mode: 'timestamp_ms' }).$defaultFn(() => new Date()),
 }, (table) => ({
-    qaRecordIdx: index('idx_attachments_qa_record').on(table.qaRecordId),
+    qaRunIdx: index('idx_attachments_qa_run').on(table.qaRunId),
 }));
 
 export const notifications = sqliteTable('notifications', {
@@ -142,7 +161,7 @@ export const notifications = sqliteTable('notifications', {
     type: text('type').$type<'mention' | 'assignment' | 'status_change' | 'comment'>().notNull(),
     title: text('title').notNull(),
     message: text('message').notNull(),
-    resourceType: text('resource_type').$type<'issue' | 'qa_record'>(),
+    resourceType: text('resource_type').$type<'issue' | 'qa_record' | 'qa_run'>(),
     resourceId: text('resource_id'),
     actionUrl: text('action_url'),
     isRead: integer('is_read', { mode: 'boolean' }).default(false).notNull(),
@@ -165,7 +184,7 @@ export const userGroupsRelations = relations(userGroups, ({ one }) => ({
 
 export const projectsRelations = relations(projects, ({ one, many }) => ({
     group: one(groups, { fields: [projects.groupId], references: [groups.id] }),
-    qaRecords: many(qaRecords),
+    qaIssues: many(qaIssues),
     userProjects: many(userProjects),
 }));
 
@@ -174,14 +193,19 @@ export const userProjectsRelations = relations(userProjects, ({ one }) => ({
     project: one(projects, { fields: [userProjects.projectId], references: [projects.id] }),
 }));
 
-export const qaRecordsRelations = relations(qaRecords, ({ one, many }) => ({
-    project: one(projects, { fields: [qaRecords.gitlabProjectId], references: [projects.id] }),
+export const qaIssuesRelations = relations(qaIssues, ({ one, many }) => ({
+    project: one(projects, { fields: [qaIssues.gitlabProjectId], references: [projects.id] }),
+    runs: many(qaRuns),
+}));
+
+export const qaRunsRelations = relations(qaRuns, ({ one, many }) => ({
+    qaIssue: one(qaIssues, { fields: [qaRuns.qaIssueId], references: [qaIssues.id] }),
     attachments: many(attachments),
-    creator: one(users, { fields: [qaRecords.createdBy], references: [users.id] }),
+    creator: one(users, { fields: [qaRuns.createdBy], references: [users.id] }),
 }));
 
 export const attachmentsRelations = relations(attachments, ({ one }) => ({
-    qaRecord: one(qaRecords, { fields: [attachments.qaRecordId], references: [qaRecords.id] }),
+    qaRun: one(qaRuns, { fields: [attachments.qaRunId], references: [qaRuns.id] }),
     uploader: one(users, { fields: [attachments.uploadedBy], references: [users.id] }),
 }));
 

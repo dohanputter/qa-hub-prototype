@@ -19,7 +19,8 @@ export async function uploadAttachment(formData: FormData) {
     if (!file) throw new Error('No file provided');
     if (file.size > MAX_SIZE) throw new Error('File too large. Maximum 10MB.');
 
-    const qaRecordId = formData.get('qaRecordId') as string | null;
+    // Renamed from qaRecordId to qaRunId to match schema
+    const qaRunId = formData.get('qaRecordId') as string | null;
     const projectId = Number(formData.get('projectId'));
 
     const { url, markdown } = await uploadAttachmentToGitLab(projectId, session.accessToken, file);
@@ -27,7 +28,7 @@ export async function uploadAttachment(formData: FormData) {
     const [attachment] = await db
         .insert(attachments)
         .values({
-            qaRecordId: qaRecordId || null,
+            qaRunId: qaRunId || null,
             filename: file.name,
             url,
             markdown,

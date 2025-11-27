@@ -1,14 +1,16 @@
 import { auth } from '@/auth';
 import { env } from '@/lib/env';
 import { db } from '@/lib/db';
-import { qaRecords } from '@/db/schema';
+import { qaIssues, qaRuns } from '@/db/schema';
 import { subDays, format } from 'date-fns';
+import { eq, desc } from 'drizzle-orm';
 
 export async function getDashboardStats() {
     if (process.env.NEXT_PUBLIC_MOCK_MODE === 'true') {
         const { getAllMockIssues } = await import('@/lib/gitlab');
         const issues = getAllMockIssues();
 
+        // Rough approximation for mock mode using labels
         const pending = issues.filter((i: any) => i.labels.includes('bug')).length;
         const passed = issues.filter((i: any) => i.labels.includes('feature')).length;
         const failed = issues.filter((i: any) => i.labels.includes('critical')).length;
@@ -52,16 +54,18 @@ export async function getDashboardStats() {
     const session = await auth();
     if (!session?.user?.id) throw new Error('Unauthorized');
 
-    // 1. Counts
-    const records = await db.select().from(qaRecords);
+    // Fetch all issues and runs
+    const allIssues = await db.select().from(qaIssues);
 
-    const pending = records.filter(r => r.status === 'pending').length;
-    const passed = records.filter(r => r.status === 'passed').length;
-    const failed = records.filter(r => r.status === 'failed').length;
+    // Status counts based on QA Issue status
+    const pending = allIssues.filter(r => r.status === 'pending').length;
+    const passed = allIssues.filter(r => r.status === 'passed').length;
+    const failed = allIssues.filter(r => r.status === 'failed').length;
 
-    // 2. Chart Data (Last 30 days)
+    // Chart Data (Last 30 days based on Runs)
     const thirtyDaysAgo = subDays(new Date(), 30);
-    const recentRecords = records.filter(r => r.createdAt && new Date(r.createdAt) >= thirtyDaysAgo);
+    const allRuns = await db.select().from(qaRuns);
+    const recentRuns = allRuns.filter(r => r.createdAt && new Date(r.createdAt) >= thirtyDaysAgo);
 
     // Group by day
     const chartDataMap = new Map<string, { total: number; completed: number }>();
@@ -73,12 +77,12 @@ export async function getDashboardStats() {
         chartDataMap.set(key, { total: 0, completed: 0 });
     }
 
-    recentRecords.forEach(r => {
+    recentRuns.forEach(r => {
         if (!r.createdAt) return;
         const key = format(new Date(r.createdAt), 'MMM dd');
         if (chartDataMap.has(key)) {
             const entry = chartDataMap.get(key)!;
-            entry.total++;
+            entry.total++; // Started a run
             if (r.status === 'passed' || r.status === 'failed') {
                 entry.completed++;
             }
@@ -94,7 +98,7 @@ export async function getDashboardStats() {
             pending,
             passed,
             failed,
-            total: records.length
+            total: allIssues.length
         },
         chartData
     };
