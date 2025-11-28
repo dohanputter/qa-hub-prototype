@@ -144,7 +144,7 @@ export const CreateIssueWizard: React.FC<CreateIssueWizardProps> = ({ onClose, o
     if (step === 'project') {
         return (
             <div className="fixed inset-0 bg-gray-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-                <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl overflow-hidden animate-in zoom-in-95 duration-200">
+                <div className="bg-card rounded-xl shadow-2xl w-full max-w-2xl overflow-hidden animate-in zoom-in-95 duration-200">
                     <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center bg-gray-50">
                         <h2 className="text-lg font-bold text-gray-800">Select Project</h2>
                         <button onClick={handleClose} className="text-gray-400 hover:text-gray-600">
@@ -173,7 +173,7 @@ export const CreateIssueWizard: React.FC<CreateIssueWizardProps> = ({ onClose, o
                                         className="flex items-center justify-between p-4 border border-gray-200 rounded-lg hover:border-indigo-500 hover:bg-indigo-50 hover:shadow-sm transition-all text-left group"
                                     >
                                         <div className="flex items-center gap-4">
-                                            <div className="w-10 h-10 bg-gray-100 rounded flex items-center justify-center text-gray-500 group-hover:bg-white group-hover:text-indigo-600">
+                                            <div className="w-10 h-10 bg-muted rounded flex items-center justify-center text-gray-500 group-hover:bg-card group-hover:text-indigo-600">
                                                 <Folder size={20} />
                                             </div>
                                             <div>
@@ -194,10 +194,10 @@ export const CreateIssueWizard: React.FC<CreateIssueWizardProps> = ({ onClose, o
 
     // --- RENDER: Issue Form Step ---
     return (
-        <div className="fixed inset-0 bg-white z-50 flex flex-col overflow-hidden animate-in slide-in-from-bottom-10 duration-200">
+        <div className="fixed inset-0 bg-background z-50 flex flex-col overflow-hidden animate-in slide-in-from-bottom-10 duration-200">
 
             {/* Header */}
-            <header className="px-6 py-4 border-b border-gray-200 flex items-center justify-between bg-white shrink-0">
+            <header className="px-6 py-4 border-b border-border flex items-center justify-between bg-card shrink-0">
                 <div className="flex items-center gap-4">
                     <button
                         onClick={() => setStep('project')}
@@ -236,7 +236,7 @@ export const CreateIssueWizard: React.FC<CreateIssueWizardProps> = ({ onClose, o
                         <div className="w-48">
                             <label className="block text-sm font-bold text-gray-700 mb-2">Type</label>
                             <div className="relative">
-                                <select className="w-full appearance-none bg-white border border-gray-300 text-gray-700 py-2 px-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+                                <select className="w-full appearance-none bg-card border border-input text-foreground py-2 px-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
                                     <option>Issue</option>
                                     <option>Incident</option>
                                 </select>
@@ -253,7 +253,7 @@ export const CreateIssueWizard: React.FC<CreateIssueWizardProps> = ({ onClose, o
                                 onChange={(e) => { setTitle(e.target.value); setTitleError(''); }}
                                 placeholder="Add a title"
                                 autoFocus
-                                className={`w-full px-4 py-2.5 bg-white border rounded-lg text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-base ${titleError ? 'border-red-500' : 'border-gray-300'}`}
+                                className={`w-full px-4 py-2.5 bg-card border rounded-lg text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-base ${titleError ? 'border-red-500' : 'border-input'}`}
                             />
                             {titleError && <p className="mt-1 text-sm text-red-500">{titleError}</p>}
                         </div>
@@ -269,7 +269,7 @@ export const CreateIssueWizard: React.FC<CreateIssueWizardProps> = ({ onClose, o
                                 </div>
                             </div>
 
-                            <div className="border border-gray-300 rounded-lg overflow-hidden bg-white focus-within:ring-2 focus-within:ring-indigo-500 focus-within:border-indigo-500 transition-shadow">
+                            <div className="border border-input rounded-lg overflow-hidden bg-card focus-within:ring-2 focus-within:ring-indigo-500 focus-within:border-indigo-500 transition-shadow">
                                 {/* Mock Toolbar */}
                                 <div className="bg-gray-50 border-b border-gray-200 px-3 py-2 flex items-center gap-2 text-gray-600">
                                     <span className="text-xs font-semibold px-2 py-1 rounded hover:bg-gray-200 cursor-pointer">Normal text</span>
@@ -281,7 +281,7 @@ export const CreateIssueWizard: React.FC<CreateIssueWizardProps> = ({ onClose, o
                                 <textarea
                                     value={description}
                                     onChange={(e) => setDescription(e.target.value)}
-                                    className="w-full h-80 p-4 resize-none focus:outline-none text-sm leading-relaxed text-gray-800 bg-white"
+                                    className="w-full h-80 p-4 resize-none focus:outline-none text-sm leading-relaxed text-foreground bg-card"
                                 />
                                 <div className="px-3 py-1.5 bg-gray-50 border-t border-gray-200 text-xs text-gray-500 flex justify-between">
                                     <span>Markdown supported</span>
@@ -318,7 +318,7 @@ export const CreateIssueWizard: React.FC<CreateIssueWizardProps> = ({ onClose, o
                             )}
 
                             {showAssigneeDropdown && (
-                                <div className="absolute top-8 right-0 w-64 bg-white border border-gray-200 shadow-xl rounded-lg z-10 py-1">
+                                <div className="absolute top-8 right-0 w-64 bg-popover border border-border shadow-xl rounded-lg z-10 py-1">
                                     <div className="px-3 py-2 border-b border-gray-100 text-xs font-bold text-gray-500">Assign to</div>
                                     {users.map(u => (
                                         <button
@@ -365,7 +365,7 @@ export const CreateIssueWizard: React.FC<CreateIssueWizardProps> = ({ onClose, o
                             )}
 
                             {showLabelDropdown && (
-                                <div className="absolute top-8 right-0 w-64 bg-white border border-gray-200 shadow-xl rounded-lg z-10 py-1">
+                                <div className="absolute top-8 right-0 w-64 bg-popover border border-border shadow-xl rounded-lg z-10 py-1">
                                     <div className="px-3 py-2 border-b border-gray-100 text-xs font-bold text-gray-500">Add Labels</div>
                                     {labels.map(l => {
                                         const isSelected = !!selectedLabels.find(sl => sl.id === l.id);

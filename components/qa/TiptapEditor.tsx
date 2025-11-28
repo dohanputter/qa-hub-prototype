@@ -90,7 +90,7 @@ export function TiptapEditor({ content, onChange, members, placeholder, snippets
         },
         editorProps: {
             attributes: {
-                class: 'prose prose-sm sm:prose lg:prose-lg xl:prose-2xl mx-auto focus:outline-none min-h-[150px] p-4 border rounded-md bg-white',
+                class: 'prose prose-sm sm:prose lg:prose-lg xl:prose-2xl mx-auto focus:outline-none min-h-[150px] p-4 bg-transparent',
             },
             handlePaste: (view, event, slice) => {
                 // Check if there are files in the clipboard
@@ -161,8 +161,8 @@ export function TiptapEditor({ content, onChange, members, placeholder, snippets
     };
 
     return (
-        <div className="space-y-2">
-            <div className="flex items-center gap-1 border-b pb-2">
+        <div className="space-y-2 border rounded-xl bg-card/50 focus-within:ring-2 focus-within:ring-primary/20 focus-within:border-primary/50 transition-all duration-200">
+            <div className="flex items-center gap-1 border-b px-2 py-1 bg-muted/50 rounded-t-xl">
                 <Button variant="ghost" size="sm" onClick={() => editor.chain().focus().toggleBold().run()} className={editor.isActive('bold') ? 'bg-muted' : ''}>
                     <Bold className="h-4 w-4" />
                 </Button>

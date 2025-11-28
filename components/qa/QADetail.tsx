@@ -242,7 +242,7 @@ export function QADetail({ issue, qaIssue, runs = [], allAttachments = [], membe
     const issueSnippets = snippets.filter(s => s.type === 'issue');
 
     return (
-        <div className="flex h-screen overflow-hidden bg-white">
+        <div className="flex h-screen overflow-hidden bg-background">
             {/* Left Panel: GitLab Info */}
             <div className="w-1/3 border-r bg-gray-50 flex flex-col overflow-y-auto">
                 <div className="p-6 space-y-6">
@@ -341,8 +341,8 @@ export function QADetail({ issue, qaIssue, runs = [], allAttachments = [], membe
             </div>
 
             {/* Right Panel: QA Work */}
-            <div className="flex-1 flex flex-col overflow-hidden bg-white">
-                <div className="flex items-center justify-between px-6 py-4 border-b bg-white z-10">
+            <div className="flex-1 flex flex-col overflow-hidden bg-background relative">
+                <div className="flex items-center justify-between px-6 py-4 glass z-20">
                     <div className="flex items-center gap-4">
                         <h2 className="font-semibold text-lg">QA Testing</h2>
                         {runs.length > 0 && (
@@ -368,10 +368,10 @@ export function QADetail({ issue, qaIssue, runs = [], allAttachments = [], membe
                                     {saving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Save className="h-4 w-4 mr-2" />}
                                     Save Draft
                                 </Button>
-                                <Button variant="destructive" onClick={() => handleSubmit('failed')} disabled={submitting}>
+                                <Button variant="destructive" onClick={() => handleSubmit('failed')} disabled={submitting} className="shadow-lg shadow-red-500/20 hover:shadow-red-500/40 transition-all">
                                     <XCircle className="h-4 w-4 mr-2" /> Fail
                                 </Button>
-                                <Button className="bg-green-600 hover:bg-green-700 text-white" onClick={() => handleSubmit('passed')} disabled={submitting}>
+                                <Button className="bg-emerald-500 hover:bg-emerald-600 text-white shadow-lg shadow-emerald-500/20 hover:shadow-emerald-500/40 transition-all" onClick={() => handleSubmit('passed')} disabled={submitting}>
                                     <CheckCircle className="h-4 w-4 mr-2" /> Pass
                                 </Button>
                             </>
@@ -445,7 +445,7 @@ export function QADetail({ issue, qaIssue, runs = [], allAttachments = [], membe
                         ) : (
                             <div className="space-y-6">
                                 {runs.map((run: any) => (
-                                    <div key={run.id} className="border rounded-lg overflow-hidden bg-white shadow-sm">
+                                    <div key={run.id} className="border rounded-lg overflow-hidden bg-card shadow-sm">
                                         <div className={cn(
                                             "px-4 py-3 flex items-center justify-between border-b",
                                             run.status === 'passed' ? "bg-green-50/50" :

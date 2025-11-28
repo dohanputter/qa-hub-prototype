@@ -142,7 +142,7 @@ export function NewIssueForm() {
                 </div>
             </div>
 
-            <div className="max-w-2xl mx-auto border rounded-lg p-6 bg-white shadow-sm">
+            <div className="max-w-2xl mx-auto border rounded-lg p-6 bg-card shadow-sm">
                 <form onSubmit={handleSubmit} className="space-y-6">
                     <div className="space-y-2">
                         <Label htmlFor="type">Type</Label>

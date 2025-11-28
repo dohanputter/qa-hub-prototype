@@ -1,11 +1,13 @@
 'use client';
 
-import React, { Suspense } from 'react';
+import React from 'react';
 import Link from 'next/link';
-import { usePathname, useSearchParams } from 'next/navigation';
+import { usePathname } from 'next/navigation';
 import { LayoutDashboard, ListTodo, KanbanSquare, Bell, Wrench, LogOut, Folder } from 'lucide-react';
 import { signOut } from 'next-auth/react';
 import { cn } from '@/lib/utils';
+import { ThemeToggle } from "@/components/theme-toggle";
+import { Button } from "@/components/ui/button";
 
 export function Sidebar() {
     const pathname = usePathname();
@@ -42,54 +44,67 @@ export function Sidebar() {
     };
 
     return (
-        <div className="w-64 h-screen bg-[#1e1e2f] text-gray-300 flex flex-col fixed left-0 top-0 z-50 border-r border-gray-700 shadow-xl">
-            <div className="p-6 border-b border-gray-700 flex flex-col gap-4">
-                <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 bg-indigo-500 rounded-md flex items-center justify-center text-white font-bold">
+        <div className="w-64 h-screen bg-background/80 backdrop-blur-xl border-r border-border/40 flex flex-col fixed left-0 top-0 z-50 transition-all duration-300">
+            <div className="p-6 flex flex-col gap-4">
+                <div className="flex items-center gap-3 px-2">
+                    <div className="w-8 h-8 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-lg shadow-lg shadow-indigo-500/20 flex items-center justify-center text-white font-bold text-sm">
                         QA
                     </div>
-                    <h1 className="text-xl font-bold text-white tracking-tight">QA Hub</h1>
+                    <h1 className="text-lg font-bold text-foreground tracking-tight">QA Hub</h1>
                 </div>
             </div>
 
-            <nav className="flex-1 p-4 space-y-2">
-                {navItems.map((item) => (
-                    <Link
-                        key={item.href}
-                        href={getHref(item.href)}
-                        className={cn(
-                            "w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-200",
-                            isActive(item.href, item.exact)
-                                ? "bg-indigo-600 text-white shadow-md"
-                                : "hover:bg-gray-800 hover:text-white"
-                        )}
-                    >
-                        <item.icon size={20} />
-                        <span className="font-medium">{item.label}</span>
-                    </Link>
-                ))}
+            <nav className="flex-1 px-4 space-y-1">
+                {navItems.map((item) => {
+                    const active = isActive(item.href, item.exact);
+                    return (
+                        <Link
+                            key={item.href}
+                            href={getHref(item.href)}
+                            className={cn(
+                                "group relative w-full flex items-center gap-3 px-4 py-2.5 rounded-md transition-all duration-200",
+                                active
+                                    ? "text-primary font-medium bg-primary/5"
+                                    : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
+                            )}
+                        >
+                            {active && (
+                                <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-5 bg-primary rounded-r-full" />
+                            )}
+                            <item.icon size={18} className={cn("transition-colors", active ? "text-primary" : "text-muted-foreground group-hover:text-foreground")} />
+                            <span className="text-sm">{item.label}</span>
+                        </Link>
+                    );
+                })}
             </nav>
 
-            <div className="p-4 border-t border-gray-700">
+            <div className="p-4 border-t border-border/40 space-y-1">
                 <Link
                     href={getHref('/tools')}
                     className={cn(
-                        "w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-200",
+                        "group relative w-full flex items-center gap-3 px-4 py-2.5 rounded-md transition-all duration-200",
                         isActive('/tools')
-                            ? "bg-gray-800 text-white"
-                            : "text-gray-400 hover:text-white"
+                            ? "text-primary font-medium bg-primary/5"
+                            : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
                     )}
                 >
-                    <Wrench size={20} />
-                    <span>Tools</span>
+                    {isActive('/tools') && (
+                        <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-5 bg-primary rounded-r-full" />
+                    )}
+                    <Wrench size={18} />
+                    <span className="text-sm">Tools</span>
                 </Link>
-                <button
-                    onClick={() => signOut({ callbackUrl: '/auth/signin' })}
-                    className="w-full flex items-center gap-3 px-4 py-3 text-gray-400 hover:text-red-400 transition-colors"
-                >
-                    <LogOut size={20} />
-                    <span>Sign Out</span>
-                </button>
+                <div className="flex items-center justify-between">
+                    <Button
+                        variant="ghost"
+                        className="w-full justify-start gap-3 text-muted-foreground hover:text-foreground hover:bg-muted/50"
+                        onClick={() => signOut()}
+                    >
+                        <LogOut size={18} />
+                        <span className="font-medium">Sign Out</span>
+                    </Button>
+                    <ThemeToggle />
+                </div>
             </div>
         </div>
     );

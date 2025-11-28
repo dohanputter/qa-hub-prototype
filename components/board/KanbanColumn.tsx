@@ -19,8 +19,8 @@ export function KanbanColumn({ id, title, issues, projectId }: KanbanColumnProps
 
     return (
         <div className={cn(
-            "flex flex-col h-full w-80 min-w-[20rem] bg-gray-100/50 rounded-xl border border-gray-200 transition-colors",
-            isOver && "bg-indigo-50/50 border-indigo-200"
+            "flex flex-col h-full w-80 min-w-[20rem] rounded-xl transition-colors",
+            isOver && "bg-muted/50"
         )}>
             <div className="p-4 flex items-center justify-between border-b border-gray-100">
                 <div className="flex items-center gap-2">
@@ -32,7 +32,7 @@ export function KanbanColumn({ id, title, issues, projectId }: KanbanColumnProps
                     )} />
                     <h3 className="font-semibold text-sm text-gray-700">{title}</h3>
                 </div>
-                <Badge variant="secondary" className="text-xs font-mono bg-white shadow-sm">{issues.length}</Badge>
+                <Badge variant="secondary" className="text-xs font-mono bg-card shadow-sm">{issues.length}</Badge>
             </div>
 
             <div className="flex-1 overflow-hidden">

@@ -57,7 +57,7 @@ export function IssueCard({ issue, projectId, isOverlay = false }: { issue: any,
     };
 
     return (
-        <Card className={`cursor-grab active:cursor-grabbing hover:shadow-md transition-shadow bg-white ${isOverlay ? 'shadow-xl cursor-grabbing' : ''}`}>
+        <Card className={`cursor-grab active:cursor-grabbing hover:-translate-y-1 hover:shadow-md transition-all duration-200 bg-card border-border/50 ${isOverlay ? 'shadow-xl cursor-grabbing scale-105 rotate-2' : ''}`}>
             <CardContent className="p-3 space-y-3">
                 <div className="flex justify-between items-start gap-2">
                     <Link
@@ -94,8 +94,8 @@ export function IssueCard({ issue, projectId, isOverlay = false }: { issue: any,
                                 <Badge
                                     key={l}
                                     variant="outline"
-                                    className="text-[10px] px-1.5 py-0 h-5 font-normal border-0"
-                                    style={{ backgroundColor: colors.bg, color: colors.text }}
+                                    className="text-[10px] px-2 py-0.5 h-5 font-medium rounded-full border-0"
+                                    style={{ backgroundColor: `${colors.bg}15`, color: colors.bg }}
                                 >
                                     {l}
                                 </Badge>

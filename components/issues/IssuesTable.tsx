@@ -52,7 +52,7 @@ export function IssuesTable({ issues, projectId }: { issues: any[]; projectId: n
     };
 
     return (
-        <div className="rounded-md border bg-white">
+        <div className="rounded-md border bg-card">
             <Table>
                 <TableHeader>
                     <TableRow>

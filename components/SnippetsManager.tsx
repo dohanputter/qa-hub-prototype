@@ -152,7 +152,7 @@ export const SnippetsManager: React.FC = () => {
                 <div className="flex items-center gap-4">
                     <button
                         onClick={handleBack}
-                        className="p-2 bg-white border border-gray-200 rounded-lg text-gray-500 hover:text-gray-700 hover:bg-gray-50 transition-colors"
+                        className="p-2 bg-card border border-border rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
                         title="Back"
                     >
                         <ArrowLeft size={20} />
@@ -176,7 +176,7 @@ export const SnippetsManager: React.FC = () => {
             <div className="flex gap-8 flex-1 min-h-0">
 
                 {/* Left Side: List */}
-                <div className="w-1/3 bg-white rounded-xl shadow-sm border border-gray-200 flex flex-col overflow-hidden">
+                <div className="w-1/3 bg-card rounded-xl shadow-sm border border-border flex flex-col overflow-hidden">
                     {/* Search & Filter */}
                     <div className="p-4 border-b border-gray-200 space-y-3 bg-gray-50">
                         <div className="relative">
@@ -186,7 +186,7 @@ export const SnippetsManager: React.FC = () => {
                                 placeholder="Search snippets..."
                                 value={search}
                                 onChange={(e) => setSearch(e.target.value)}
-                                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white text-gray-900"
+                                className="w-full pl-10 pr-4 py-2 border border-input rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-background text-foreground"
                             />
                         </div>
                         <div className="flex p-1 bg-gray-200 rounded-lg">
@@ -194,7 +194,7 @@ export const SnippetsManager: React.FC = () => {
                                 <button
                                     key={f}
                                     onClick={() => setFilter(f as any)}
-                                    className={`flex-1 py-1 text-xs font-medium rounded-md capitalize transition-all ${filter === f ? 'bg-white text-indigo-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'
+                                    className={`flex-1 py-1 text-xs font-medium rounded-md capitalize transition-all ${filter === f ? 'bg-background text-indigo-600 shadow-sm' : 'text-muted-foreground hover:text-foreground'
                                         }`}
                                 >
                                     {f.replace('_', ' ')}s
@@ -262,7 +262,7 @@ export const SnippetsManager: React.FC = () => {
                 </div>
 
                 {/* Right Side: Editor (or Placeholder) */}
-                <div className="flex-1 bg-white rounded-xl shadow-sm border border-gray-200 flex flex-col overflow-hidden relative">
+                <div className="flex-1 bg-card rounded-xl shadow-sm border border-border flex flex-col overflow-hidden relative">
                     {isEditing ? (
                         <>
                             <div className="p-4 border-b border-gray-200 flex justify-between items-center bg-gray-50">
@@ -273,11 +273,11 @@ export const SnippetsManager: React.FC = () => {
                                             value={currentSnippet.title}
                                             onChange={e => { setCurrentSnippet({ ...currentSnippet, title: e.target.value }); setTitleError(''); }}
                                             placeholder="Snippet Title"
-                                            className={`text-lg font-bold bg-transparent focus:ring-0 placeholder-gray-400 text-gray-800 w-64 border-none p-0 bg-white ${titleError ? 'border-b border-red-500' : ''}`}
+                                            className={`text-lg font-bold bg-transparent focus:ring-0 placeholder-muted-foreground text-foreground w-64 border-none p-0 bg-card ${titleError ? 'border-b border-red-500' : ''}`}
                                         />
                                         {titleError && <span className="text-xs text-red-500 mt-1">{titleError}</span>}
                                     </div>
-                                    <div className="flex items-center bg-white border border-gray-300 rounded-lg overflow-hidden">
+                                    <div className="flex items-center bg-card border border-input rounded-lg overflow-hidden">
                                         <button
                                             onClick={() => setCurrentSnippet({ ...currentSnippet, type: 'test_case' })}
                                             className={`px-3 py-1.5 text-xs font-medium flex items-center gap-1.5 ${currentSnippet.type === 'test_case' ? 'bg-blue-50 text-blue-700' : 'hover:bg-gray-50 text-gray-500'
@@ -314,11 +314,11 @@ export const SnippetsManager: React.FC = () => {
                                 <textarea
                                     value={currentSnippet.content}
                                     onChange={e => { setCurrentSnippet({ ...currentSnippet, content: e.target.value }); setContentError(''); }}
-                                    className={`flex-1 p-6 w-full resize-none focus:outline-none font-mono text-sm leading-relaxed text-gray-900 bg-white ${contentError ? 'ring-1 ring-inset ring-red-300 bg-red-50/10' : ''}`}
+                                    className={`flex-1 p-6 w-full resize-none focus:outline-none font-mono text-sm leading-relaxed text-foreground bg-card ${contentError ? 'ring-1 ring-inset ring-red-300 bg-red-50/10' : ''}`}
                                     placeholder="Enter your snippet content here..."
                                 />
                                 {contentError && (
-                                    <div className="absolute bottom-12 left-6 text-xs text-red-500 bg-white/90 px-2 py-1 rounded border border-red-200 shadow-sm">
+                                    <div className="absolute bottom-12 left-6 text-xs text-red-500 bg-card/90 px-2 py-1 rounded border border-red-200 shadow-sm">
                                         {contentError}
                                     </div>
                                 )}
@@ -343,7 +343,7 @@ export const SnippetsManager: React.FC = () => {
             {/* Custom Delete Confirmation Modal */}
             {snippetToDelete !== null && (
                 <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 animate-in fade-in duration-200">
-                    <div className="bg-white rounded-xl shadow-xl p-6 max-w-sm w-full animate-in zoom-in-95 duration-200">
+                    <div className="bg-card rounded-xl shadow-xl p-6 max-w-sm w-full animate-in zoom-in-95 duration-200">
                         <div className="flex items-center gap-3 mb-4">
                             <div className="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center text-red-600">
                                 <Trash2 size={20} />

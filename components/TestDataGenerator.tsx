@@ -90,7 +90,7 @@ export const TestDataGenerator: React.FC = () => {
                 <div className="flex items-center gap-4">
                     <button
                         onClick={handleBack}
-                        className="p-2 bg-white border border-gray-200 rounded-lg text-gray-500 hover:text-gray-700 hover:bg-gray-50 transition-colors"
+                        className="p-2 bg-card border border-border rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
                         title="Back"
                     >
                         <ArrowLeft size={20} />
@@ -107,7 +107,7 @@ export const TestDataGenerator: React.FC = () => {
             <div className="flex gap-8 flex-1 min-h-0">
                 {/* Left Side: Controls */}
                 <div className="w-80 flex flex-col gap-6">
-                    <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+                    <div className="bg-card rounded-xl shadow-sm border border-border overflow-hidden">
                         <div className="p-4 bg-gray-50 border-b border-gray-200 font-bold text-gray-700 text-sm uppercase tracking-wider">
                             Categories
                         </div>
@@ -133,7 +133,7 @@ export const TestDataGenerator: React.FC = () => {
                         </div>
                     </div>
 
-                    <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
+                    <div className="bg-card rounded-xl shadow-sm border border-border p-5">
                         <h3 className="font-bold text-gray-800 text-sm mb-4">Configuration</h3>
 
                         <div className="mb-6">
@@ -162,14 +162,14 @@ export const TestDataGenerator: React.FC = () => {
                 </div>
 
                 {/* Right Side: Output */}
-                <div className="flex-1 bg-white rounded-xl shadow-sm border border-gray-200 flex flex-col overflow-hidden">
+                <div className="flex-1 bg-card rounded-xl shadow-sm border border-border flex flex-col overflow-hidden">
                     <div className="p-4 border-b border-gray-200 flex justify-between items-center bg-gray-50">
                         <h3 className="font-bold text-gray-700 text-sm">Result (JSON)</h3>
                         <div className="flex gap-2">
                             {generatedData && (
                                 <button
                                     onClick={handleCopy}
-                                    className="flex items-center gap-2 px-3 py-1.5 bg-white border border-gray-300 rounded-md text-xs font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+                                    className="flex items-center gap-2 px-3 py-1.5 bg-card border border-border rounded-md text-xs font-medium text-foreground hover:bg-muted transition-colors"
                                 >
                                     {copied ? <Check size={14} className="text-green-600" /> : <Copy size={14} />}
                                     {copied ? 'Copied' : 'Copy JSON'}
@@ -179,7 +179,7 @@ export const TestDataGenerator: React.FC = () => {
                     </div>
                     <div className="flex-1 overflow-hidden relative">
                         {generatedData ? (
-                            <pre className="w-full h-full p-6 overflow-auto text-sm font-mono text-gray-800 bg-white">
+                            <pre className="w-full h-full p-6 overflow-auto text-sm font-mono text-foreground bg-card">
                                 {generatedData}
                             </pre>
                         ) : (
