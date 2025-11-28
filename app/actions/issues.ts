@@ -210,6 +210,41 @@ export async function createIssue(projectId: number, data: any) {
             });
 
             console.log(`[MOCK] Created issue #${newIid} and persisted to database`);
+
+            // Create notification for the new issue
+            const { notifications } = await import('@/db/schema');
+            const session = await auth();
+            const userIdToNotify = session?.user?.id || mockUserId;
+
+            if (assigneeId) {
+                await db.insert(notifications).values({
+                    userId: userIdToNotify,
+                    type: 'assignment',
+                    title: 'New Issue Assigned',
+                    message: `You have been assigned to issue #${newIid}: ${data.title}`,
+                    resourceType: 'issue',
+                    resourceId: newId.toString(),
+                    actionUrl: `/${projectId}/issues/${newIid}`,
+                });
+            } else {
+                await db.insert(notifications).values({
+                    userId: userIdToNotify,
+                    type: 'status_change',
+                    title: 'Issue Created',
+                    message: `Issue #${newIid} created in ${project.name}`,
+                    resourceType: 'issue',
+                    resourceId: newId.toString(),
+                    actionUrl: `/${projectId}/issues/${newIid}`,
+                });
+            }
+
+            // Revalidate pages to show the new issue
+            revalidatePath('/issues');
+            revalidatePath('/board');
+            revalidatePath(`/${projectId}`);
+
+            return { success: true, id: newId, iid: newIid };
+
         } catch (error: any) {
             // Handle unique constraint violation
             if (error.message && error.message.includes('UNIQUE constraint failed')) {
@@ -235,6 +270,21 @@ export async function createIssue(projectId: number, data: any) {
 
                 console.log(`[MOCK] Created issue #${retryIid} on retry`);
 
+                // Create notification for retry case too
+                const { notifications } = await import('@/db/schema');
+                const session = await auth();
+                const userIdToNotify = session?.user?.id || mockUserId;
+
+                await db.insert(notifications).values({
+                    userId: userIdToNotify,
+                    type: 'status_change',
+                    title: 'Issue Created',
+                    message: `Issue #${retryIid} created in ${project.name}`,
+                    resourceType: 'issue',
+                    resourceId: newId.toString(),
+                    actionUrl: `/${projectId}/issues/${retryIid}`,
+                });
+
                 // Revalidate pages to show the new issue
                 revalidatePath('/issues');
                 revalidatePath('/board');
@@ -244,13 +294,6 @@ export async function createIssue(projectId: number, data: any) {
             }
             throw error; // Re-throw if it's a different error
         }
-
-        // Revalidate pages to show the new issue
-        revalidatePath('/issues');
-        revalidatePath('/board');
-        revalidatePath(`/${projectId}`);
-
-        return { success: true, id: newId, iid: newIid };
     }
 
     const session = await auth();
@@ -352,39 +395,169 @@ export async function getProjectStats(projectIds: number[]) {
     return stats;
 }
 
-export async function getDashboardStats() {
-    // In a real app, this would aggregate data from DB/GitLab
-    // For prototype, we return realistic mock data
+export async function getDashboardStats(projectId?: number) {
+    const isMockMode = process.env.NEXT_PUBLIC_MOCK_MODE === 'true';
+    const session = await auth();
+
+    if (!isMockMode && !session?.accessToken) return { projectStats: [], timeStats: [], passRates: [] };
+
+    // Imports for DB access
+    const { db } = await import('@/lib/db');
+    const { qaIssues, qaRuns, projects } = await import('@/db/schema');
+    const { eq, desc, sql, and } = await import('drizzle-orm');
+    const { subDays, format, differenceInHours, differenceInMinutes } = await import('date-fns');
+
+    // Fetch issues and runs
+    // If projectId is provided, filter by it
+    let allIssues: typeof qaIssues.$inferSelect[] = [];
+    let allRuns: typeof qaRuns.$inferSelect[] = [];
+    let allProjects: typeof projects.$inferSelect[] = [];
+
+    if (projectId) {
+        allIssues = await db.select().from(qaIssues).where(eq(qaIssues.gitlabProjectId, projectId));
+
+        // For runs, we need to join with issues to filter by project, or filter in memory if we fetch all
+        // Let's fetch all runs for the filtered issues
+        // We can use a subquery or just filter in memory since it's a prototype
+        const issueIds = allIssues.map(i => i.id);
+        if (issueIds.length > 0) {
+            // Drizzle 'inArray' would be better but let's just fetch all and filter for now to keep it simple
+            // or use a join if we want to be efficient.
+            // Let's try a join approach for correctness
+            const runsResult = await db.select({ run: qaRuns })
+                .from(qaRuns)
+                .innerJoin(qaIssues, eq(qaRuns.qaIssueId, qaIssues.id))
+                .where(eq(qaIssues.gitlabProjectId, projectId));
+            allRuns = runsResult.map(r => r.run);
+        } else {
+            allRuns = [];
+        }
+
+        allProjects = await db.select().from(projects).where(eq(projects.id, projectId));
+    } else {
+        allIssues = await db.select().from(qaIssues);
+        allRuns = await db.select().from(qaRuns);
+        allProjects = await db.select().from(projects);
+    }
 
     // 1. Project Stats (Open/Closed)
-    // We can reuse getProjectStats if we had project IDs, but let's mock for speed/demo
-    const projectStats = [
-        { name: 'Bob Go', open: 12, closed: 45 },
-        { name: 'Bobe', open: 8, closed: 32 },
-        { name: 'Bob Shop', open: 15, closed: 28 },
-        { name: 'Bob Pay', open: 5, closed: 12 },
-    ];
+    const projectStatsMap = new Map<number, { name: string; open: number; closed: number }>();
+
+    // Initialize with known projects
+    allProjects.forEach(p => {
+        projectStatsMap.set(p.id, { name: p.name, open: 0, closed: 0 });
+    });
+
+    allIssues.forEach(issue => {
+        const pStats = projectStatsMap.get(issue.gitlabProjectId);
+        if (pStats) {
+            // Map 'passed'/'failed' to 'closed' (or keep as open if that's the logic? usually passed/failed means done)
+            // Actually, let's stick to the issue status.
+            // If status is 'pending', it's open. 'passed'/'failed' are closed.
+            if (issue.status === 'pending') {
+                pStats.open++;
+            } else {
+                pStats.closed++;
+            }
+        }
+    });
+
+    const projectStats = Array.from(projectStatsMap.values());
 
     // 2. Time Spent Trend (Last 7 days)
-    const timeStats = [
-        { date: 'Mon', hours: 4.5 },
-        { date: 'Tue', hours: 6.2 },
-        { date: 'Wed', hours: 5.8 },
-        { date: 'Thu', hours: 7.1 },
-        { date: 'Fri', hours: 4.9 },
-        { date: 'Sat', hours: 2.1 },
-        { date: 'Sun', hours: 1.5 },
+    // We'll use completed runs to calculate time spent
+    const timeStatsMap = new Map<string, { date: string; hours: number; count: number }>();
+
+    // Initialize last 7 days
+    for (let i = 6; i >= 0; i--) {
+        const date = subDays(new Date(), i);
+        const key = format(date, 'EEE'); // Mon, Tue, etc.
+        timeStatsMap.set(key, { date: key, hours: 0, count: 0 });
+    }
+
+    allRuns.forEach(run => {
+        if (run.completedAt && run.createdAt) {
+            const date = new Date(run.completedAt);
+            // Only consider last 7 days
+            if (date >= subDays(new Date(), 7)) {
+                const key = format(date, 'EEE');
+                if (timeStatsMap.has(key)) {
+                    const entry = timeStatsMap.get(key)!;
+                    const minutes = differenceInMinutes(new Date(run.completedAt), new Date(run.createdAt));
+                    // Cap at reasonable max (e.g. 24h = 1440m) to avoid outliers
+                    entry.hours += Math.min(minutes, 1440); // reusing 'hours' field for minutes to avoid breaking types everywhere immediately, or better rename it
+                    entry.count++;
+                }
+            }
+        }
+    });
+
+    const timeStats = Array.from(timeStatsMap.values()).map(stat => ({
+        date: stat.date,
+        minutes: stat.count > 0 ? Math.round(stat.hours / stat.count) : 0 // 'hours' here actually stores minutes sum
+    }));
+
+    // 3. Pass/Fail Rates (First Time Pass)
+    // We need to find the FIRST run for each issue
+    let firstTimePass = 0;
+    let firstTimeFail = 0;
+
+    // Group runs by issue
+    const runsByIssue = new Map<string, typeof allRuns>();
+    allRuns.forEach(run => {
+        if (!runsByIssue.has(run.qaIssueId)) {
+            runsByIssue.set(run.qaIssueId, []);
+        }
+        runsByIssue.get(run.qaIssueId)!.push(run);
+    });
+
+    runsByIssue.forEach((runs) => {
+        // Sort by run number ascending
+        runs.sort((a, b) => a.runNumber - b.runNumber);
+
+        if (runs.length > 0) {
+            const firstRun = runs[0];
+            if (firstRun.status === 'passed') firstTimePass++;
+            else if (firstRun.status === 'failed') firstTimeFail++;
+        }
+    });
+
+    const totalFirstRuns = firstTimePass + firstTimeFail;
+    const passRate = totalFirstRuns > 0 ? Math.round((firstTimePass / totalFirstRuns) * 100) : 0;
+    const failRate = totalFirstRuns > 0 ? Math.round((firstTimeFail / totalFirstRuns) * 100) : 0;
+
+    const passRates = [
+        { name: 'Passed First Time', value: passRate, color: '#22c55e' },
+        { name: 'Failed First Time', value: failRate, color: '#ef4444' },
     ];
 
-    // 3. Pass/Fail Rates
-    const passRates = [
-        { name: 'Passed First Time', value: 65, color: '#22c55e' },
-        { name: 'Failed First Time', value: 35, color: '#ef4444' },
-    ];
+    // 4. KPI Metrics
+    // Active Tests (Pending Runs)
+    const activeTests = allRuns.filter(r => r.status === 'pending').length;
+
+    // Issues Found (Total Issues)
+    const issuesFound = allIssues.length;
+
+    // Avg Time to Test (Overall)
+    let totalMinutes = 0;
+    let completedRunsCount = 0;
+    allRuns.forEach(run => {
+        if (run.completedAt && run.createdAt) {
+            totalMinutes += differenceInMinutes(new Date(run.completedAt), new Date(run.createdAt));
+            completedRunsCount++;
+        }
+    });
+    const avgTimeToTest = completedRunsCount > 0 ? Math.round(totalMinutes / completedRunsCount) : 0;
 
     return {
         projectStats,
         timeStats,
-        passRates
+        passRates,
+        kpi: {
+            avgTimeToTest,
+            firstTimePassRate: passRate,
+            issuesFound,
+            activeTests
+        }
     };
 }

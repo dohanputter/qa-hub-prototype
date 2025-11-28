@@ -66,7 +66,7 @@ export function DashboardCharts({ projectStats, timeStats, passRates }: Dashboar
             {/* Time Spent in QA */}
             <Card>
                 <CardHeader>
-                    <CardTitle>Avg. Time Spent in QA (Hours)</CardTitle>
+                    <CardTitle>Avg. Time Spent in QA (Minutes)</CardTitle>
                 </CardHeader>
                 <CardContent className="h-[300px]">
                     <ResponsiveContainer width="100%" height="100%">
@@ -76,7 +76,7 @@ export function DashboardCharts({ projectStats, timeStats, passRates }: Dashboar
                             <YAxis fontSize={12} tickLine={false} axisLine={false} />
                             <Tooltip />
                             <Legend />
-                            <Line type="monotone" dataKey="hours" stroke="#8884d8" strokeWidth={2} activeDot={{ r: 8 }} />
+                            <Line type="monotone" dataKey="minutes" stroke="#8884d8" strokeWidth={2} activeDot={{ r: 8 }} />
                         </LineChart>
                     </ResponsiveContainer>
                 </CardContent>
