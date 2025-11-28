@@ -19,22 +19,21 @@ export const authOptions = {
                 },
             },
         }),
-        CredentialsProvider({
-            id: 'mock-login',
-            name: 'Mock Login',
-            credentials: {},
-            async authorize(credentials, req) {
-                if (process.env.NEXT_PUBLIC_MOCK_MODE === 'true') {
+        ...(process.env.NODE_ENV !== 'production' && env.NEXT_PUBLIC_MOCK_MODE === 'true'
+            ? [CredentialsProvider({
+                id: 'mock-login',
+                name: 'Mock Login',
+                credentials: {},
+                async authorize(credentials, req) {
                     return {
                         id: 'mock-user-id',
                         name: 'Mock Tester',
                         email: 'tester@example.com',
                         image: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Felix',
                     };
-                }
-                return null;
-            },
-        }),
+                },
+            })]
+            : []),
     ],
     callbacks: {
         async jwt({ token, account, user }: { token: any; account: any; user: any }) {

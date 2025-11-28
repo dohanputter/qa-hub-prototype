@@ -232,7 +232,7 @@ export const getAllMockIssues = () => mockIssuesStore;
 
 // --- HELPER FUNCTIONS ---
 
-const isMock = () => process.env.NEXT_PUBLIC_MOCK_MODE === 'true';
+export const isMock = () => process.env.NEXT_PUBLIC_MOCK_MODE === 'true';
 
 export function getGitlabClient(token: string) {
     return new Gitlab({

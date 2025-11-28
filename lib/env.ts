@@ -26,4 +26,10 @@ export const env = createEnv({
         NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL,
         NEXT_PUBLIC_MOCK_MODE: process.env.NEXT_PUBLIC_MOCK_MODE,
     },
+    onInvalidAccess: (variable) => {
+        if (variable === 'NEXT_PUBLIC_MOCK_MODE' && process.env.NODE_ENV === 'production') {
+            throw new Error('MOCK_MODE cannot be enabled in production!');
+        }
+        throw new Error(`Invalid environment variable: ${variable}`);
+    },
 });
