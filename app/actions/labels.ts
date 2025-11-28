@@ -3,6 +3,9 @@
 import { auth } from '@/auth';
 import { getProjectLabels, updateIssueLabels } from '@/lib/gitlab';
 import { revalidatePath } from 'next/cache';
+import { db } from '@/lib/db';
+import { projects } from '@/db/schema';
+import { eq } from 'drizzle-orm';
 
 export async function getLabelsAction(projectId: number) {
     if (process.env.NEXT_PUBLIC_MOCK_MODE === 'true') {
@@ -20,6 +23,10 @@ export async function updateLabelsAction(
     issueIid: number,
     options: { addLabels?: string[]; removeLabels?: string[] }
 ) {
+    // Handle QA Run Logic
+    // QA Run logic removed as per user request - only board movement triggers runs
+
+
     if (process.env.NEXT_PUBLIC_MOCK_MODE === 'true') {
         const result = await updateIssueLabels(projectId, issueIid, 'mock-token', options);
 

@@ -319,86 +319,76 @@ export const getProjectMembers = async (projectId: number, token: string) => {
 
 export const getIssues = async (projectId: number, token: string, params?: { state?: 'opened' | 'closed'; labels?: string; search?: string }) => {
     if (isMock()) {
-        // In mock mode, ALWAYS sync with database to ensure we have latest data (including label changes)
+        // In mock mode, database acts as "GitLab" - read directly from it
         try {
             const { db } = await import('@/lib/db');
             const { qaIssues, projects } = await import('@/db/schema');
-            const { eq } = await import('drizzle-orm');
+            const { sql } = await import('drizzle-orm');
 
-            // Get project's QA label mapping
-            const projectData = await db.select().from(projects).where(eq(projects.id, projectId)).limit(1);
-            const qaLabelMapping = projectData[0]?.qaLabelMapping || {
-                pending: 'qa::ready',
-                passed: 'qa::passed',
-                failed: 'qa::failed'
-            };
+            console.log(`[MOCK getIssues] Querying DB using SQL raw query for Project: ${projectId}`);
 
-            // Fetch ALL issues from database for this project
-            const dbIssues = await db.select().from(qaIssues).where(eq(qaIssues.gitlabProjectId, projectId));
+            // Fetch ALL issues from database for this project (DB is our "GitLab")
+            const dbIssues = await db.select().from(qaIssues).where(sql`gitlab_project_id = ${projectId}`);
 
             console.log(`[MOCK getIssues] Found ${dbIssues.length} issues in database for project ${projectId}`);
 
-            // Update mockIssuesStore with database data (database is source of truth for labels)
-            for (const dbIssue of dbIssues) {
-                const existingIndex = mockIssuesStore.findIndex(
-                    (i: any) => i.project_id === dbIssue.gitlabProjectId && i.iid === dbIssue.gitlabIssueIid
-                );
+            // Build GitLab-like issue objects directly from database
+            const issues = dbIssues.map((dbIssue) => {
+                // Get labels from jsonLabels column (or default to empty array)
+                const labels = (dbIssue.jsonLabels && Array.isArray(dbIssue.jsonLabels))
+                    ? dbIssue.jsonLabels as string[]
+                    : [];
 
-                // Map status back to QA label
-                const qaLabel = qaLabelMapping[dbIssue.status as keyof typeof qaLabelMapping] || qaLabelMapping.pending;
+                // Get assignee if assigneeId exists
+                const assignees = dbIssue.assigneeId
+                    ? [MOCK_USERS.find(u => u.id === dbIssue.assigneeId) || MOCK_USERS[0]]
+                    : [];
 
-                if (existingIndex >= 0) {
-                    // Update existing issue - preserve existing labels, just update the QA one
-                    const existingIssue = mockIssuesStore[existingIndex];
-                    const allQALabels = Object.values(qaLabelMapping);
-                    const nonQALabels = existingIssue.labels.filter((l: string) => !allQALabels.includes(l));
+                return {
+                    id: dbIssue.gitlabIssueId,
+                    iid: dbIssue.gitlabIssueIid,
+                    project_id: dbIssue.gitlabProjectId,
+                    title: dbIssue.issueTitle,
+                    description: dbIssue.issueDescription || '',
+                    state: 'opened', // Could be extended to track open/closed in DB
+                    created_at: dbIssue.createdAt?.toISOString() || new Date().toISOString(),
+                    updated_at: dbIssue.updatedAt?.toISOString() || new Date().toISOString(),
+                    author: MOCK_USERS[0], // Default author
+                    assignees: assignees,
+                    labels: labels,
+                    web_url: dbIssue.issueUrl,
+                };
+            });
 
-                    mockIssuesStore[existingIndex] = {
-                        ...existingIssue,
-                        labels: [...nonQALabels, qaLabel], // Preserve non-QA labels, add QA label
-                        updated_at: dbIssue.updatedAt?.toISOString() || existingIssue.updated_at,
-                    };
-                    console.log(`[MOCK getIssues] Updated issue #${dbIssue.gitlabIssueIid} - labels: ${mockIssuesStore[existingIndex].labels.join(', ')}`);
-                } else {
-                    // Add new issue from database with just the QA label
-                    const newIssue = {
-                        id: dbIssue.gitlabIssueId,
-                        iid: dbIssue.gitlabIssueIid,
-                        project_id: dbIssue.gitlabProjectId,
-                        title: dbIssue.issueTitle,
-                        description: dbIssue.issueDescription || '',
-                        state: 'opened',
-                        created_at: dbIssue.createdAt?.toISOString() || new Date().toISOString(),
-                        updated_at: dbIssue.updatedAt?.toISOString() || new Date().toISOString(),
-                        author: MOCK_USERS[0],
-                        assignees: [],
-                        labels: [qaLabel],
-                        web_url: dbIssue.issueUrl,
-                    };
-                    mockIssuesStore.push(newIssue);
-                    console.log(`[MOCK getIssues] Added issue #${dbIssue.gitlabIssueIid} from database with label: ${qaLabel}`);
-                }
+            // Apply filters (simulating GitLab API filtering)
+            let filteredIssues = issues;
+
+            if (params?.state) {
+                filteredIssues = filteredIssues.filter((i: any) => i.state === params.state);
             }
-        } catch (error) {
-            console.error('[MOCK] Failed to sync issues from database:', error);
-        }
 
-        let issues = mockIssuesStore.filter((i: any) => i.project_id === Number(projectId));
-        if (params?.state) {
-            issues = issues.filter((i: any) => i.state === params.state);
+            if (params?.labels) {
+                const requestedLabels = params.labels.split(',');
+                filteredIssues = filteredIssues.filter((i: any) =>
+                    requestedLabels.some(label => i.labels.includes(label))
+                );
+            }
+
+            if (params?.search) {
+                const searchLower = params.search.toLowerCase();
+                filteredIssues = filteredIssues.filter((i: any) =>
+                    i.title.toLowerCase().includes(searchLower) ||
+                    (i.description && i.description.toLowerCase().includes(searchLower))
+                );
+            }
+
+            console.log(`[MOCK getIssues] Returning ${filteredIssues.length} issues after filtering`);
+            return filteredIssues;
+
+        } catch (error) {
+            console.error('[MOCK] Failed to fetch issues from database:', error);
+            return []; // Return empty array on error
         }
-        if (params?.labels) {
-            const labelList = params.labels.split(',');
-            issues = issues.filter((i: any) => labelList.every((l: string) => i.labels.includes(l)));
-        }
-        if (params?.search) {
-            const searchLower = params.search.toLowerCase();
-            issues = issues.filter((i: any) =>
-                i.title.toLowerCase().includes(searchLower) ||
-                i.description.toLowerCase().includes(searchLower)
-            );
-        }
-        return issues;
     }
     try {
         const gitlab = getGitlabClient(token);
@@ -416,63 +406,65 @@ export const getIssues = async (projectId: number, token: string, params?: { sta
 
 export const getIssue = async (projectId: number, issueIid: number, token: string) => {
     if (isMock()) {
-        // First check in-memory store
-        let issue = mockIssuesStore.find((i: any) => i.project_id === Number(projectId) && i.iid === Number(issueIid));
+        // In mock mode, database acts as "GitLab" - read directly from it
+        try {
+            const { db } = await import('@/lib/db');
+            const { qaIssues } = await import('@/db/schema');
+            const { eq, sql } = await import('drizzle-orm');
 
-        // If not found in memory, check database and sync to memory
-        if (!issue) {
-            try {
-                const { db } = await import('@/lib/db');
-                const { qaIssues, projects } = await import('@/db/schema');
-                const { eq, and } = await import('drizzle-orm');
+            console.log(`[MOCK getIssue] Querying DB using SQL raw query for Project: ${projectId} (${typeof projectId}), Issue IID: ${issueIid} (${typeof issueIid})`);
 
-                const dbIssues = await db.select()
-                    .from(qaIssues)
-                    .where(and(
-                        eq(qaIssues.gitlabProjectId, projectId),
-                        eq(qaIssues.gitlabIssueIid, issueIid)
-                    ))
-                    .limit(1);
+            const dbIssues = await db.select()
+                .from(qaIssues)
+                .where(sql`gitlab_project_id = ${projectId} AND gitlab_issue_iid = ${issueIid}`)
+                .limit(1);
 
-                if (dbIssues.length > 0) {
-                    const dbIssue = dbIssues[0];
+            console.log(`[MOCK getIssue] Found ${dbIssues.length} issues`);
 
-                    // Get project's QA label mapping
-                    const projectData = await db.select().from(projects).where(eq(projects.id, projectId)).limit(1);
-                    const qaLabelMapping = projectData[0]?.qaLabelMapping || {
-                        pending: 'qa::ready',
-                        passed: 'qa::passed',
-                        failed: 'qa::failed'
-                    };
+            if (dbIssues.length === 0) {
+                console.log(`[MOCK getIssue] Issue #${issueIid} not found in database`);
 
-                    // Map status back to QA label
-                    const qaLabel = qaLabelMapping[dbIssue.status as keyof typeof qaLabelMapping] || qaLabelMapping.pending;
-
-                    // Reconstruct issue from database and add to memory
-                    issue = {
-                        id: dbIssue.gitlabIssueId,
-                        iid: dbIssue.gitlabIssueIid,
-                        project_id: dbIssue.gitlabProjectId,
-                        title: dbIssue.issueTitle,
-                        description: dbIssue.issueDescription || '',
-                        state: 'opened',
-                        created_at: dbIssue.createdAt?.toISOString() || new Date().toISOString(),
-                        updated_at: dbIssue.updatedAt?.toISOString() || new Date().toISOString(),
-                        author: MOCK_USERS[0],
-                        assignees: [],
-                        labels: [qaLabel],
-                        web_url: dbIssue.issueUrl,
-                    };
-
-                    // Add to memory store for future lookups
-                    mockIssuesStore.push(issue);
-                }
-            } catch (error) {
-                console.error('[MOCK] Failed to sync issue from database:', error);
+                // Dump all issues for this project to see what's there
+                const allProjectIssues = await db.select().from(qaIssues).where(eq(qaIssues.gitlabProjectId, projectId));
+                console.log(`[MOCK getIssue] All issues for project ${projectId}:`, allProjectIssues.map(i => ({ iid: i.gitlabIssueIid, id: i.gitlabIssueId })));
+                return null;
             }
-        }
 
-        return issue;
+            const dbIssue = dbIssues[0];
+
+            // Get labels from jsonLabels column
+            const labels = (dbIssue.jsonLabels && Array.isArray(dbIssue.jsonLabels))
+                ? dbIssue.jsonLabels as string[]
+                : [];
+
+            // Get assignee if assigneeId exists
+            const assignees = dbIssue.assigneeId
+                ? [MOCK_USERS.find(u => u.id === dbIssue.assigneeId) || MOCK_USERS[0]]
+                : [];
+
+            // Build GitLab-like issue object from database
+            const issue = {
+                id: dbIssue.gitlabIssueId,
+                iid: dbIssue.gitlabIssueIid,
+                project_id: dbIssue.gitlabProjectId,
+                title: dbIssue.issueTitle,
+                description: dbIssue.issueDescription || '',
+                state: 'opened',
+                created_at: dbIssue.createdAt?.toISOString() || new Date().toISOString(),
+                updated_at: dbIssue.updatedAt?.toISOString() || new Date().toISOString(),
+                author: MOCK_USERS[0],
+                assignees: assignees,
+                labels: labels,
+                web_url: dbIssue.issueUrl,
+            };
+
+            console.log(`[MOCK getIssue] Returning issue #${issueIid} from database with labels: ${labels.join(', ')}`);
+            return issue;
+
+        } catch (error) {
+            console.error('[MOCK] Failed to fetch issue from database:', error);
+            return null;
+        }
     }
     try {
         const gitlab = getGitlabClient(token);
@@ -491,113 +483,143 @@ export const updateIssueLabels = async (
 ) => {
     if (isMock()) {
         console.log(`[MOCK] Updating labels for issue ${issueIid} in project ${projectId}:`, options);
-        // Actually update the mock data
-        const issue = mockIssuesStore.find((i: any) => i.project_id === Number(projectId) && i.iid === Number(issueIid));
-        if (issue) {
-            if (options.removeLabels) {
-                issue.labels = issue.labels.filter((l: string) => !options.removeLabels!.includes(l));
-            }
-            if (options.addLabels) {
-                issue.labels = [...issue.labels, ...options.addLabels.filter((l: string) => !issue.labels.includes(l))];
-            }
-            issue.updated_at = new Date().toISOString();
 
-            console.log(`[MOCK] Updated issue #${issueIid} labels to:`, issue.labels);
+        try {
+            const { db } = await import('@/lib/db');
+            const { qaIssues, qaRuns, projects } = await import('@/db/schema');
+            const { eq, and, desc } = await import('drizzle-orm');
+            const { mapLabelToStatus } = await import('@/lib/utils');
 
-            // --- SYNC DATABASE (AWAIT this time to ensure it completes) ---
-            try {
-                const { db } = await import('@/lib/db');
-                const { qaIssues, qaRuns, projects, users } = await import('@/db/schema');
-                const { eq, and, desc } = await import('drizzle-orm');
-                const { mapLabelToStatus } = await import('@/lib/utils');
+            // First, read current state from DB
+            const existingIssues = await db.select().from(qaIssues).where(and(
+                eq(qaIssues.gitlabProjectId, projectId),
+                eq(qaIssues.gitlabIssueIid, issueIid)
+            )).limit(1);
 
-                // Get the project's QA label mapping
-                const projectResults = await db
-                    .select()
-                    .from(projects)
-                    .where(eq(projects.id, projectId))
-                    .limit(1);
+            let existingIssue;
+            let oldStatus: 'pending' | 'passed' | 'failed' | null = null;
+            let currentLabels: string[] = [];
 
+            if (existingIssues.length === 0) {
+                console.log(`[MOCK] Issue ${issueIid} not found in database, fetching from GitLab and creating...`);
+
+                // Get issue details from GitLab/mock to create the record
+                const issue = await getIssue(projectId, issueIid, 'mock-token');
+
+                if (!issue) {
+                    console.error(`[MOCK] Could not fetch issue ${issueIid} from GitLab`);
+                    return { success: false };
+                }
+
+                // Apply label changes to get updated label list
+                // Handle both string[] and label object[] formats
+                let issueLabels = Array.isArray(issue.labels)
+                    ? issue.labels.map((l: any) => typeof l === 'string' ? l : l.name || l)
+                    : [];
+
+                if (options.removeLabels) {
+                    issueLabels = issueLabels.filter((l: string) => !options.removeLabels!.includes(l));
+                }
+                if (options.addLabels) {
+                    issueLabels = [...issueLabels, ...options.addLabels.filter((l: string) => !issueLabels.includes(l))];
+                }
+
+                // Get project QA label mapping
+                const projectResults = await db.select().from(projects).where(eq(projects.id, projectId)).limit(1);
                 const project = projectResults[0];
 
-                if (project?.qaLabelMapping) {
-                    // Determine the new status based on updated labels
-                    const newStatus = mapLabelToStatus(issue.labels, project.qaLabelMapping);
-
-                    if (newStatus) {
-                        console.log(`[MOCK DB] Mapped labels ${JSON.stringify(issue.labels)} to status: ${newStatus}`);
-
-                        // Use a consistent mock user ID for run creation
-                        const mockUserId = 'mock-user-id';
-
-                        // Find or Create QA Issue
-                        let qaIssueId;
-                        const existingIssue = await db.select().from(qaIssues).where(and(
-                            eq(qaIssues.gitlabProjectId, projectId),
-                            eq(qaIssues.gitlabIssueIid, issueIid)
-                        )).limit(1);
-
-                        if (existingIssue.length > 0) {
-                            qaIssueId = existingIssue[0].id;
-                            await db.update(qaIssues).set({
-                                status: newStatus,
-                                updatedAt: new Date(),
-                            }).where(eq(qaIssues.id, qaIssueId));
-                            console.log(`[MOCK DB] Updated qaIssue status to: ${newStatus}`);
-                        } else {
-                            const [created] = await db.insert(qaIssues).values({
-                                gitlabIssueId: issue.id,
-                                gitlabIssueIid: issue.iid,
-                                gitlabProjectId: projectId,
-                                issueTitle: issue.title,
-                                issueDescription: issue.description || '',
-                                issueUrl: issue.web_url,
-                                status: newStatus,
-                            }).returning();
-                            qaIssueId = created.id;
-                            console.log(`[MOCK DB] Created qaIssue with status: ${newStatus}`);
-                        }
-
-                        // Handle Run Logic (Mock Version)
-                        if (newStatus === 'pending') {
-                            const runs = await db.select().from(qaRuns).where(eq(qaRuns.qaIssueId, qaIssueId)).orderBy(desc(qaRuns.runNumber));
-                            const activeRun = runs.find(r => r.status === 'pending');
-                            if (!activeRun) {
-                                const nextRunNumber = (runs[0]?.runNumber || 0) + 1;
-                                await db.insert(qaRuns).values({
-                                    qaIssueId: qaIssueId,
-                                    runNumber: nextRunNumber,
-                                    status: 'pending',
-                                    createdBy: mockUserId, // Mock User
-                                });
-                                console.log(`[MOCK DB] Started Run #${nextRunNumber}`);
-                            }
-                        } else if (newStatus === 'passed' || newStatus === 'failed') {
-                            const runs = await db.select().from(qaRuns).where(eq(qaRuns.qaIssueId, qaIssueId)).orderBy(desc(qaRuns.runNumber));
-                            const activeRun = runs.find(r => r.status === 'pending');
-                            if (activeRun) {
-                                await db.update(qaRuns).set({
-                                    status: newStatus,
-                                    completedAt: new Date(),
-                                    updatedAt: new Date()
-                                }).where(eq(qaRuns.id, activeRun.id));
-                                console.log(`[MOCK DB] Closed Run #${activeRun.runNumber} as ${newStatus}`);
-                            }
-                        }
-                    } else {
-                        // Status is null (no QA label), remove from qaIssues
-                        await db.delete(qaIssues).where(and(
-                            eq(qaIssues.gitlabProjectId, projectId),
-                            eq(qaIssues.gitlabIssueIid, issueIid)
-                        ));
-                        console.log(`[MOCK DB] Removed issue #${issueIid} from qaIssues (no QA label)`);
-                    }
+                if (!project?.qaLabelMapping) {
+                    console.error(`[MOCK] Project ${projectId} has no QA label mapping`);
+                    return { success: false };
                 }
-            } catch (error) {
-                console.error('[MOCK] Failed to sync database:', error);
+
+                // Determine status from updated labels (don't default to pending if no QA label)
+                const newStatus = mapLabelToStatus(issueLabels, project.qaLabelMapping) || oldStatus || 'pending';
+
+                // Create the issue in qa_issues table
+                const [created] = await db.insert(qaIssues).values({
+                    gitlabIssueId: issue.id,
+                    gitlabIssueIid: issue.iid,
+                    gitlabProjectId: projectId,
+                    issueTitle: issue.title,
+                    issueDescription: issue.description || '',
+                    issueUrl: issue.web_url,
+                    status: newStatus,
+                    jsonLabels: issueLabels,
+                    assigneeId: issue.assignees?.[0]?.id || null,
+                    createdAt: new Date(issue.created_at),
+                    updatedAt: new Date(),
+                }).returning();
+
+                existingIssue = created;
+                oldStatus = null; // New issue, no old status
+                currentLabels = issueLabels;
+
+                console.log(`[MOCK DB] Created new issue #${issueIid} with status: ${newStatus}, labels: ${issueLabels.join(', ')}`);
+            } else {
+                existingIssue = existingIssues[0];
+                oldStatus = existingIssue.status;
+
+                // Get current labels from DB
+                if (existingIssue.jsonLabels && Array.isArray(existingIssue.jsonLabels)) {
+                    currentLabels = [...existingIssue.jsonLabels] as string[];
+                }
+
+                console.log(`[MOCK DB] Current labels:`, currentLabels);
+
+                // Apply label changes
+                if (options.removeLabels) {
+                    currentLabels = currentLabels.filter((l: string) => !options.removeLabels!.includes(l));
+                }
+                if (options.addLabels) {
+                    currentLabels = [...currentLabels, ...options.addLabels.filter((l: string) => !currentLabels.includes(l))];
+                }
+
+                console.log(`[MOCK DB] Updated labels:`, currentLabels);
+
+                // Get project QA label mapping
+                const projectResults = await db.select().from(projects).where(eq(projects.id, projectId)).limit(1);
+                const project = projectResults[0];
+
+                if (!project?.qaLabelMapping) {
+                    console.error(`[MOCK] Project ${projectId} has no QA label mapping`);
+                    return { success: false };
+                }
+
+                // Determine new status from labels (preserve old status if no QA label found)
+                const newStatus = mapLabelToStatus(currentLabels, project.qaLabelMapping) || oldStatus;
+                console.log(`[MOCK DB] Status change: ${oldStatus} -> ${newStatus}`);
+
+                // Update the database with new labels and status
+                await db.update(qaIssues).set({
+                    status: newStatus,
+                    jsonLabels: currentLabels,
+                    updatedAt: new Date(),
+                }).where(eq(qaIssues.id, existingIssue.id));
+
+                console.log(`[MOCK DB] Updated issue #${issueIid} in database - Labels: ${currentLabels.join(', ')}, Status: ${newStatus}`);
             }
+
+            // Recalculate status after all updates (preserve old status if no QA label)
+            const projectResults2 = await db.select().from(projects).where(eq(projects.id, projectId)).limit(1);
+            const project2 = projectResults2[0];
+            const finalStatus = project2?.qaLabelMapping ? (mapLabelToStatus(currentLabels, project2.qaLabelMapping) || oldStatus || 'pending') : (oldStatus || 'pending');
+
+            // Handle Run Logic - REMOVED to avoid double-handling and ensure single source of truth
+            // QA Run logic is now handled explicitly in board actions or submitQARun
+            console.log(`[MOCK DB] Status updated to ${finalStatus}, run logic handled by caller`);
+
+            // Revalidate to refresh UI
+            const { revalidatePath } = await import('next/cache');
+            revalidatePath('/issues');
+            revalidatePath('/board');
+            revalidatePath(`/${projectId}`);
+
+            return { success: true };
+        } catch (error) {
+            console.error('[MOCK] Failed to update labels in database:', error);
+            return { success: false };
         }
-        return { success: true };
     }
     try {
         const gitlab = getGitlabClient(token);

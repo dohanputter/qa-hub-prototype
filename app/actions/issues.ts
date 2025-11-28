@@ -106,25 +106,18 @@ export async function getAllIssues(params?: { state?: 'opened' | 'closed'; searc
 
 export async function createIssue(projectId: number, data: any) {
     if (process.env.NEXT_PUBLIC_MOCK_MODE === 'true') {
-        const { createMockIssue, getProject } = await import('@/lib/gitlab');
+        const { getProject } = await import('@/lib/gitlab');
         const { db } = await import('@/lib/db');
         const { qaIssues, users, projects } = await import('@/db/schema');
         const { mapLabelToStatus } = await import('@/lib/utils');
         const { eq } = await import('drizzle-orm');
 
-        // Create the mock issue in memory
         // Handle both 'labels' (comma-separated) and 'labelId' (single label) from form
         const issueLabels = data.labels
-            ? data.labels.split(',')
+            ? data.labels.split(',').map((l: string) => l.trim()).filter((l: string) => l)
             : (data.labelId ? [data.labelId] : []);
 
-        const newIssue = createMockIssue({
-            project_id: projectId,
-            title: data.title,
-            description: data.description,
-            assignee_id: data.assigneeId ? Number(data.assigneeId) : undefined,
-            labels: issueLabels
-        });
+        console.log(`[MOCK] Creating issue with labels:`, issueLabels);
 
         // Ensure mock user exists in database (for foreign key constraint)
         const mockUserId = 'mock-user-00000000-0000-0000-0000-000000000001';
@@ -180,35 +173,84 @@ export async function createIssue(projectId: number, data: any) {
             });
         }
 
+        // Get next IID for this project
+        const existingIssues = await db.select().from(qaIssues).where(eq(qaIssues.gitlabProjectId, projectId));
+        const maxIid = existingIssues.reduce((max, issue) => Math.max(max, issue.gitlabIssueIid), 0);
+        const newIid = maxIid + 1;
+
+        // Generate a negative ID to avoid collision with real GitLab IDs
+        const newId = -(Date.now());
+
         // Determine status from labels
         const labelMapping = (project.qaLabelMapping ?? {
             pending: 'qa::ready',
             passed: 'qa::passed',
             failed: 'qa::failed'
         }) as { pending: string; passed: string; failed: string };
-        const status = mapLabelToStatus(newIssue.labels, labelMapping);
+        const status = mapLabelToStatus(issueLabels, labelMapping) || 'pending';
 
-        // REMOVED 'createdBy' as it is no longer in qaIssues table
-        await db.insert(qaIssues).values({
-            gitlabIssueId: newIssue.id,
-            gitlabIssueIid: newIssue.iid,
-            gitlabProjectId: projectId,
-            issueTitle: newIssue.title,
-            issueDescription: newIssue.description || '',
-            issueUrl: newIssue.web_url,
-            status,
-            createdAt: new Date(newIssue.created_at),
-            updatedAt: new Date(newIssue.updated_at),
-        });
+        const assigneeId = data.assigneeId ? Number(data.assigneeId) : null;
 
-        console.log(`[MOCK] Created issue ${newIssue.iid} and persisted to database`);
+        console.log(`[MOCK] Writing issue to DB - IID: ${newIid}, Labels: ${issueLabels.join(', ')}, AssigneeId: ${assigneeId}, Status: ${status}`);
+
+        // Write directly to database
+        try {
+            await db.insert(qaIssues).values({
+                gitlabIssueId: newId,
+                gitlabIssueIid: newIid,
+                gitlabProjectId: projectId,
+                issueTitle: data.title,
+                issueDescription: data.description || '',
+                issueUrl: `https://gitlab.com/mock/issues/${newId}`,
+                status,
+                jsonLabels: issueLabels,
+                assigneeId: assigneeId,
+                createdAt: new Date(),
+                updatedAt: new Date(),
+            });
+
+            console.log(`[MOCK] Created issue #${newIid} and persisted to database`);
+        } catch (error: any) {
+            // Handle unique constraint violation
+            if (error.message && error.message.includes('UNIQUE constraint failed')) {
+                console.error(`[MOCK] Issue #${newIid} already exists in project ${projectId}, retrying with next IID...`);
+                // Recursively try with next IID
+                const existingIssues2 = await db.select().from(qaIssues).where(eq(qaIssues.gitlabProjectId, projectId));
+                const maxIid2 = existingIssues2.reduce((max, issue) => Math.max(max, issue.gitlabIssueIid), 0);
+                const retryIid = maxIid2 + 1;
+
+                await db.insert(qaIssues).values({
+                    gitlabIssueId: newId,
+                    gitlabIssueIid: retryIid,
+                    gitlabProjectId: projectId,
+                    issueTitle: data.title,
+                    issueDescription: data.description || '',
+                    issueUrl: `https://gitlab.com/mock/issues/${newId}`,
+                    status,
+                    jsonLabels: issueLabels,
+                    assigneeId: assigneeId,
+                    createdAt: new Date(),
+                    updatedAt: new Date(),
+                });
+
+                console.log(`[MOCK] Created issue #${retryIid} on retry`);
+
+                // Revalidate pages to show the new issue
+                revalidatePath('/issues');
+                revalidatePath('/board');
+                revalidatePath(`/${projectId}`);
+
+                return { success: true, id: newId, iid: retryIid };
+            }
+            throw error; // Re-throw if it's a different error
+        }
 
         // Revalidate pages to show the new issue
         revalidatePath('/issues');
         revalidatePath('/board');
         revalidatePath(`/${projectId}`);
 
-        return { success: true, id: newIssue.id, iid: newIssue.iid };
+        return { success: true, id: newId, iid: newIid };
     }
 
     const session = await auth();

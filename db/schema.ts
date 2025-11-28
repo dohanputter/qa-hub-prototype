@@ -3,6 +3,7 @@ import {
     text,
     integer,
     index,
+    uniqueIndex,
     primaryKey,
 } from 'drizzle-orm/sqlite-core';
 import { relations } from 'drizzle-orm';
@@ -110,12 +111,14 @@ export const qaIssues = sqliteTable('qa_issues', {
     issueUrl: text('issue_url').notNull(),
     // We keep a high-level status on the issue for quick filtering
     status: text('status').$type<'pending' | 'passed' | 'failed'>().default('pending').notNull(),
+    jsonLabels: text('json_labels', { mode: 'json' }),
+    assigneeId: integer('assignee_id'),
     createdAt: integer('created_at', { mode: 'timestamp_ms' }).$defaultFn(() => new Date()),
     updatedAt: integer('updated_at', { mode: 'timestamp_ms' }).$defaultFn(() => new Date()),
 }, (table) => ({
     projectIdx: index('idx_qa_issues_project').on(table.gitlabProjectId),
     issueIdx: index('idx_qa_issues_issue').on(table.gitlabIssueIid),
-    uniqueIssueIdx: index('idx_unique_issue').on(table.gitlabProjectId, table.gitlabIssueIid),
+    uniqueProjectIssue: uniqueIndex('idx_unique_issue').on(table.gitlabProjectId, table.gitlabIssueIid),
 }));
 
 // NEW TABLE: qaRuns

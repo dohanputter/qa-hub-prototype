@@ -47,7 +47,7 @@ export function IssueCard({ issue, projectId, isOverlay = false }: { issue: any,
 
         setIsDeleting(true);
         try {
-            await deleteIssue(projectId, issue.iid);
+            await deleteIssue(issue.project_id || projectId, issue.iid);
             router.refresh();
         } catch (error) {
             console.error('Failed to delete issue:', error);
@@ -61,7 +61,7 @@ export function IssueCard({ issue, projectId, isOverlay = false }: { issue: any,
             <CardContent className="p-3 space-y-3">
                 <div className="flex justify-between items-start gap-2">
                     <Link
-                        href={`/${projectId}/qa/${issue.iid}`}
+                        href={`/${issue.project_id || projectId}/qa/${issue.iid}`}
                         className="font-medium text-sm hover:text-indigo-600 hover:underline line-clamp-2 leading-tight flex-1"
                         onPointerDown={(e) => e.stopPropagation()} // Allow clicking link without dragging
                     >

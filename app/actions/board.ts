@@ -3,6 +3,9 @@
 import { auth } from '@/auth';
 import { updateIssueLabels } from '@/lib/gitlab';
 import { revalidatePath } from 'next/cache';
+import { db } from '@/lib/db';
+import { projects } from '@/db/schema';
+import { eq } from 'drizzle-orm';
 
 export async function moveIssue(projectId: number, issueIid: number, newLabel: string, oldLabel: string) {
     const session = await auth();
@@ -11,6 +14,50 @@ export async function moveIssue(projectId: number, issueIid: number, newLabel: s
     if (!session?.accessToken && !isMockMode) throw new Error('Unauthorized');
 
     try {
+        // 1. Fetch project to get label mapping
+        // We need this to know if we are moving to a QA column
+        const { getOrCreateQARun, submitQARun } = await import('./qa');
+
+        const projectResults = await db.select().from(projects).where(eq(projects.id, projectId)).limit(1);
+        const project = projectResults[0];
+
+        const labelMapping = project?.qaLabelMapping || {
+            pending: 'qa::ready',
+            passed: 'qa::passed',
+            failed: 'qa::failed'
+        };
+
+        // 2. Handle QA Run Logic BEFORE updating labels
+        // Check if we are moving TO a QA status
+        if (newLabel === labelMapping.pending) {
+            console.log('[moveIssue] Moving to Ready for QA - Starting new QA Run');
+            await getOrCreateQARun({
+                projectId,
+                issueIid,
+                forceNewRun: true
+            });
+        } else if (newLabel === labelMapping.passed) {
+            console.log('[moveIssue] Moving to Passed - Completing QA Run');
+            // Find active run and pass it
+            const { run } = await getOrCreateQARun({ projectId, issueIid });
+            if (run && run.status === 'pending') {
+                const result = await submitQARun(run.id, 'passed');
+                if (result.success) {
+                    return { success: true };
+                }
+            }
+        } else if (newLabel === labelMapping.failed) {
+            console.log('[moveIssue] Moving to Failed - Failing QA Run');
+            const { run } = await getOrCreateQARun({ projectId, issueIid });
+            if (run && run.status === 'pending') {
+                const result = await submitQARun(run.id, 'failed');
+                if (result.success) {
+                    return { success: true };
+                }
+            }
+        }
+
+        // 3. Standard Label Update (if not handled by submitQARun above)
         const updateOptions: { addLabels?: string[]; removeLabels?: string[] } = {};
 
         // Add label if newLabel is provided (not moving to backlog)

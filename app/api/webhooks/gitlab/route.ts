@@ -51,10 +51,13 @@ async function handleIssueEvent(event: any) {
     if (!project?.qaLabelMapping) return;
 
     const labels = issue.labels?.map((l: any) => l.title) || [];
-    const newStatus = mapLabelToStatus(labels, project.qaLabelMapping);
+    const newStatus = mapLabelToStatus(labels, project.qaLabelMapping) || 'pending';
 
-    // 1. Find or Create QA Issue
+
+    // 1. Find or Create QA Issue and track old status
     let qaIssueId: string;
+    let oldStatus: 'pending' | 'passed' | 'failed' | null = null;
+
     const existingIssue = await db
         .select()
         .from(qaIssues)
@@ -66,6 +69,7 @@ async function handleIssueEvent(event: any) {
 
     if (existingIssue.length > 0) {
         qaIssueId = existingIssue[0].id;
+        oldStatus = existingIssue[0].status; // Track old status before update
         await db
             .update(qaIssues)
             .set({
@@ -86,10 +90,14 @@ async function handleIssueEvent(event: any) {
             status: newStatus,
         }).returning();
         qaIssueId = created.id;
+        oldStatus = null; // Issue is new, no old status
     }
 
+    console.log(`[Webhook] Status change for Issue #${issue.iid}: ${oldStatus || 'new'} -> ${newStatus}`);
+
     // 2. Handle Run Logic based on Status Change
-    if (newStatus === 'pending') {
+    // Only start a run if status is CHANGING TO pending (not already pending)
+    if (newStatus === 'pending' && oldStatus !== 'pending') {
         // TRIGGER: Start new run if none active
         const runs = await db
             .select()
@@ -130,10 +138,12 @@ async function handleIssueEvent(event: any) {
                 status: 'pending',
                 createdBy: systemUserId,
             });
-            console.log(`[Webhook] Started Run #${nextRunNumber} for Issue #${issue.iid}`);
+            console.log(`[Webhook] Started Run #${nextRunNumber} for Issue #${issue.iid} (status changed from ${oldStatus || 'none'} to pending)`);
+        } else {
+            console.log(`[Webhook] Run #${activeRun.runNumber} already exists for Issue #${issue.iid}, not creating new run`);
         }
-    } else if (newStatus === 'passed' || newStatus === 'failed') {
-        // TRIGGER: Close active run if exists
+    } else if ((newStatus === 'passed' || newStatus === 'failed') && oldStatus === 'pending') {
+        // Only close run if transitioning FROM pending TO passed/failed
         const runs = await db
             .select()
             .from(qaRuns)
@@ -148,8 +158,10 @@ async function handleIssueEvent(event: any) {
                 completedAt: new Date(),
                 updatedAt: new Date()
             }).where(eq(qaRuns.id, activeRun.id));
-             console.log(`[Webhook] Closed Run #${activeRun.runNumber} for Issue #${issue.iid} as ${newStatus}`);
+            console.log(`[Webhook] Closed Run #${activeRun.runNumber} for Issue #${issue.iid} as ${newStatus}`);
         }
+    } else {
+        console.log(`[Webhook] No run action needed for Issue #${issue.iid} (status: ${oldStatus || 'new'} -> ${newStatus})`);
     }
 }
 
@@ -176,12 +188,12 @@ async function handleNoteEvent(event: any) {
     if (!qaIssue) return;
 
     // Find latest run to attach notification to (context)
-     const runs = await db
-            .select()
-            .from(qaRuns)
-            .where(eq(qaRuns.qaIssueId, qaIssue.id))
-            .orderBy(desc(qaRuns.runNumber))
-            .limit(1);
+    const runs = await db
+        .select()
+        .from(qaRuns)
+        .where(eq(qaRuns.qaIssueId, qaIssue.id))
+        .orderBy(desc(qaRuns.runNumber))
+        .limit(1);
 
     const latestRun = runs[0];
 

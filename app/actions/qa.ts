@@ -200,18 +200,25 @@ export async function submitQARun(runId: string, result: 'passed' | 'failed') {
 
     // Only update GitLab if we have proper label configuration or in mock mode
     try {
+        const newLabel = result === 'passed' ? labelMapping.passed : labelMapping.failed;
+        const labelsToRemove = [labelMapping.pending, labelMapping.passed, labelMapping.failed].filter((l) => l !== newLabel);
+
         if (isMockMode) {
-            console.log('[Mock Mode] Would create GitLab comment:', commentBody);
-            console.log('[Mock Mode] Would update labels:', {
-                add: result === 'passed' ? labelMapping.passed : labelMapping.failed,
-                remove: [labelMapping.pending, labelMapping.passed, labelMapping.failed].filter((l) => l !== (result === 'passed' ? labelMapping.passed : labelMapping.failed))
+            console.log('[Mock Mode] Updating labels:', {
+                add: newLabel,
+                remove: labelsToRemove
             });
+
+            // Actually update labels in mock mode so the board reflects the change
+            await updateIssueLabels(issue.gitlabProjectId, issue.gitlabIssueIid, 'mock-token', {
+                addLabels: [newLabel],
+                removeLabels: labelsToRemove,
+            });
+
+            console.log('[Mock Mode] Would create GitLab comment:', commentBody);
         } else if (project?.qaLabelMapping) {
             // Only update GitLab if labels are properly configured
             await createIssueNote(issue.gitlabProjectId, issue.gitlabIssueIid, session.accessToken, commentBody);
-
-            const newLabel = result === 'passed' ? labelMapping.passed : labelMapping.failed;
-            const labelsToRemove = [labelMapping.pending, labelMapping.passed, labelMapping.failed].filter((l) => l !== newLabel);
 
             await updateIssueLabels(issue.gitlabProjectId, issue.gitlabIssueIid, session.accessToken, {
                 addLabels: [newLabel],
