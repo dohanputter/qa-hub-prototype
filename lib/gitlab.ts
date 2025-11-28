@@ -33,22 +33,23 @@ const MOCK_GROUPS = [
 ];
 
 const MOCK_PROJECTS = [
+    // Bob Go
     {
         id: 500,
-        name: 'Frontend / Web App',
-        description: 'Main customer facing application',
-        path_with_namespace: 'acme-corp/frontend',
-        web_url: 'https://gitlab.com/acme-corp/frontend',
+        name: 'Bob Go',
+        description: 'Logistics and delivery platform',
+        path_with_namespace: 'bob-group/bob-go',
+        web_url: 'https://gitlab.com/bob-group/bob-go',
         avatar_url: null,
-        star_count: 12,
-        forks_count: 4,
+        star_count: 45,
+        forks_count: 12,
         last_activity_at: new Date().toISOString(),
         namespace: {
-            id: 10,
-            name: 'Acme Corporation',
-            path: 'acme-corp',
+            id: 100,
+            name: 'Bob Group',
+            path: 'bob-group',
             kind: 'group',
-            full_path: 'acme-corp',
+            full_path: 'bob-group',
         },
         qaLabelMapping: {
             pending: 'qa::ready',
@@ -56,22 +57,23 @@ const MOCK_PROJECTS = [
             failed: 'qa::failed',
         },
     },
+    // Bobe
     {
         id: 501,
-        name: 'Backend / API',
-        description: 'Core API services and database',
-        path_with_namespace: 'acme-corp/backend',
-        web_url: 'https://gitlab.com/acme-corp/backend',
+        name: 'Bobe',
+        description: 'Bobe core platform services',
+        path_with_namespace: 'bob-group/bobe',
+        web_url: 'https://gitlab.com/bob-group/bobe',
         avatar_url: null,
-        star_count: 8,
-        forks_count: 2,
+        star_count: 20,
+        forks_count: 5,
         last_activity_at: new Date(Date.now() - 86400000).toISOString(),
         namespace: {
-            id: 10,
-            name: 'Acme Corporation',
-            path: 'acme-corp',
+            id: 100,
+            name: 'Bob Group',
+            path: 'bob-group',
             kind: 'group',
-            full_path: 'acme-corp',
+            full_path: 'bob-group',
         },
         qaLabelMapping: {
             pending: 'qa::ready',
@@ -79,22 +81,47 @@ const MOCK_PROJECTS = [
             failed: 'qa::failed',
         },
     },
+    // Bob Shop App
     {
         id: 502,
-        name: 'Mobile / iOS',
-        description: 'Native iOS Application',
-        path_with_namespace: 'acme-corp/mobile-ios',
-        web_url: 'https://gitlab.com/acme-corp/mobile-ios',
+        name: 'Bob Shop App',
+        description: 'Mobile shopping application',
+        path_with_namespace: 'bob-group/bob-shop-app',
+        web_url: 'https://gitlab.com/bob-group/bob-shop-app',
         avatar_url: null,
-        star_count: 5,
-        forks_count: 1,
+        star_count: 35,
+        forks_count: 8,
         last_activity_at: new Date(Date.now() - 172800000).toISOString(),
         namespace: {
-            id: 12,
-            name: 'Mobile Division',
-            path: 'mobile',
+            id: 100,
+            name: 'Bob Group',
+            path: 'bob-group',
             kind: 'group',
-            full_path: 'acme-corp/mobile',
+            full_path: 'bob-group',
+        },
+        qaLabelMapping: {
+            pending: 'qa::ready',
+            passed: 'qa::passed',
+            failed: 'qa::failed',
+        },
+    },
+    // Bob Pay
+    {
+        id: 503,
+        name: 'Bob Pay',
+        description: 'Payment processing system',
+        path_with_namespace: 'bob-group/bob-pay',
+        web_url: 'https://gitlab.com/bob-group/bob-pay',
+        avatar_url: null,
+        star_count: 15,
+        forks_count: 3,
+        last_activity_at: new Date(Date.now() - 259200000).toISOString(),
+        namespace: {
+            id: 100,
+            name: 'Bob Group',
+            path: 'bob-group',
+            kind: 'group',
+            full_path: 'bob-group',
         },
         qaLabelMapping: {
             pending: 'qa::ready',
@@ -103,6 +130,10 @@ const MOCK_PROJECTS = [
         },
     },
 ];
+
+const USER_MOCK_PERMISSIONS: Record<string, number[]> = {
+    'tester@example.com': [500, 501, 502, 503], // Access to all 4 projects
+};
 
 const MOCK_USERS = [
     { id: 1, name: 'Jane Doe', username: 'jdoe', state: 'active', avatar_url: 'https://picsum.photos/32/32?random=1', web_url: 'https://gitlab.com/jdoe' },
@@ -122,16 +153,60 @@ const MOCK_USERS = [
     { id: 15, name: 'Benjamin Wright', username: 'bwright', state: 'active', avatar_url: 'https://picsum.photos/32/32?random=15', web_url: 'https://gitlab.com/bwright' },
 ];
 
-const MOCK_LABELS = [
+const MOCK_LABELS_500 = [
     { id: 1, name: 'bug', color: '#dc2626', text_color: '#fff', description: 'Something is not working' },
     { id: 2, name: 'feature', color: '#2563eb', text_color: '#fff', description: 'New functionality' },
     { id: 3, name: 'critical', color: '#7f1d1d', text_color: '#fff', description: 'Critical severity' },
     { id: 4, name: 'frontend', color: '#0891b2', text_color: '#fff', description: 'Frontend related' },
-    { id: 5, name: 'backend', color: '#6366f1', text_color: '#fff', description: 'Backend related' },
     { id: 6, name: 'qa::ready', color: '#f59e0b', text_color: '#fff', description: 'Ready for QA' },
     { id: 7, name: 'qa::passed', color: '#10b981', text_color: '#fff', description: 'QA Passed' },
     { id: 8, name: 'qa::failed', color: '#ef4444', text_color: '#fff', description: 'QA Failed' },
 ];
+
+const MOCK_LABELS_501 = [
+    { id: 10, name: 'infrastructure', color: '#7c3aed', text_color: '#fff', description: 'Infra related' },
+    { id: 11, name: 'security', color: '#be123c', text_color: '#fff', description: 'Security issue' },
+    { id: 12, name: 'qa::ready', color: '#f59e0b', text_color: '#fff', description: 'Ready for QA' },
+    { id: 13, name: 'qa::passed', color: '#10b981', text_color: '#fff', description: 'QA Passed' },
+    { id: 14, name: 'qa::failed', color: '#ef4444', text_color: '#fff', description: 'QA Failed' },
+];
+
+const MOCK_LABELS_502 = [
+    { id: 20, name: 'mobile', color: '#059669', text_color: '#fff', description: 'Mobile App' },
+    { id: 21, name: 'ios', color: '#000000', text_color: '#fff', description: 'iOS specific' },
+    { id: 22, name: 'android', color: '#3b82f6', text_color: '#fff', description: 'Android specific' },
+    { id: 23, name: 'qa::ready', color: '#f59e0b', text_color: '#fff', description: 'Ready for QA' },
+    { id: 24, name: 'qa::passed', color: '#10b981', text_color: '#fff', description: 'QA Passed' },
+    { id: 25, name: 'qa::failed', color: '#ef4444', text_color: '#fff', description: 'QA Failed' },
+];
+
+const MOCK_LABELS_503 = [
+    { id: 30, name: 'payment', color: '#16a34a', text_color: '#fff', description: 'Payment gateway' },
+    { id: 31, name: 'compliance', color: '#ea580c', text_color: '#fff', description: 'Compliance' },
+    { id: 32, name: 'qa::ready', color: '#f59e0b', text_color: '#fff', description: 'Ready for QA' },
+    { id: 33, name: 'qa::passed', color: '#10b981', text_color: '#fff', description: 'QA Passed' },
+    { id: 34, name: 'qa::failed', color: '#ef4444', text_color: '#fff', description: 'QA Failed' },
+];
+
+const MOCK_LABELS: Record<number, any[]> = {
+    500: MOCK_LABELS_500,
+    501: MOCK_LABELS_501,
+    502: MOCK_LABELS_502,
+    503: MOCK_LABELS_503,
+};
+
+// Assign different users to different projects
+const MOCK_USERS_500 = MOCK_USERS.slice(0, 5); // Jane, John, QA Lead, Sarah, Michael
+const MOCK_USERS_501 = MOCK_USERS.slice(4, 8); // Michael, Emily, David, Olivia
+const MOCK_USERS_502 = MOCK_USERS.slice(8, 12); // James, Sophia, Lucas, Mia
+const MOCK_USERS_503 = MOCK_USERS.slice(11, 15); // Mia, Alexander, Charlotte, Benjamin
+
+const MOCK_PROJECT_USERS: Record<number, any[]> = {
+    500: MOCK_USERS_500,
+    501: MOCK_USERS_501,
+    502: MOCK_USERS_502,
+    503: MOCK_USERS_503,
+};
 
 const MOCK_ISSUES = [
     {
@@ -243,8 +318,17 @@ export function getGitlabClient(token: string) {
 
 // --- API METHODS ---
 
-export const getAccessibleProjects = async (token: string) => {
-    if (isMock()) return MOCK_PROJECTS;
+export const getAccessibleProjects = async (token: string, userEmail?: string) => {
+    if (isMock()) {
+        // In mock mode, filter by user's mock permissions if email is provided
+        if (userEmail && USER_MOCK_PERMISSIONS[userEmail]) {
+            const allowedIds = USER_MOCK_PERMISSIONS[userEmail];
+            return MOCK_PROJECTS.filter(p => allowedIds.includes(p.id));
+        }
+        // If no email or no permissions defined, return all mock projects (or empty if strict)
+        // For now, default to all for easier testing if email is missing
+        return MOCK_PROJECTS;
+    }
     try {
         const gitlab = getGitlabClient(token);
         return await gitlab.Projects.all({ membership: true, simple: true });
@@ -294,7 +378,7 @@ export const getProject = async (projectId: number, token: string) => {
 };
 
 export const getProjectLabels = async (projectId: number, token: string) => {
-    if (isMock()) return MOCK_LABELS;
+    if (isMock()) return MOCK_LABELS[projectId] || MOCK_LABELS[500];
     try {
         const gitlab = getGitlabClient(token);
         return await gitlab.ProjectLabels.all(projectId);
@@ -306,7 +390,7 @@ export const getProjectLabels = async (projectId: number, token: string) => {
 
 export const getProjectMembers = async (projectId: number, token: string) => {
     if (isMock()) {
-        return MOCK_USERS;
+        return MOCK_PROJECT_USERS[projectId] || MOCK_USERS;
     }
     try {
         const gitlab = getGitlabClient(token);

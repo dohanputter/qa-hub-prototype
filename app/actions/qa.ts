@@ -131,7 +131,7 @@ export async function getOrCreateQARun(data: {
     }
 }
 
-export async function submitQARun(runId: string, result: 'passed' | 'failed') {
+export async function submitQARun(projectId: number, runId: string, result: 'passed' | 'failed') {
     const session = await auth();
     if (!session?.accessToken || !session.user?.id) throw new Error('Unauthorized');
 
@@ -142,7 +142,10 @@ export async function submitQARun(runId: string, result: 'passed' | 'failed') {
         })
         .from(qaRuns)
         .innerJoin(qaIssues, eq(qaRuns.qaIssueId, qaIssues.id))
-        .where(eq(qaRuns.id, runId))
+        .where(and(
+            eq(qaRuns.id, runId),
+            eq(qaIssues.gitlabProjectId, projectId) // Security: verify record belongs to project
+        ))
         .limit(1);
 
     const data = runResults[0];

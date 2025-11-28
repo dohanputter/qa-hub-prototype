@@ -23,12 +23,14 @@ interface KanbanBoardProps {
     };
     issues: any[];
     labels: any[];
+    projectId: number;
 }
 
 export function KanbanBoard({
     project,
     issues: initialIssues,
-    labels
+    labels,
+    projectId
 }: KanbanBoardProps) {
     const [issues, setIssues] = useState(initialIssues);
     const [activeId, setActiveId] = useState<string | null>(null);
@@ -232,7 +234,7 @@ export function KanbanBoard({
             console.log('[Drag] Removing label for backlog', { oldLabel });
 
             const result = await moveIssue(
-                project.id,
+                projectId,
                 activeIssue.iid,
                 '', // New label is empty for backlog
                 oldLabel
@@ -284,7 +286,7 @@ export function KanbanBoard({
             console.log('[Drag] Moving from backlog, adding label', { newLabel });
 
             const result = await moveIssue(
-                project.id,
+                projectId,
                 activeIssue.iid,
                 newLabel,
                 '' // Empty old label for backlog
@@ -367,7 +369,7 @@ export function KanbanBoard({
         setIssues(newIssues);
 
         const result = await moveIssue(
-            project.id,
+            projectId,
             activeIssue.iid,
             newLabel,
             oldLabel

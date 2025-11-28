@@ -30,11 +30,11 @@ const getLabelColor = (labelName: string) => {
     return label ? { bg: label.color, text: label.text_color } : { bg: '#6b7280', text: '#fff' };
 };
 
-export function IssuesTable({ issues }: { issues: any[] }) {
+export function IssuesTable({ issues, projectId }: { issues: any[]; projectId: number }) {
     const router = useRouter();
     const [deletingIssueId, setDeletingIssueId] = useState<number | null>(null);
 
-    const handleDelete = async (projectId: number, issueIid: number) => {
+    const handleDelete = async (issueIid: number) => {
         if (!confirm('Are you sure you want to delete this issue? This action cannot be undone.')) {
             return;
         }
@@ -125,7 +125,7 @@ export function IssuesTable({ issues }: { issues: any[] }) {
                                         variant="ghost"
                                         size="icon"
                                         className="h-8 w-8 text-red-600 hover:text-red-700 hover:bg-red-50"
-                                        onClick={() => handleDelete(issue.projectId, issue.iid)}
+                                        onClick={() => handleDelete(issue.iid)}
                                         disabled={deletingIssueId === issue.iid}
                                     >
                                         <Trash2 className="h-4 w-4" />

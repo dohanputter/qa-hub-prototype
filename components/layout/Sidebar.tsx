@@ -3,23 +3,32 @@
 import React, { Suspense } from 'react';
 import Link from 'next/link';
 import { usePathname, useSearchParams } from 'next/navigation';
-import { LayoutDashboard, ListTodo, KanbanSquare, Bell, Wrench, LogOut } from 'lucide-react';
+import { LayoutDashboard, ListTodo, KanbanSquare, Bell, Wrench, LogOut, Folder } from 'lucide-react';
 import { signOut } from 'next-auth/react';
 import { cn } from '@/lib/utils';
 
-import { GroupSelector } from './GroupSelector';
-
 export function Sidebar() {
     const pathname = usePathname();
-    const searchParams = useSearchParams();
-    const groupId = searchParams.get('groupId');
+    // Extract projectId from path: /123/issues -> 123
+    const projectIdMatch = pathname.match(/^\/(\d+)/);
+    const projectId = projectIdMatch ? projectIdMatch[1] : null;
 
     const getHref = (path: string) => {
-        return groupId ? `${path}?groupId=${groupId}` : path;
+        // All routes are project-scoped if we have a projectId
+        if (projectId) {
+            // Dashboard is the project root
+            if (path === '/') return `/${projectId}`;
+            // Other routes are nested under project
+            return `/${projectId}${path}`;
+        }
+
+        // If no projectId, redirect to projects selection
+        return '/projects';
     };
 
     const navItems = [
         { href: '/', icon: LayoutDashboard, label: 'Dashboard', exact: true },
+        { href: '/projects', icon: Folder, label: 'Projects' },
         { href: '/issues', icon: ListTodo, label: 'Issues' },
         { href: '/board', icon: KanbanSquare, label: 'Issues Board' },
         { href: '/notifications', icon: Bell, label: 'Notifications' },
@@ -27,8 +36,9 @@ export function Sidebar() {
 
     // Helper to check active state
     const isActive = (href: string, exact = false) => {
-        if (exact) return pathname === href;
-        return pathname.startsWith(href);
+        const targetPath = getHref(href);
+        if (exact) return pathname === targetPath;
+        return pathname.startsWith(targetPath);
     };
 
     return (
@@ -40,11 +50,6 @@ export function Sidebar() {
                     </div>
                     <h1 className="text-xl font-bold text-white tracking-tight">QA Hub</h1>
                 </div>
-                <Suspense fallback={
-                    <div className="w-full h-10 bg-gray-800 rounded-md animate-pulse" />
-                }>
-                    <GroupSelector />
-                </Suspense>
             </div>
 
             <nav className="flex-1 p-4 space-y-2">

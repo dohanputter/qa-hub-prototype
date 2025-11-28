@@ -1,114 +1,73 @@
 import { auth } from '@/auth';
-import { getProject, getIssues, getProjectLabels } from '@/lib/gitlab';
-import { db } from '@/lib/db';
-import { projects } from '@/db/schema';
-import { eq } from 'drizzle-orm';
-import { KanbanBoard } from '@/components/board/KanbanBoard';
-import { ProjectConfiguration } from '@/components/board/ProjectConfiguration';
+import { redirect } from 'next/navigation';
+import { getDashboardStats } from '@/app/actions/issues';
+import { DashboardCharts } from '@/components/dashboard/DashboardCharts';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Activity, CheckCircle, Clock, AlertCircle } from 'lucide-react';
 
-export default async function ProjectBoardPage({ params }: { params: Promise<{ projectId: string }> }) {
+export default async function Dashboard() {
     const session = await auth();
-    if (!session?.accessToken) return <div>Unauthorized</div>;
+    if (!session?.accessToken) redirect('/auth/signin');
 
-    const { projectId: projectIdStr } = await params;
-    const projectId = parseInt(projectIdStr);
+    const stats = await getDashboardStats();
 
-    // Validate projectId
-    if (isNaN(projectId) || !isFinite(projectId)) {
-        return (
-            <div className="flex items-center justify-center h-full">
-                <div className="text-center">
-                    <h2 className="text-lg font-semibold">Invalid Project ID</h2>
-                    <p className="text-muted-foreground">Please select a valid project.</p>
-                </div>
+    return (
+        <div className="container mx-auto px-4 py-8 max-w-7xl">
+            <div className="mb-8">
+                <h1 className="text-3xl font-bold tracking-tight text-gray-900">QA Dashboard</h1>
+                <p className="text-muted-foreground mt-1">Overview of QA metrics and performance</p>
             </div>
-        );
-    }
 
-    try {
-        const gitlabProject = await getProject(projectId, session.accessToken);
-
-        if (process.env.NEXT_PUBLIC_MOCK_MODE === 'true') {
-            // Mock project configuration for board
-            const mockProjectConfig = {
-                ...gitlabProject,
-                qaLabelMapping: {
-                    pending: 'bug',
-                    passed: 'feature',
-                    failed: 'critical'
-                }
-            };
-            const issues = await getIssues(projectId, session.accessToken, { state: 'opened' });
-            const labels = await getProjectLabels(projectId, session.accessToken);
-            return (
-                <div className="flex flex-col h-screen overflow-hidden">
-                    <div className="flex items-center justify-between px-6 py-4 border-b bg-white">
-                        <div className="flex items-baseline gap-2">
-                            <h1 className="text-xl font-bold">{gitlabProject.name}</h1>
-                            <span className="text-xl text-gray-400 font-normal">Board</span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                            {/* Filters could go here */}
-                        </div>
-                    </div>
-                    <div className="flex-1 overflow-x-auto overflow-y-hidden p-6 bg-[#f9fafb]">
-                        <KanbanBoard
-                            project={mockProjectConfig as any}
-                            issues={issues}
-                            labels={labels}
-                        />
-                    </div>
-                </div>
-            );
-        }
-
-        // Check DB
-        const projectResults = await db
-            .select()
-            .from(projects)
-            .where(eq(projects.id, projectId))
-            .limit(1);
-
-        let project = projectResults[0];
-
-        if (!project || !project.isConfigured) {
-            const labels = await getProjectLabels(projectId, session.accessToken);
-            return <ProjectConfiguration gitlabProject={gitlabProject} labels={labels} />;
-        }
-
-        // Fetch issues and labels
-        const issues = await getIssues(projectId, session.accessToken, { state: 'opened' });
-        const labels = await getProjectLabels(projectId, session.accessToken);
-
-        return (
-            <div className="flex flex-col h-screen overflow-hidden">
-                <div className="flex items-center justify-between px-6 py-4 border-b bg-white">
-                    <div className="flex items-baseline gap-2">
-                        <h1 className="text-xl font-bold">{gitlabProject.name}</h1>
-                        <span className="text-xl text-gray-400 font-normal">Board</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                        {/* Filters could go here */}
-                    </div>
-                </div>
-                <div className="flex-1 overflow-x-auto overflow-y-hidden p-6 bg-[#f9fafb]">
-                    <KanbanBoard
-                        project={project as typeof project & { qaLabelMapping: { pending: string; passed: string; failed: string } }}
-                        issues={issues}
-                        labels={labels}
-                    />
-                </div>
+            {/* KPI Cards */}
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+                <Card>
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                        <CardTitle className="text-sm font-medium">Avg. Time to Test</CardTitle>
+                        <Clock className="h-4 w-4 text-muted-foreground" />
+                    </CardHeader>
+                    <CardContent>
+                        <div className="text-2xl font-bold">4.2h</div>
+                        <p className="text-xs text-muted-foreground">-12% from last week</p>
+                    </CardContent>
+                </Card>
+                <Card>
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                        <CardTitle className="text-sm font-medium">First Time Pass</CardTitle>
+                        <CheckCircle className="h-4 w-4 text-green-500" />
+                    </CardHeader>
+                    <CardContent>
+                        <div className="text-2xl font-bold">65%</div>
+                        <p className="text-xs text-muted-foreground">+5% from last week</p>
+                    </CardContent>
+                </Card>
+                <Card>
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                        <CardTitle className="text-sm font-medium">Issues Found</CardTitle>
+                        <AlertCircle className="h-4 w-4 text-red-500" />
+                    </CardHeader>
+                    <CardContent>
+                        <div className="text-2xl font-bold">24</div>
+                        <p className="text-xs text-muted-foreground">+2 since yesterday</p>
+                    </CardContent>
+                </Card>
+                <Card>
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                        <CardTitle className="text-sm font-medium">Active Tests</CardTitle>
+                        <Activity className="h-4 w-4 text-blue-500" />
+                    </CardHeader>
+                    <CardContent>
+                        <div className="text-2xl font-bold">8</div>
+                        <p className="text-xs text-muted-foreground">Currently in progress</p>
+                    </CardContent>
+                </Card>
             </div>
-        );
-    } catch (error) {
-        console.error("Error loading project board:", error);
-        return (
-            <div className="flex items-center justify-center h-full">
-                <div className="text-center">
-                    <h2 className="text-lg font-semibold">Error loading project</h2>
-                    <p className="text-muted-foreground">Please check if you have access to this project.</p>
-                </div>
-            </div>
-        );
-    }
+
+            {/* Charts */}
+            <DashboardCharts
+                projectStats={stats.projectStats}
+                timeStats={stats.timeStats}
+                passRates={stats.passRates}
+            />
+        </div>
+    );
 }

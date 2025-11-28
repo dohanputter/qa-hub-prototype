@@ -109,7 +109,7 @@ export function QADetail({ issue, qaIssue, runs = [], allAttachments = [], membe
                 });
             }
 
-            const res = await submitQARun(currentRunId, result);
+            const res = await submitQARun(projectId, currentRunId, result);
             if (res.success) {
                 toast({
                     title: result === 'passed' ? "QA Passed" : "QA Failed",

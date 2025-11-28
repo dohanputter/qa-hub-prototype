@@ -41,7 +41,7 @@ export async function moveIssue(projectId: number, issueIid: number, newLabel: s
             // Find active run and pass it
             const { run } = await getOrCreateQARun({ projectId, issueIid });
             if (run && run.status === 'pending') {
-                const result = await submitQARun(run.id, 'passed');
+                const result = await submitQARun(projectId, run.id, 'passed');
                 if (result.success) {
                     return { success: true };
                 }
@@ -50,7 +50,7 @@ export async function moveIssue(projectId: number, issueIid: number, newLabel: s
             console.log('[moveIssue] Moving to Failed - Failing QA Run');
             const { run } = await getOrCreateQARun({ projectId, issueIid });
             if (run && run.status === 'pending') {
-                const result = await submitQARun(run.id, 'failed');
+                const result = await submitQARun(projectId, run.id, 'failed');
                 if (result.success) {
                     return { success: true };
                 }

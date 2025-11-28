@@ -300,3 +300,91 @@ export async function deleteIssue(projectId: number, issueIid: number) {
     return { success: true, deletedFromMemory };
 }
 
+export async function getProjectStats(projectIds: number[]) {
+    const session = await auth();
+    if (!session?.accessToken && process.env.NEXT_PUBLIC_MOCK_MODE !== 'true') return {};
+
+    const isMockMode = process.env.NEXT_PUBLIC_MOCK_MODE === 'true';
+    const stats: Record<number, { open: number; closed: number; total: number }> = {};
+
+    if (isMockMode) {
+        const { getIssues } = await import('@/lib/gitlab');
+        for (const pid of projectIds) {
+            const issues = await getIssues(pid, 'mock-token');
+            stats[pid] = {
+                open: issues.filter((i: any) => i.state === 'opened').length,
+                closed: issues.filter((i: any) => i.state === 'closed').length,
+                total: issues.length
+            };
+        }
+    } else {
+        const { getGitlabClient } = await import('@/lib/gitlab');
+        const gitlab = getGitlabClient(session?.accessToken as string);
+
+        // Fetch in parallel
+        await Promise.all(projectIds.map(async (pid) => {
+            try {
+                // We can use the statistics field if available, or just count issues
+                // Fetching all issues just to count is expensive. GitLab Project API has statistics.
+                const project = await gitlab.Projects.show(pid, { statistics: true });
+                // @ts-ignore - gitbeaker types might be missing statistics sometimes
+                const statistics = project.statistics as any;
+
+                // If statistics not available, fall back to issues count (simplified)
+                if (statistics) {
+                    stats[pid] = {
+                        open: statistics.opened_issues || statistics.issues || 0,
+                        closed: statistics.closed_issues || 0,
+                        total: statistics.issues || 0
+                    };
+                } else {
+                    // Fallback: fetch open issues count
+                    // simplified fallback
+                    stats[pid] = { open: 0, closed: 0, total: 0 };
+                }
+            } catch (e) {
+                console.error(`Failed to fetch stats for project ${pid}`, e);
+                stats[pid] = { open: 0, closed: 0, total: 0 };
+            }
+        }));
+    }
+
+    return stats;
+}
+
+export async function getDashboardStats() {
+    // In a real app, this would aggregate data from DB/GitLab
+    // For prototype, we return realistic mock data
+
+    // 1. Project Stats (Open/Closed)
+    // We can reuse getProjectStats if we had project IDs, but let's mock for speed/demo
+    const projectStats = [
+        { name: 'Bob Go', open: 12, closed: 45 },
+        { name: 'Bobe', open: 8, closed: 32 },
+        { name: 'Bob Shop', open: 15, closed: 28 },
+        { name: 'Bob Pay', open: 5, closed: 12 },
+    ];
+
+    // 2. Time Spent Trend (Last 7 days)
+    const timeStats = [
+        { date: 'Mon', hours: 4.5 },
+        { date: 'Tue', hours: 6.2 },
+        { date: 'Wed', hours: 5.8 },
+        { date: 'Thu', hours: 7.1 },
+        { date: 'Fri', hours: 4.9 },
+        { date: 'Sat', hours: 2.1 },
+        { date: 'Sun', hours: 1.5 },
+    ];
+
+    // 3. Pass/Fail Rates
+    const passRates = [
+        { name: 'Passed First Time', value: 65, color: '#22c55e' },
+        { name: 'Failed First Time', value: 35, color: '#ef4444' },
+    ];
+
+    return {
+        projectStats,
+        timeStats,
+        passRates
+    };
+}
