@@ -1,5 +1,1 @@
-import { redirect } from 'next/navigation';
-
-export default function IssuesRedirect() {
-    redirect('/projects');
-}
+export { default } from '@/app/(dashboard)/board/page';

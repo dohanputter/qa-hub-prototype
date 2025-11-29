@@ -1,5 +1,1 @@
-import { SnippetsManager } from '@/components/SnippetsManager';
-
-export default function ProjectSnippetsPage() {
-    return <SnippetsManager />;
-}
+export { default } from '@/app/(dashboard)/tools/snippets/page';

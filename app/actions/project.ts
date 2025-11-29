@@ -4,40 +4,9 @@ import { auth } from '@/auth';
 import { db } from '@/lib/db';
 import { projects, userProjects } from '@/db/schema';
 import { eq, and } from 'drizzle-orm';
-import { getProject, getProjectLabels, createProjectWebhook } from '@/lib/gitlab';
+import { getProjectLabels, createProjectWebhook } from '@/lib/gitlab';
 import { revalidatePath } from 'next/cache';
 import { isMockMode, getMockToken } from '@/lib/mode';
-
-export async function addUserProject(projectId: number) {
-    const session = await auth();
-    if (!session?.accessToken || !session.user?.id) throw new Error('Unauthorized');
-
-    const gitlabProject = await getProject(projectId, session.accessToken);
-
-    await db.insert(projects)
-        .values({
-            id: gitlabProject.id,
-            name: gitlabProject.name,
-            description: gitlabProject.description || null,
-            webUrl: gitlabProject.web_url,
-            isConfigured: false,
-        })
-        .onConflictDoUpdate({
-            target: projects.id,
-            set: {
-                name: gitlabProject.name,
-                description: gitlabProject.description || null,
-                webUrl: gitlabProject.web_url
-            },
-        });
-
-    await db.insert(userProjects)
-        .values({ userId: session.user.id, projectId: gitlabProject.id })
-        .onConflictDoNothing();
-
-    revalidatePath('/projects');
-    return { success: true, projectId: gitlabProject.id };
-}
 
 export async function configureProjectLabels(
     projectId: number,

@@ -33,18 +33,3 @@ export interface DashboardStats {
     kpi: DashboardKPI;
 }
 
-/**
- * Empty dashboard stats for error/loading states
- */
-export const EMPTY_DASHBOARD_STATS: DashboardStats = {
-    projectStats: [],
-    timeStats: [],
-    passRates: [],
-    kpi: {
-        avgTimeToTest: 0,
-        firstTimePassRate: 0,
-        issuesFound: 0,
-        activeTests: 0,
-    },
-};
-

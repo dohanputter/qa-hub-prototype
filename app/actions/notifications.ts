@@ -24,21 +24,6 @@ export async function getUserNotifications(limit = 50, offset = 0) {
         .offset(offset);
 }
 
-export async function markNotificationAsRead(notificationId: string) {
-    const session = await auth();
-
-    // In mock mode we don't strictly enforce user check for the specific notification ownership 
-    // (simplified for prototype), but we still need a "user" context if we were to be strict.
-    if (!session?.user?.id && !isMockMode()) throw new Error('Unauthorized');
-
-    await db.update(notifications)
-        .set({ isRead: true })
-        .where(eq(notifications.id, notificationId));
-
-    revalidatePath('/notifications');
-    return { success: true };
-}
-
 export async function markAllNotificationsAsRead() {
     const session = await auth();
 

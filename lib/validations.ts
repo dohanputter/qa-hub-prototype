@@ -17,8 +17,6 @@ export const createIssueSchema = z.object({
     labelId: z.string().optional(),
 });
 
-export type CreateIssueInput = z.infer<typeof createIssueSchema>;
-
 /**
  * Schema for updating issue labels
  */
@@ -29,8 +27,6 @@ export const updateLabelsSchema = z.object({
     message: 'At least one label operation is required',
 });
 
-export type UpdateLabelsInput = z.infer<typeof updateLabelsSchema>;
-
 /**
  * Schema for configuring project labels
  */
@@ -40,16 +36,12 @@ export const configureLabelMappingSchema = z.object({
     failed: z.string().min(1, 'Failed label is required'),
 });
 
-export type ConfigureLabelMappingInput = z.infer<typeof configureLabelMappingSchema>;
-
 /**
  * Schema for QA run submission
  */
 export const submitQARunSchema = z.object({
     result: z.enum(['passed', 'failed']),
 });
-
-export type SubmitQARunInput = z.infer<typeof submitQARunSchema>;
 
 /**
  * Schema for snippet creation/update
@@ -59,8 +51,6 @@ export const snippetSchema = z.object({
     content: z.string().min(1, 'Content is required').max(10000, 'Content too long'),
     type: z.enum(['test_case', 'issue']),
 });
-
-export type SnippetInput = z.infer<typeof snippetSchema>;
 
 /**
  * Safe parse helper that returns a typed result

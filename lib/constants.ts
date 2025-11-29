@@ -22,17 +22,6 @@ export const DEFAULT_QA_LABELS = {
 } as const;
 
 /**
- * Rate limit configurations
- */
-export const RATE_LIMITS = {
-    UPLOAD_PER_MINUTE: 10,
-    GITLAB_AUTHENTICATED_PER_MINUTE: 2000,
-    GITLAB_UNAUTHENTICATED_PER_MINUTE: 10,
-    BURST_LIMIT: 100,
-    BURST_WINDOW_MS: 10000,
-} as const;
-
-/**
  * Mock project IDs (used in mock mode)
  */
 export const MOCK_PROJECT_IDS = [500, 501, 502, 503] as const;

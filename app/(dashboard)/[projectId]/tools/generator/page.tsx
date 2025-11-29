@@ -1,5 +1,1 @@
-import { TestDataGenerator } from '@/components/TestDataGenerator';
-
-export default function ProjectGeneratorPage() {
-    return <TestDataGenerator />;
-}
+export { default } from '@/app/(dashboard)/tools/generator/page';
