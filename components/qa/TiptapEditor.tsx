@@ -19,6 +19,7 @@ import { TableBubbleMenu } from './TableBubbleMenu';
 import { emojis } from './emojis';
 import { TextStyle } from '@tiptap/extension-text-style';
 import { FontSize } from './extensions/FontSize';
+import { ResizableImage } from './extensions/ResizableImage';
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -55,9 +56,12 @@ export function TiptapEditor({
     const editor = useEditor({
         editable: !readOnly,
         extensions: [
-            StarterKit,
+            StarterKit.configure({
+                // Disable the default image extension since we're using ResizableImage
+            }),
             TextStyle,
             FontSize,
+            ResizableImage,
             Table.configure({
                 resizable: true,
             }),
@@ -193,7 +197,7 @@ export function TiptapEditor({
                 onChange(editor.getJSON());
             }
         },
-        editorProps: {
+            editorProps: {
             attributes: {
                 class: cn(
                     'prose prose-sm sm:prose max-w-none focus:outline-none min-h-[150px] p-4 bg-transparent dark:prose-invert',
@@ -227,13 +231,38 @@ export function TiptapEditor({
                         if (onImagePaste) {
                             onImagePaste(file)
                                 .then((result: any) => {
-                                    if (result?.markdown) {
-                                        // Insert the markdown at cursor position using the view
-                                        const { state } = view;
+                                    if (result?.url) {
+                                        // Store the ORIGINAL URL (not proxied) so GitLab can view it
+                                        // The ResizableImage extension will handle proxying for display
+                                        const originalUrl = result.url.startsWith('http') 
+                                            ? result.url 
+                                            : result.url.startsWith('/') 
+                                                ? `${window.location.origin}${result.url}`
+                                                : result.url;
+                                        
+                                        // Insert image node with original URL (proxy happens in node view)
+                                        editor.chain()
+                                            .focus()
+                                            .insertContent({
+                                                type: 'resizableImage',
+                                                attrs: {
+                                                    src: originalUrl, // Store original for GitLab compatibility
+                                                    alt: file.name || 'Uploaded image',
+                                                },
+                                            })
+                                            .run();
+                                        
+                                        toast({
+                                            title: "Image uploaded",
+                                            description: file.name,
+                                        });
+                                    } else if (result?.markdown) {
+                                        // Fallback to markdown if no URL
+                                        const { state, dispatch } = view;
                                         const { tr } = state;
                                         tr.insertText(result.markdown, state.selection.from);
-                                        view.dispatch(tr);
-
+                                        dispatch(tr);
+                                        
                                         toast({
                                             title: "Image uploaded",
                                             description: file.name,

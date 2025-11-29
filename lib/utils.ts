@@ -72,7 +72,9 @@ export function tiptapToMarkdown(content: JSONContent): string {
             case 'hardBreak':
                 return '\n';
             case 'image':
-                const src = attrs?.src || '';
+            case 'resizableImage':
+                // Use src attribute (which contains the original URL for GitLab compatibility)
+                const src = attrs?.src || attrs?.url || '';
                 const alt = attrs?.alt || '';
                 return `![${alt}](${src})\n\n`;
             case 'table':

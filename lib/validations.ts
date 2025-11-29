@@ -9,7 +9,7 @@ import { z } from 'zod';
  */
 export const createIssueSchema = z.object({
     title: z.string().min(1, 'Title is required').max(255, 'Title too long'),
-    description: z.string().max(50000, 'Description too long').optional().default(''),
+    description: z.string().max(500000, 'Description too long (max 500KB)').optional().default(''),
     assigneeId: z.union([z.number(), z.string()]).optional().transform(val => 
         val ? Number(val) : undefined
     ),

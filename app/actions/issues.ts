@@ -110,7 +110,11 @@ export async function createIssue(projectId: number, data: unknown) {
     // Validate input data
     const parsed = safeParse(createIssueSchema, data);
     if (!parsed.success) {
-        throw new Error(`Validation error: ${parsed.error}`);
+        // Provide more helpful error message
+        const errorMsg = parsed.error.includes('too long') 
+            ? `Description is too long. Please reduce the content size or remove some images. (${parsed.error})`
+            : `Validation error: ${parsed.error}`;
+        throw new Error(errorMsg);
     }
     const validatedData = parsed.data;
 

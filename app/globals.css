@@ -161,4 +161,264 @@
   .ProseMirror p {
     margin: 0;
   }
+
+  /* GitLab Content Styles for Issue Description */
+  .gitlab-content {
+    width: 100%;
+    min-width: min-content;
+  }
+
+  /* Ensure tables are visible and scrollable */
+  .gitlab-content table {
+    width: auto;
+    min-width: 100%;
+    border-collapse: collapse;
+    margin: 1rem 0;
+    display: table;
+    border: 1px solid hsl(var(--border));
+    border-radius: 0.5rem;
+    overflow: visible;
+    table-layout: auto;
+  }
+
+  /* Wide tables should allow horizontal scroll */
+  .gitlab-content table[style*="width"] {
+    width: auto !important;
+    min-width: 100%;
+  }
+
+  .gitlab-content table thead {
+    background-color: hsl(var(--muted));
+  }
+
+  .gitlab-content table th {
+    padding: 0.75rem;
+    text-align: left;
+    font-weight: 600;
+    border-bottom: 2px solid hsl(var(--border));
+    border-right: 1px solid hsl(var(--border));
+    white-space: nowrap;
+  }
+
+  .gitlab-content table th:last-child {
+    border-right: none;
+  }
+
+  .gitlab-content table td {
+    padding: 0.75rem;
+    border-bottom: 1px solid hsl(var(--border));
+    border-right: 1px solid hsl(var(--border));
+    vertical-align: top;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+  }
+
+  .gitlab-content table td:last-child {
+    border-right: none;
+  }
+
+  .gitlab-content table tr:last-child td {
+    border-bottom: none;
+  }
+
+  .gitlab-content table tbody tr:hover {
+    background-color: hsl(var(--muted) / 0.5);
+  }
+
+  /* Images in GitLab content */
+  .gitlab-content img {
+    max-width: 100%;
+    height: auto;
+    border-radius: 0.5rem;
+    margin: 1rem 0;
+    display: block;
+    object-fit: contain;
+  }
+
+  /* Handle broken images */
+  .gitlab-content img[src=""],
+  .gitlab-content img:not([src]) {
+    display: none;
+  }
+
+  /* Style image error states */
+  .gitlab-content img::after {
+    content: attr(alt);
+    display: block;
+    padding: 0.5rem;
+    background: hsl(var(--muted));
+    border-radius: 0.25rem;
+    font-size: 0.875rem;
+    color: hsl(var(--muted-foreground));
+  }
+
+  /* Handle GitLab's image containers */
+  .gitlab-content .image-container,
+  .gitlab-content .image-frame {
+    max-width: 100%;
+    overflow: auto;
+    margin: 1rem 0;
+  }
+
+  .gitlab-content .image-container img,
+  .gitlab-content .image-frame img {
+    max-width: 100%;
+    height: auto;
+  }
+
+  .gitlab-content pre {
+    background-color: hsl(var(--muted));
+    padding: 1rem;
+    border-radius: 0.5rem;
+    overflow-x: auto;
+    border: 1px solid hsl(var(--border));
+  }
+
+  .gitlab-content code {
+    background-color: hsl(var(--muted));
+    padding: 0.125rem 0.375rem;
+    border-radius: 0.25rem;
+    font-size: 0.875em;
+  }
+
+  .gitlab-content pre code {
+    background-color: transparent;
+    padding: 0;
+  }
+
+  .gitlab-content blockquote {
+    border-left: 4px solid hsl(var(--primary));
+    padding-left: 1rem;
+    margin: 1rem 0;
+    color: hsl(var(--muted-foreground));
+    font-style: italic;
+  }
+
+  .gitlab-content ul,
+  .gitlab-content ol {
+    padding-left: 1.5rem;
+    margin: 1rem 0;
+  }
+
+  .gitlab-content a {
+    color: hsl(var(--primary));
+    text-decoration: underline;
+  }
+
+  .gitlab-content a:hover {
+    text-decoration: none;
+  }
+
+  .gitlab-content hr {
+    border: none;
+    border-top: 1px solid hsl(var(--border));
+    margin: 2rem 0;
+  }
+
+  /* GitLab specific elements */
+  .gitlab-content .md,
+  .gitlab-content .markdown {
+    width: 100%;
+  }
+
+  /* Ensure all content is visible */
+  .gitlab-content * {
+    max-width: 100%;
+  }
+
+  /* Fix for GitLab's code blocks */
+  .gitlab-content .code-block,
+  .gitlab-content .highlight {
+    overflow-x: auto;
+    max-width: 100%;
+  }
+
+  /* GitLab task lists */
+  .gitlab-content .task-list-item {
+    list-style-type: none;
+    margin-left: -1.5rem;
+  }
+
+  .gitlab-content .task-list-item input[type="checkbox"] {
+    margin-right: 0.5rem;
+  }
+
+  /* Ensure proper spacing */
+  .gitlab-content > *:first-child {
+    margin-top: 0;
+  }
+
+  .gitlab-content > *:last-child {
+    margin-bottom: 0;
+  }
+
+  /* Resizable Image Styles */
+  .resizable-image-wrapper {
+    position: relative;
+    display: inline-block;
+    max-width: 100%;
+    margin: 1rem 0;
+    vertical-align: middle;
+  }
+
+  .resizable-image-wrapper img {
+    display: block;
+    max-width: 100%;
+    height: auto;
+    border-radius: 0.5rem;
+    image-rendering: auto;
+    object-fit: contain;
+    vertical-align: middle;
+  }
+
+  /* Images in tables should respect cell constraints */
+  .ProseMirror table .resizable-image-wrapper,
+  .prose table .resizable-image-wrapper {
+    max-width: 100%;
+    margin: 0.25rem 0;
+    display: inline-block;
+    vertical-align: middle;
+  }
+
+  .ProseMirror table .resizable-image-wrapper img,
+  .prose table .resizable-image-wrapper img {
+    max-width: 100% !important;
+    max-height: 200px !important;
+    width: auto !important;
+    height: auto !important;
+    object-fit: contain !important;
+    display: block;
+    margin: 0 auto;
+  }
+
+  /* Ensure table cells don't stretch with images */
+  .ProseMirror table td,
+  .ProseMirror table th {
+    vertical-align: top;
+  }
+
+  .ProseMirror table td .resizable-image-wrapper,
+  .ProseMirror table th .resizable-image-wrapper {
+    max-width: 100%;
+  }
+
+  .resize-handle {
+    position: absolute;
+    width: 12px;
+    height: 12px;
+    background: hsl(var(--primary));
+    border: 2px solid hsl(var(--background));
+    border-radius: 50%;
+    z-index: 10;
+    transition: background-color 0.2s, transform 0.1s;
+  }
+
+  .resize-handle:hover {
+    background: hsl(var(--primary) / 0.8);
+    transform: scale(1.2);
+  }
+
+  .resize-handle:active {
+    transform: scale(1.1);
+  }
 }

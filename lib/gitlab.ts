@@ -524,9 +524,36 @@ export const createIssueNote = async (projectId: number, issueIid: number, token
 export async function uploadAttachmentToGitLab(projectId: number, token: string, file: File) {
     if (isMock()) {
         console.log(`[MOCK] Uploading file to project ${projectId}:`, file.name);
+        
+        // For images, create a data URL to avoid CORS issues
+        if (file.type.startsWith('image/')) {
+            try {
+                const arrayBuffer = await file.arrayBuffer();
+                const base64 = Buffer.from(arrayBuffer).toString('base64');
+                const dataUrl = `data:${file.type};base64,${base64}`;
+                
+                // Return both data URL (for display) and a placeholder URL (for GitLab markdown)
+                const placeholderUrl = `https://via.placeholder.com/150?text=${encodeURIComponent(file.name.substring(0, 15))}`;
+                return {
+                    url: dataUrl, // Use data URL for immediate display
+                    markdown: `![${file.name}](${placeholderUrl})` // Use placeholder for GitLab compatibility
+                };
+            } catch (error) {
+                console.error('Error creating data URL:', error);
+                // Fallback to placeholder URL
+                const placeholderUrl = `https://via.placeholder.com/150?text=${encodeURIComponent(file.name.substring(0, 15))}`;
+                return {
+                    url: placeholderUrl,
+                    markdown: `![${file.name}](${placeholderUrl})`
+                };
+            }
+        }
+        
+        // For non-images, use placeholder URL
+        const placeholderUrl = `https://via.placeholder.com/150?text=${encodeURIComponent(file.name.substring(0, 15))}`;
         return {
-            url: `https://via.placeholder.com/150?text=${encodeURIComponent(file.name)}`,
-            markdown: `![${file.name}](https://via.placeholder.com/150?text=${encodeURIComponent(file.name)})`
+            url: placeholderUrl,
+            markdown: `![${file.name}](${placeholderUrl})`
         };
     }
     try {
