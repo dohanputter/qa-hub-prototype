@@ -39,14 +39,42 @@ export const authOptions = {
         async jwt({ token, account, user }: { token: any; account: any; user: any }) {
             if (account?.access_token) {
                 token.accessToken = account.access_token;
+                // Set token expiration (2 hours for production, 1 hour for mock)
+                const expiresIn = process.env.NEXT_PUBLIC_MOCK_MODE === 'true' ? 3600 : 7200;
+                token.accessTokenExpires = Date.now() + (expiresIn * 1000);
+                token.refreshToken = account.refresh_token;
             } else if (user && process.env.NEXT_PUBLIC_MOCK_MODE === 'true') {
-                token.accessToken = 'mock-access-token';
+                token.accessToken = 'mock-access-token-' + Date.now();
                 token.sub = user.id;
+                // Mock tokens expire in 1 hour
+                token.accessTokenExpires = Date.now() + (3600 * 1000);
+                token.refreshToken = 'mock-refresh-token-' + Date.now();
             }
+
+            // Check if token needs refresh (within 5 minutes of expiry)
+            if (token.accessTokenExpires && Date.now() > token.accessTokenExpires - (5 * 60 * 1000)) {
+                console.log('Token expiring soon, would refresh in production');
+                // In production, this would refresh the token
+                // For mock mode, extend the token
+                if (process.env.NEXT_PUBLIC_MOCK_MODE === 'true') {
+                    token.accessToken = 'mock-access-token-' + Date.now();
+                    token.accessTokenExpires = Date.now() + (3600 * 1000);
+                }
+            }
+
             return token;
         },
         async session({ session, token }: { session: any; token: any }) {
+            // Check if token is expired
+            if (token.accessTokenExpires && Date.now() > token.accessTokenExpires) {
+                console.warn('Access token has expired');
+                session.error = 'AccessTokenExpired';
+                // In production, this would trigger a re-auth flow
+                // For now, we'll keep the session but mark it as having an expired token
+            }
+
             session.accessToken = token.accessToken as string;
+            session.accessTokenExpires = token.accessTokenExpires;
             if (token.sub) {
                 session.user.id = token.sub as string;
             }

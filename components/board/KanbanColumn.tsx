@@ -1,7 +1,7 @@
 'use client';
 
-import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { useDroppable } from '@dnd-kit/core';
+import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { KanbanCard } from './KanbanCard';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
@@ -39,7 +39,6 @@ export function KanbanColumn({ id, title, issues, projectId }: KanbanColumnProps
                 <ScrollArea className="h-full">
                     <div className="p-2 h-full">
                         <SortableContext
-                            id={id}
                             items={issues.map(i => `${i.project_id || projectId}-${i.iid}`)}
                             strategy={verticalListSortingStrategy}
                         >

@@ -3,6 +3,210 @@ import 'server-only';
 import { Gitlab } from '@gitbeaker/rest';
 import { env } from '@/lib/env';
 
+// Global type declarations for mock data
+declare global {
+  var mockIssuesStore: Record<number, any[]> | undefined;
+}
+
+// === DATA CONSISTENCY UTILITIES ===
+const DATA_CONSISTENCY_ENABLED = process.env.NEXT_PUBLIC_MOCK_MODE === 'true';
+
+// Check if mock access token is expired
+function isMockTokenExpired(token: string): boolean {
+  if (!DATA_CONSISTENCY_ENABLED || !token.startsWith('mock-access-token-')) {
+    return false;
+  }
+
+  // Extract timestamp from token (mock-access-token-{timestamp})
+  const parts = token.split('-');
+  if (parts.length < 4) return false;
+
+  const tokenTimestamp = parseInt(parts[3]);
+  if (isNaN(tokenTimestamp)) return false;
+
+  // Token expires after 1 hour
+  return Date.now() > (tokenTimestamp + 3600000);
+}
+
+// Simulate realistic data evolution over time
+function updateDataTimestamps() {
+  if (!DATA_CONSISTENCY_ENABLED) return;
+
+  // Occasionally update some mock data to simulate real-world changes
+  if (Math.random() < 0.1) { // 10% chance on each API call
+    try {
+      // Update a random project's last activity
+      const randomProject = MOCK_PROJECTS[Math.floor(Math.random() * MOCK_PROJECTS.length)];
+      if (randomProject) {
+        randomProject.last_activity_at = new Date().toISOString();
+      }
+
+      // Occasionally add a comment to a random issue
+      if (global.mockIssuesStore) {
+        const allProjects = Object.keys(global.mockIssuesStore);
+        if (allProjects.length > 0) {
+          const randomProjectId = allProjects[Math.floor(Math.random() * allProjects.length)];
+          const projectIssues = global.mockIssuesStore[Number(randomProjectId)];
+          if (projectIssues && projectIssues.length > 0) {
+            const randomIssue = projectIssues[Math.floor(Math.random() * projectIssues.length)];
+            // Occasionally update the issue's updated_at timestamp
+            if (Math.random() < 0.3) { // 30% chance to update timestamp
+              randomIssue.updated_at = new Date().toISOString();
+            }
+          }
+        }
+      }
+    } catch (error) {
+      // Silently fail - this is just background data evolution
+    }
+  }
+}
+
+// === ERROR SIMULATION UTILITIES ===
+const ERROR_SIMULATION_ENABLED = process.env.NEXT_PUBLIC_MOCK_MODE === 'true';
+
+// Realistic error scenarios that can occur in production
+const MOCK_ERROR_SCENARIOS = {
+  NETWORK_TIMEOUT: {
+    probability: 0.02, // 2% chance
+    error: new Error('Network timeout - request took too long'),
+    statusCode: 408
+  },
+  SERVER_ERROR: {
+    probability: 0.01, // 1% chance
+    error: new Error('Internal server error'),
+    statusCode: 500
+  },
+  SERVICE_UNAVAILABLE: {
+    probability: 0.005, // 0.5% chance
+    error: new Error('Service temporarily unavailable'),
+    statusCode: 503
+  },
+  PERMISSION_DENIED: {
+    probability: 0.03, // 3% chance for operations that might have permission issues
+    error: new Error('Insufficient permissions to perform this action'),
+    statusCode: 403
+  },
+  NOT_FOUND: {
+    probability: 0.01, // 1% chance
+    error: new Error('Resource not found'),
+    statusCode: 404
+  }
+};
+
+// Simulate realistic errors that can occur in production
+export function simulateRealisticError(operationType: 'read' | 'write' | 'admin' = 'read'): void {
+  if (!ERROR_SIMULATION_ENABLED) return;
+
+  const scenarios = Object.values(MOCK_ERROR_SCENARIOS).filter(scenario => {
+    // Permission errors are more likely for write/admin operations
+    if (operationType === 'write' || operationType === 'admin') {
+      return scenario.error.message.includes('permission') || Math.random() < scenario.probability * 2;
+    }
+    // Exclude permission errors for read operations (less likely)
+    return !scenario.error.message.includes('permission') && Math.random() < scenario.probability;
+  });
+
+  for (const scenario of scenarios) {
+    if (Math.random() < scenario.probability) {
+      console.warn(`[MOCK ERROR SIMULATION] ${scenario.error.message}`);
+      throw scenario.error;
+    }
+  }
+}
+
+// === WEBHOOK SIMULATION UTILITIES ===
+const WEBHOOK_SIMULATION_ENABLED = process.env.NEXT_PUBLIC_MOCK_MODE === 'true';
+
+interface WebhookPayload {
+  object_kind: string;
+  project: {
+    id: number;
+    name: string;
+    path_with_namespace: string;
+    web_url: string;
+  };
+  object_attributes?: any;
+  user?: any;
+  issue?: any;
+  labels?: any[];
+  changes?: any;
+}
+
+// Simulate webhook delivery with realistic timing
+export async function simulateWebhook(eventType: string, payload: WebhookPayload) {
+  if (!WEBHOOK_SIMULATION_ENABLED) return;
+
+  // Add realistic delay (100-500ms) to simulate network latency
+  const delay = Math.random() * 400 + 100;
+
+  setTimeout(async () => {
+    try {
+      const webhookUrl = `${env.NEXT_PUBLIC_APP_URL}/api/webhooks/gitlab`;
+
+      const response = await fetch(webhookUrl, {
+        method: 'POST',
+        headers: {
+          'X-Gitlab-Event': eventType,
+          'X-Gitlab-Token': env.WEBHOOK_SECRET || 'mock-webhook-secret',
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload),
+      });
+
+      if (!response.ok) {
+        console.warn(`[WEBHOOK SIMULATION] Failed to deliver ${eventType}:`, response.status);
+      } else {
+        console.log(`[WEBHOOK SIMULATION] Delivered ${eventType} webhook`);
+      }
+    } catch (error) {
+      console.warn('[WEBHOOK SIMULATION] Error delivering webhook:', error);
+    }
+  }, delay);
+}
+
+// Create realistic webhook payload for issue updates
+export function createIssueWebhookPayload(
+  projectId: number,
+  issueIid: number,
+  changes: { labels?: { previous: string[], current: string[] } },
+  userId: number = 1
+): WebhookPayload {
+  const project = MOCK_PROJECTS.find(p => p.id === projectId);
+  if (!project) throw new Error('Project not found for webhook payload');
+
+  // Get current issue state
+  const issue = global.mockIssuesStore?.[projectId]?.find((i: any) => i.iid === issueIid);
+  if (!issue) throw new Error('Issue not found for webhook payload');
+
+  return {
+    object_kind: 'issue',
+    project: {
+      id: projectId,
+      name: project.name,
+      path_with_namespace: project.path_with_namespace,
+      web_url: project.web_url,
+    },
+    object_attributes: {
+      id: issue.id || issue.gitlabIssueId,
+      iid: issueIid,
+      title: issue.title,
+      description: issue.description,
+      state: issue.state || 'opened',
+      created_at: issue.created_at,
+      updated_at: new Date().toISOString(),
+      labels: issue.labels || [],
+      url: issue.web_url || issue.issueUrl,
+    },
+    user: {
+      id: userId,
+      name: MOCK_USERS.find(u => u.id === userId)?.name || 'Mock User',
+      username: MOCK_USERS.find(u => u.id === userId)?.username || 'mockuser',
+    },
+    changes,
+  };
+}
+
 // --- MOCK DATA CONSTANTS ---
 
 const MOCK_GROUPS = [
@@ -402,7 +606,22 @@ export const getProjectMembers = async (projectId: number, token: string) => {
 };
 
 export const getIssues = async (projectId: number, token: string, params?: { state?: 'opened' | 'closed'; labels?: string; search?: string }) => {
+    // Check token expiration for mock mode
+    if (isMockTokenExpired(token)) {
+        throw new Error('Access token expired. Please re-authenticate.');
+    }
+
+    // Enforce rate limiting
+    const { enforceGitLabAPIRateLimit } = await import('@/lib/rateLimit');
+    await enforceGitLabAPIRateLimit(token);
+
     if (isMock()) {
+        // Simulate realistic errors that can occur in production
+        simulateRealisticError('read');
+
+        // Simulate data evolution over time
+        updateDataTimestamps();
+
         // In mock mode, database acts as "GitLab" - read directly from it
         try {
             const { db } = await import('@/lib/db');
@@ -565,7 +784,22 @@ export const updateIssueLabels = async (
     token: string,
     options: { addLabels?: string[]; removeLabels?: string[] }
 ) => {
+    // Check token expiration for mock mode
+    if (isMockTokenExpired(token)) {
+        throw new Error('Access token expired. Please re-authenticate.');
+    }
+
+    // Enforce rate limiting
+    const { enforceGitLabAPIRateLimit } = await import('@/lib/rateLimit');
+    await enforceGitLabAPIRateLimit(token);
+
     if (isMock()) {
+        // Simulate realistic errors that can occur in production
+        simulateRealisticError('write');
+
+        // Simulate data evolution over time
+        updateDataTimestamps();
+
         console.log(`[MOCK] Updating labels for issue ${issueIid} in project ${projectId}:`, options);
 
         try {
@@ -583,6 +817,7 @@ export const updateIssueLabels = async (
             let existingIssue;
             let oldStatus: 'pending' | 'passed' | 'failed' | null = null;
             let currentLabels: string[] = [];
+            let oldLabels: string[] = [];
 
             if (existingIssues.length === 0) {
                 console.log(`[MOCK] Issue ${issueIid} not found in database, fetching from GitLab and creating...`);
@@ -651,6 +886,9 @@ export const updateIssueLabels = async (
 
                 console.log(`[MOCK DB] Current labels:`, currentLabels);
 
+                // Store old labels for webhook simulation
+                const oldLabels = [...currentLabels];
+
                 // Apply label changes
                 if (options.removeLabels) {
                     currentLabels = currentLabels.filter((l: string) => !options.removeLabels!.includes(l));
@@ -692,6 +930,17 @@ export const updateIssueLabels = async (
             // Handle Run Logic - REMOVED to avoid double-handling and ensure single source of truth
             // QA Run logic is now handled explicitly in board actions or submitQARun
             console.log(`[MOCK DB] Status updated to ${finalStatus}, run logic handled by caller`);
+
+            // Simulate webhook for issue update
+            if (oldLabels.length !== currentLabels.length || !oldLabels.every((l, i) => l === currentLabels[i])) {
+              const webhookPayload = createIssueWebhookPayload(projectId, issueIid, {
+                labels: {
+                  previous: oldLabels,
+                  current: currentLabels,
+                },
+              });
+              await simulateWebhook('Issue Hook', webhookPayload);
+            }
 
             // Revalidate to refresh UI
             const { revalidatePath } = await import('next/cache');

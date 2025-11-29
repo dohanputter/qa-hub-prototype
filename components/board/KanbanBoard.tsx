@@ -8,6 +8,11 @@ import {
     useSensors,
     PointerSensor,
     closestCenter,
+    DragStartEvent,
+    DragEndEvent,
+    DragOverEvent,
+    pointerWithin,
+    rectIntersection,
 } from "@dnd-kit/core";
 import { arrayMove } from "@dnd-kit/sortable";
 import { KanbanColumn } from "./KanbanColumn";
@@ -42,11 +47,48 @@ export function KanbanBoard({
     const [activeSuggestionIndex, setActiveSuggestionIndex] = useState(0);
     const searchInputRef = useRef<HTMLInputElement>(null);
     const searchContainerRef = useRef<HTMLDivElement>(null);
+    const previousIssueIdsRef = useRef<string>('');
+    const hasLocalChangesRef = useRef(false);
 
-    // Update local state when server data changes
+    // Update local state when server data changes, but preserve local reordering
     useEffect(() => {
-        setIssues(initialIssues);
-    }, [initialIssues]);
+        // Create a signature of issue IDs to detect actual data changes (not just reordering)
+        const currentIssueIds = initialIssues.map((i: any) => `${i.project_id || project.id}-${i.iid}`).sort().join(',');
+        const previousIssueIds = previousIssueIdsRef.current;
+
+        // Only update if the set of issues actually changed (new issues added/removed)
+        if (currentIssueIds !== previousIssueIds) {
+            if (previousIssueIds === '') {
+                // First render - initialize
+                setIssues(initialIssues);
+                hasLocalChangesRef.current = false;
+            } else {
+                // Check if it's just a reorder (same IDs, different order) or actual data change
+                const currentIdsSet = new Set(initialIssues.map((i: any) => `${i.project_id || project.id}-${i.iid}`));
+                const localIdsSet = new Set(issues.map((i: any) => `${i.project_id || project.id}-${i.iid}`));
+                
+                // If the sets are the same, it's just a reorder - preserve local order
+                const setsAreEqual = currentIdsSet.size === localIdsSet.size && 
+                    [...currentIdsSet].every(id => localIdsSet.has(id));
+                
+                if (!setsAreEqual) {
+                    // Actual data change - update state
+                    console.log('[KanbanBoard] Data changed, updating issues');
+                    setIssues(initialIssues);
+                    hasLocalChangesRef.current = false;
+                } else if (!hasLocalChangesRef.current) {
+                    // Same issues and no local changes - update from server
+                    console.log('[KanbanBoard] Same issues, no local changes, syncing from server');
+                    setIssues(initialIssues);
+                } else {
+                    // Same issues but we have local changes - preserve local order
+                    console.log('[KanbanBoard] Same issues, preserving local order');
+                }
+            }
+        }
+
+        previousIssueIdsRef.current = currentIssueIds;
+    }, [initialIssues, project.id]);
 
     // Close dropdown when clicking outside
     useEffect(() => {
@@ -62,6 +104,29 @@ export function KanbanBoard({
     const sensors = useSensors(
         useSensor(PointerSensor, { activationConstraint: { distance: 5 } })
     );
+
+    // Custom collision detection that prioritizes sortable items over droppable columns
+    const collisionDetectionStrategy = (args: any) => {
+        // First, check for sortable item collisions (cards)
+        const pointerCollisions = pointerWithin(args);
+        const rectCollisions = rectIntersection(args);
+        
+        // Combine and prioritize collisions
+        const allCollisions = [...pointerCollisions, ...rectCollisions];
+        
+        // Prioritize cards (IDs with '-') over columns
+        const cardCollisions = allCollisions.filter(
+            (collision) => String(collision.id).includes('-')
+        );
+        
+        if (cardCollisions.length > 0) {
+            // Return the closest card collision
+            return [cardCollisions[0]];
+        }
+        
+        // Fall back to closest center for column detection
+        return closestCenter(args);
+    };
 
     const columns = {
         pending: project.qaLabelMapping.pending,
@@ -139,11 +204,71 @@ export function KanbanBoard({
         }
     };
 
-    const handleDragStart = (event: any) => {
-        setActiveId(event.active.id);
+    const handleDragStart = (event: DragStartEvent) => {
+        setActiveId(event.active.id as string);
     };
 
-    const handleDragEnd = async (event: any) => {
+    const handleDragOver = (event: DragOverEvent) => {
+        const { active, over } = event;
+        
+        if (!over) return;
+        
+        const activeIdStr = String(active.id);
+        const overIdStr = String(over.id);
+        
+        // Skip if same item or no valid over target
+        if (activeIdStr === overIdStr) return;
+        
+        // Only handle card-to-card dragging for same-column reordering
+        if (!activeIdStr.includes('-') || !overIdStr.includes('-')) return;
+        
+        const [activeProjectId, activeIssueIid] = activeIdStr.split('-').map(Number);
+        const [overProjectId, overIssueIid] = overIdStr.split('-').map(Number);
+        
+        const activeIssue = issues.find((i: any) =>
+            (i.project_id || project.id) === activeProjectId && i.iid === activeIssueIid
+        );
+        const overIssue = issues.find((i: any) =>
+            (i.project_id || project.id) === overProjectId && i.iid === overIssueIid
+        );
+        
+        if (!activeIssue || !overIssue) return;
+        
+        // Determine if both items are in the same column
+        const activeStatus = Object.keys(columns).find((key) =>
+            activeIssue.labels.includes(columns[key as keyof typeof columns])
+        );
+        const overStatus = Object.keys(columns).find((key) =>
+            overIssue.labels.includes(columns[key as keyof typeof columns])
+        );
+        
+        // Check if both in backlog (no status labels)
+        const activeInBacklog = !activeStatus;
+        const overInBacklog = !overStatus;
+        
+        // Only reorder if in the same column (same status or both in backlog)
+        const isSameColumn = (activeStatus === overStatus) || (activeInBacklog && overInBacklog);
+        
+        if (isSameColumn) {
+            setIssues((items: any) => {
+                const oldIndex = items.findIndex((item: any) =>
+                    `${item.project_id || project.id}-${item.iid}` === activeIdStr
+                );
+                const newIndex = items.findIndex((item: any) =>
+                    `${item.project_id || project.id}-${item.iid}` === overIdStr
+                );
+                
+                if (oldIndex !== -1 && newIndex !== -1 && oldIndex !== newIndex) {
+                    hasLocalChangesRef.current = true;
+                    return arrayMove(items, oldIndex, newIndex);
+                }
+                
+                return items;
+            });
+        }
+    };
+
+    const handleDragEnd = async (event: DragEndEvent) => {
         const { active, over } = event;
 
         console.log('[Drag] handleDragEnd called', { activeId: active?.id, overId: over?.id });
@@ -155,7 +280,8 @@ export function KanbanBoard({
         }
 
         // Active ID is in format "projectId-issueIid"
-        const [activeProjectId, activeIssueIid] = active.id.split('-').map(Number);
+        const activeIdStr = String(active.id);
+        const [activeProjectId, activeIssueIid] = activeIdStr.split('-').map(Number);
         const activeIssue = issues.find((i: any) =>
             (i.project_id || project.id) === activeProjectId && i.iid === activeIssueIid
         );
@@ -184,9 +310,10 @@ export function KanbanBoard({
         let isMovingToBacklog = false;
 
         // Check if dropped on another card (over ID will be in format "projectId-issueIid")
-        const overIssue = over.id.includes('-')
+        const overIdStr = String(over.id);
+        const overIssue = overIdStr.includes('-')
             ? (() => {
-                const [overProjectId, overIssueIid] = over.id.split('-').map(Number);
+                const [overProjectId, overIssueIid] = overIdStr.split('-').map(Number);
                 return issues.find((i: any) =>
                     (i.project_id || project.id) === overProjectId && i.iid === overIssueIid
                 );
@@ -201,13 +328,13 @@ export function KanbanBoard({
             console.log('[Drag] Dropped on card', { destStatus });
         } else {
             // Check if dropped on a column
-            if (over.id === 'backlog') {
+            if (overIdStr === 'backlog') {
                 isMovingToBacklog = true;
                 console.log('[Drag] Moving to backlog');
             } else {
-                const isColumn = Object.keys(columns).includes(over.id);
+                const isColumn = Object.keys(columns).includes(overIdStr);
                 if (isColumn) {
-                    destStatus = over.id as keyof typeof columns;
+                    destStatus = overIdStr as keyof typeof columns;
                     console.log('[Drag] Dropped on column', { destStatus });
                 }
             }
@@ -317,18 +444,26 @@ export function KanbanBoard({
             return;
         }
 
-        if (sourceStatus === destStatus && droppedOnCard) {
-            console.log('[Drag] Reordering within same column');
-            const activeIndex = issues.findIndex((i: any) =>
-                (i.project_id || project.id) === activeProjectId && i.iid === activeIssueIid
-            );
-            const [overProjectId, overIssueIid] = over.id.split('-').map(Number);
-            const overIndex = issues.findIndex((i: any) =>
-                (i.project_id || project.id) === overProjectId && i.iid === overIssueIid
-            );
-            if (activeIndex !== overIndex) {
-                setIssues((items: any) => arrayMove(items, activeIndex, overIndex));
-            }
+        // Handle reordering within the same column
+        // Check if both source and dest are the same column (or both in backlog)
+        const overIssueStatus = overIssue ? Object.keys(columns).find((key) =>
+            overIssue.labels.includes(columns[key as keyof typeof columns])
+        ) as keyof typeof columns | undefined : undefined;
+        const overInBacklog = overIssue && !overIssueStatus;
+        
+        const isSameColumn = (sourceStatus === destStatus && sourceStatus !== undefined) || 
+                            (isFromBacklog && (overIdStr === 'backlog' || overInBacklog));
+
+        if (isSameColumn && activeIdStr !== overIdStr) {
+            console.log('[Drag] Same column reorder completed (handled in dragOver)', { 
+                activeId: activeIdStr, 
+                overId: overIdStr, 
+                sourceStatus, 
+                destStatus,
+                isFromBacklog,
+                isSameColumn
+            });
+            // Reordering is already handled in handleDragOver, just stop syncing indicator
             setIsSyncing(false);
             return;
         }
@@ -354,7 +489,7 @@ export function KanbanBoard({
         newIssues.splice(activeIndex, 1);
         let insertIndex = 0;
         if (droppedOnCard && overIssue) {
-            const [overProjectId, overIssueIid] = over.id.split('-').map(Number);
+            const [overProjectId, overIssueIid] = overIdStr.split('-').map(Number);
             const overIndex = issues.findIndex((i: any) =>
                 (i.project_id || project.id) === overProjectId && i.iid === overIssueIid
             );
@@ -470,8 +605,9 @@ export function KanbanBoard({
             <DndContext
                 id="kanban-board-dnd-context"
                 sensors={sensors}
-                collisionDetection={closestCenter}
+                collisionDetection={collisionDetectionStrategy}
                 onDragStart={handleDragStart}
+                onDragOver={handleDragOver}
                 onDragEnd={handleDragEnd}
             >
                 <div className="flex h-full gap-6 overflow-x-auto pb-4 items-start">

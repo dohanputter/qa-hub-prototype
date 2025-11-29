@@ -106,6 +106,9 @@ export async function getAllIssues(params?: { state?: 'opened' | 'closed'; searc
 
 export async function createIssue(projectId: number, data: any) {
     if (process.env.NEXT_PUBLIC_MOCK_MODE === 'true') {
+        // Simulate realistic errors that can occur in production
+        const { simulateRealisticError } = await import('@/lib/gitlab');
+        simulateRealisticError('write');
         const { getProject } = await import('@/lib/gitlab');
         const { db } = await import('@/lib/db');
         const { qaIssues, users, projects } = await import('@/db/schema');
@@ -211,6 +214,20 @@ export async function createIssue(projectId: number, data: any) {
 
             console.log(`[MOCK] Created issue #${newIid} and persisted to database`);
 
+            // Simulate webhook for new issue
+            try {
+                const { simulateWebhook, createIssueWebhookPayload } = await import('@/lib/gitlab');
+                const webhookPayload = createIssueWebhookPayload(projectId, newIid, {
+                    labels: {
+                        previous: [],
+                        current: issueLabels,
+                    },
+                });
+                await simulateWebhook('Issue Hook', webhookPayload);
+            } catch (error) {
+                console.warn('[MOCK] Failed to simulate webhook for new issue:', error);
+            }
+
             // Create notification for the new issue
             const { notifications } = await import('@/db/schema');
             const session = await auth();
@@ -269,6 +286,20 @@ export async function createIssue(projectId: number, data: any) {
                 });
 
                 console.log(`[MOCK] Created issue #${retryIid} on retry`);
+
+                // Simulate webhook for new issue (retry case)
+                try {
+                    const { simulateWebhook, createIssueWebhookPayload } = await import('@/lib/gitlab');
+                    const webhookPayload = createIssueWebhookPayload(projectId, retryIid, {
+                        labels: {
+                            previous: [],
+                            current: issueLabels,
+                        },
+                    });
+                    await simulateWebhook('Issue Hook', webhookPayload);
+                } catch (error) {
+                    console.warn('[MOCK] Failed to simulate webhook for new issue (retry):', error);
+                }
 
                 // Create notification for retry case too
                 const { notifications } = await import('@/db/schema');
