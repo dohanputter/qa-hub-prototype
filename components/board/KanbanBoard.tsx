@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import {
     DndContext,
     DragOverlay,
@@ -16,18 +16,23 @@ import {
 } from "@dnd-kit/core";
 import { arrayMove } from "@dnd-kit/sortable";
 import { KanbanColumn } from "./KanbanColumn";
-import { KanbanCard, IssueCard } from "./KanbanCard";
+import { KanbanCard, IssueCard, LabelColorsProvider } from "./KanbanCard";
 import { moveIssue } from "@/app/actions/board";
 import { toast } from "@/components/ui/use-toast";
 import { Search, X } from "lucide-react";
+import type { KanbanIssue, GitLabLabel, QALabelMapping } from "@/types";
+
+// Debug logging - only logs in development
+const DEBUG = process.env.NODE_ENV === 'development';
+const log = (...args: unknown[]) => DEBUG && console.log(...args);
 
 interface KanbanBoardProps {
     project: {
         id: number;
-        qaLabelMapping: { pending: string; passed: string; failed: string };
+        qaLabelMapping: QALabelMapping;
     };
-    issues: any[];
-    labels: any[];
+    issues: KanbanIssue[];
+    labels: GitLabLabel[];
     projectId: number;
 }
 
@@ -37,9 +42,15 @@ export function KanbanBoard({
     labels,
     projectId
 }: KanbanBoardProps) {
-    const [issues, setIssues] = useState(initialIssues);
+    const [issues, setIssues] = useState<KanbanIssue[]>(initialIssues);
     const [activeId, setActiveId] = useState<string | null>(null);
-    const [isSyncing, setIsSyncing] = useState(false);
+    // Counter-based syncing to handle multiple concurrent operations
+    const [syncCount, setSyncCount] = useState(0);
+    const isSyncing = syncCount > 0;
+
+    // Helper functions to manage sync state safely
+    const startSync = useCallback(() => setSyncCount(c => c + 1), []);
+    const endSync = useCallback(() => setSyncCount(c => Math.max(0, c - 1)), []);
 
     // Search & Filter State
     const [searchQuery, setSearchQuery] = useState('');
@@ -51,6 +62,8 @@ export function KanbanBoard({
     const hasLocalChangesRef = useRef(false);
 
     // Update local state when server data changes, but preserve local reordering
+    // Note: 'issues' is intentionally omitted from deps - we only want to run when server data (initialIssues) changes,
+    // not when local state changes due to drag operations
     useEffect(() => {
         // Create a signature of issue IDs to detect actual data changes (not just reordering)
         const currentIssueIds = initialIssues.map((i: any) => `${i.project_id || project.id}-${i.iid}`).sort().join(',');
@@ -73,16 +86,16 @@ export function KanbanBoard({
                 
                 if (!setsAreEqual) {
                     // Actual data change - update state
-                    console.log('[KanbanBoard] Data changed, updating issues');
+                    log('[KanbanBoard] Data changed, updating issues');
                     setIssues(initialIssues);
                     hasLocalChangesRef.current = false;
                 } else if (!hasLocalChangesRef.current) {
                     // Same issues and no local changes - update from server
-                    console.log('[KanbanBoard] Same issues, no local changes, syncing from server');
+                    log('[KanbanBoard] Same issues, no local changes, syncing from server');
                     setIssues(initialIssues);
                 } else {
                     // Same issues but we have local changes - preserve local order
-                    console.log('[KanbanBoard] Same issues, preserving local order');
+                    log('[KanbanBoard] Same issues, preserving local order');
                 }
             }
         }
@@ -271,11 +284,11 @@ export function KanbanBoard({
     const handleDragEnd = async (event: DragEndEvent) => {
         const { active, over } = event;
 
-        console.log('[Drag] handleDragEnd called', { activeId: active?.id, overId: over?.id });
+        log('[Drag] handleDragEnd called', { activeId: active?.id, overId: over?.id });
 
         setActiveId(null);
         if (!over) {
-            console.log('[Drag] No over target, aborting');
+            log('[Drag] No over target, aborting');
             return;
         }
 
@@ -287,14 +300,14 @@ export function KanbanBoard({
         );
 
         if (!activeIssue) {
-            console.error('[Drag] Could not find active issue', { activeProjectId, activeIssueIid });
+            log('[Drag] Could not find active issue', { activeProjectId, activeIssueIid });
             return;
         }
 
-        console.log('[Drag] Found active issue', { iid: activeIssue.iid, labels: activeIssue.labels });
+        log('[Drag] Found active issue', { iid: activeIssue.iid, labels: activeIssue.labels });
 
-        // Start syncing feedback
-        setIsSyncing(true);
+        // Start syncing feedback (counter-based to handle concurrent operations)
+        startSync();
         const syncStartTime = Date.now();
 
         // Determine source status (can be undefined if in backlog)
@@ -303,7 +316,7 @@ export function KanbanBoard({
         ) as keyof typeof columns | undefined;
         const isFromBacklog = !sourceStatus;
 
-        console.log('[Drag] Source status:', { sourceStatus, isFromBacklog });
+        log('[Drag] Source status:', { sourceStatus, isFromBacklog });
 
         let destStatus: keyof typeof columns | undefined;
         let droppedOnCard = false;
@@ -325,17 +338,17 @@ export function KanbanBoard({
             destStatus = Object.keys(columns).find((key) =>
                 overIssue.labels.includes(columns[key as keyof typeof columns])
             ) as keyof typeof columns;
-            console.log('[Drag] Dropped on card', { destStatus });
+            log('[Drag] Dropped on card', { destStatus });
         } else {
             // Check if dropped on a column
             if (overIdStr === 'backlog') {
                 isMovingToBacklog = true;
-                console.log('[Drag] Moving to backlog');
+                log('[Drag] Moving to backlog');
             } else {
                 const isColumn = Object.keys(columns).includes(overIdStr);
                 if (isColumn) {
                     destStatus = overIdStr as keyof typeof columns;
-                    console.log('[Drag] Dropped on column', { destStatus });
+                    log('[Drag] Dropped on column', { destStatus });
                 }
             }
         }
@@ -358,7 +371,7 @@ export function KanbanBoard({
             newIssues[activeIndex] = updatedIssue;
             setIssues(newIssues);
 
-            console.log('[Drag] Removing label for backlog', { oldLabel });
+            log('[Drag] Removing label for backlog', { oldLabel });
 
             const result = await moveIssue(
                 projectId,
@@ -369,10 +382,10 @@ export function KanbanBoard({
 
             const elapsed = Date.now() - syncStartTime;
             const remainingTime = Math.max(0, 2500 - elapsed);
-            setTimeout(() => setIsSyncing(false), remainingTime);
+            setTimeout(() => endSync(), remainingTime);
 
             if (!result.success) {
-                console.error('[Drag] Failed to move to backlog', result.error);
+                log('[Drag] Failed to move to backlog', result.error);
                 toast({
                     title: "Error moving issue",
                     description: result.error,
@@ -380,14 +393,14 @@ export function KanbanBoard({
                 });
                 setIssues(issues);
             } else {
-                console.log('[Drag] Successfully moved to backlog');
+                log('[Drag] Successfully moved to backlog');
             }
             return;
         }
 
         if (!destStatus) {
-            console.log('[Drag] No destination status, aborting');
-            setIsSyncing(false);
+            log('[Drag] No destination status, aborting');
+            endSync();
             return;
         }
 
@@ -410,7 +423,7 @@ export function KanbanBoard({
             newIssues[activeIndex] = updatedIssue;
             setIssues(newIssues);
 
-            console.log('[Drag] Moving from backlog, adding label', { newLabel });
+            log('[Drag] Moving from backlog, adding label', { newLabel });
 
             const result = await moveIssue(
                 projectId,
@@ -422,10 +435,10 @@ export function KanbanBoard({
             // Keep syncing badge visible for minimum 2.5 seconds
             const elapsed = Date.now() - syncStartTime;
             const remainingTime = Math.max(0, 2500 - elapsed);
-            setTimeout(() => setIsSyncing(false), remainingTime);
+            setTimeout(() => endSync(), remainingTime);
 
             if (!result.success) {
-                console.error('[Drag] Failed to move from backlog', result.error);
+                log('[Drag] Failed to move from backlog', result.error);
                 toast({
                     title: "Error moving issue",
                     description: result.error,
@@ -433,14 +446,14 @@ export function KanbanBoard({
                 });
                 setIssues(issues);
             } else {
-                console.log('[Drag] Successfully moved from backlog');
+                log('[Drag] Successfully moved from backlog');
             }
             return;
         }
 
         if (!sourceStatus || !destStatus) {
-            console.log('[Drag] Missing source or dest status', { sourceStatus, destStatus });
-            setIsSyncing(false);
+            log('[Drag] Missing source or dest status', { sourceStatus, destStatus });
+            endSync();
             return;
         }
 
@@ -455,7 +468,7 @@ export function KanbanBoard({
                             (isFromBacklog && (overIdStr === 'backlog' || overInBacklog));
 
         if (isSameColumn && activeIdStr !== overIdStr) {
-            console.log('[Drag] Same column reorder completed (handled in dragOver)', { 
+            log('[Drag] Same column reorder completed (handled in dragOver)', { 
                 activeId: activeIdStr, 
                 overId: overIdStr, 
                 sourceStatus, 
@@ -464,14 +477,14 @@ export function KanbanBoard({
                 isSameColumn
             });
             // Reordering is already handled in handleDragOver, just stop syncing indicator
-            setIsSyncing(false);
+            endSync();
             return;
         }
 
         const oldLabel = columns[sourceStatus];
         const newLabel = columns[destStatus];
 
-        console.log('[Drag] Moving between columns', { from: sourceStatus, to: destStatus, oldLabel, newLabel });
+        log('[Drag] Moving between columns', { from: sourceStatus, to: destStatus, oldLabel, newLabel });
 
         // Remove old QA label, add new QA label, preserve all other labels
         const allQALabels = Object.values(columns);
@@ -513,10 +526,10 @@ export function KanbanBoard({
         // Keep syncing badge visible for minimum 2.5 seconds
         const elapsed = Date.now() - syncStartTime;
         const remainingTime = Math.max(0, 2500 - elapsed);
-        setTimeout(() => setIsSyncing(false), remainingTime);
+        setTimeout(() => endSync(), remainingTime);
 
         if (!result.success) {
-            console.error('[Drag] Failed to move between columns', result.error);
+            log('[Drag] Failed to move between columns', result.error);
             toast({
                 title: "Error moving issue",
                 description: result.error,
@@ -524,7 +537,7 @@ export function KanbanBoard({
             });
             setIssues(issues);
         } else {
-            console.log('[Drag] Successfully moved between columns');
+            log('[Drag] Successfully moved between columns');
         }
     };
 
@@ -538,6 +551,7 @@ export function KanbanBoard({
         : null;
 
     return (
+        <LabelColorsProvider labels={labels}>
         <div className="flex flex-col h-full">
             {/* Sticky Header */}
             <div className="flex justify-between items-center mb-6 sticky top-0 z-10 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 py-2">
@@ -647,5 +661,6 @@ export function KanbanBoard({
                 </DragOverlay>
             </DndContext>
         </div>
+        </LabelColorsProvider>
     );
 }

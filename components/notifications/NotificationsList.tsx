@@ -17,14 +17,23 @@ export function NotificationsList() {
     const {
         data,
         isLoading,
+        isError,
+        error,
         isFetchingNextPage,
         hasNextPage,
         fetchNextPage
     } = useInfiniteQuery({
         queryKey: ['notifications'],
-        queryFn: ({ pageParam = 0 }) => getUserNotifications(20, pageParam),
+        queryFn: async ({ pageParam = 0 }) => {
+            const result = await getUserNotifications(20, pageParam);
+            // Ensure we always return an array
+            return result ?? [];
+        },
         getNextPageParam: (lastPage, allPages) => {
-            if (lastPage.length < 20) return undefined;
+            // Handle undefined/null lastPage gracefully
+            if (!lastPage || !Array.isArray(lastPage) || lastPage.length < 20) {
+                return undefined;
+            }
             return allPages.length * 20;
         },
         initialPageParam: 0,
@@ -63,6 +72,16 @@ export function NotificationsList() {
                 <Skeleton className="h-20 w-full" />
                 <Skeleton className="h-20 w-full" />
                 <Skeleton className="h-20 w-full" />
+            </div>
+        );
+    }
+
+    if (isError) {
+        return (
+            <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
+                <Bell className="h-12 w-12 mb-4 opacity-20" />
+                <p className="text-destructive">Failed to load notifications</p>
+                <p className="text-sm mt-1">{error?.message || 'Please try again later'}</p>
             </div>
         );
     }

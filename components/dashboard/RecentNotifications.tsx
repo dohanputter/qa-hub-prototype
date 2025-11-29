@@ -8,10 +8,17 @@ import { formatDistanceToNow } from 'date-fns';
 import { Skeleton } from '@/components/ui/skeleton';
 
 export function RecentNotifications() {
-    const { data: notifications, isLoading } = useQuery({
-        queryKey: ['notifications'],
-        queryFn: () => getUserNotifications(5)
+    const { data: notifications, isLoading, isError } = useQuery({
+        queryKey: ['recent-notifications'],
+        queryFn: async () => {
+            const result = await getUserNotifications(5);
+            // Ensure we always return an array
+            return Array.isArray(result) ? result : [];
+        }
     });
+
+    // Safely ensure notifications is always an array
+    const notificationsList = Array.isArray(notifications) ? notifications : [];
 
     if (isLoading) {
         return (
@@ -38,7 +45,7 @@ export function RecentNotifications() {
             <CardContent>
                 <ScrollArea className="h-[350px] pr-4">
                     <div className="space-y-4">
-                        {notifications?.map((notification: Awaited<ReturnType<typeof getUserNotifications>>[number]) => (
+                        {notificationsList.map((notification) => (
                             <div key={notification.id} className="flex flex-col gap-1 pb-4 border-b last:border-0">
                                 <p className="text-sm font-medium leading-none">{notification.title}</p>
                                 <p className="text-sm text-muted-foreground line-clamp-2">{notification.message}</p>
@@ -47,9 +54,9 @@ export function RecentNotifications() {
                                 </p>
                             </div>
                         ))}
-                        {!notifications?.length && (
+                        {notificationsList.length === 0 && !isLoading && (
                             <div className="flex flex-col items-center justify-center h-32 text-muted-foreground">
-                                <p>No recent activity</p>
+                                <p>{isError ? 'Failed to load activity' : 'No recent activity'}</p>
                             </div>
                         )}
                     </div>

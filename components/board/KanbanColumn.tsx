@@ -6,11 +6,12 @@ import { KanbanCard } from './KanbanCard';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
+import type { KanbanIssue, KanbanColumnId } from '@/types';
 
 interface KanbanColumnProps {
-    id: string;
+    id: KanbanColumnId;
     title: string;
-    issues: any[];
+    issues: KanbanIssue[];
     projectId: number;
 }
 

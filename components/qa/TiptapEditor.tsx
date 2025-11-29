@@ -5,7 +5,6 @@ import { useEditor, EditorContent, ReactRenderer } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Mention from '@tiptap/extension-mention';
 import { Table } from '@tiptap/extension-table';
-import BubbleMenu from '@tiptap/extension-bubble-menu';
 import { TableCell } from '@tiptap/extension-table-cell';
 import Emoji from '@tiptap/extension-emoji';
 import { TableHeader } from '@tiptap/extension-table-header';
@@ -13,7 +12,6 @@ import { TableRow } from '@tiptap/extension-table-row';
 import { Button } from '@/components/ui/button';
 import { Bold, Italic, List, ListOrdered, Code, ScrollText, Table as TableIcon, Type } from 'lucide-react';
 import tippy from 'tippy.js';
-// import 'tippy.js/dist/tippy.css';
 import { MentionList } from './MentionList';
 import { EmojiList } from './EmojiList';
 import { TableBubbleMenu } from './TableBubbleMenu';
@@ -33,11 +31,25 @@ import {
     PopoverContent,
     PopoverTrigger,
 } from "@/components/ui/popover";
+import type { TiptapEditorProps, EditorMember, EditorSnippet } from '@/types/editor';
 
-
-export function TiptapEditor({ content, onChange, members, placeholder, snippets = [], onImagePaste, className }: any) {
+export function TiptapEditor({ 
+    content, 
+    onChange, 
+    members = [], 
+    placeholder, 
+    snippets = [], 
+    onImagePaste, 
+    className,
+    readOnly = false 
+}: TiptapEditorProps) {
     const [gridSelection, setGridSelection] = useState({ rows: 1, cols: 1 });
     const [isTablePopoverOpen, setIsTablePopoverOpen] = useState(false);
+
+    // Normalize content to handle both JSONContent and string types
+    const normalizedContent = typeof content === 'string' 
+        ? (content ? { type: 'doc', content: [{ type: 'paragraph', content: [{ type: 'text', text: content }] }] } : null)
+        : content;
 
     const editor = useEditor({
         extensions: [
@@ -114,11 +126,11 @@ export function TiptapEditor({ content, onChange, members, placeholder, snippets
                     class: 'mention font-medium text-primary bg-primary/10 px-1 rounded-sm',
                 },
                 suggestion: {
-                    items: ({ query }: any) => {
+                    items: ({ query }: { query: string }) => {
                         return members
-                            .filter((m: any) => m.name.toLowerCase().includes(query.toLowerCase()) || m.username.toLowerCase().includes(query.toLowerCase()))
+                            .filter((m: EditorMember) => m.name.toLowerCase().includes(query.toLowerCase()) || m.username.toLowerCase().includes(query.toLowerCase()))
                             .slice(0, 5)
-                            .map((m: any) => ({ id: m.username, label: m.name, avatarUrl: m.avatar_url }));
+                            .map((m: EditorMember) => ({ id: m.username, label: m.name, avatarUrl: m.avatar_url }));
                     },
                     render: () => {
                         let component: any;
@@ -172,7 +184,7 @@ export function TiptapEditor({ content, onChange, members, placeholder, snippets
                 },
             }),
         ],
-        content,
+        content: normalizedContent,
         immediatelyRender: false, // Fix for SSR hydration in Next.js with React 19
         onUpdate: ({ editor }) => {
             onChange(editor.getJSON());
@@ -349,7 +361,7 @@ export function TiptapEditor({ content, onChange, members, placeholder, snippets
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end" className="w-56">
                             {snippets && snippets.length > 0 ? (
-                                snippets.map((snippet: any) => (
+                                snippets.map((snippet: EditorSnippet) => (
                                     <DropdownMenuItem key={snippet.id} onClick={() => insertSnippet(snippet.content)}>
                                         <div className="flex flex-col gap-1">
                                             <span className="font-medium">{snippet.title}</span>

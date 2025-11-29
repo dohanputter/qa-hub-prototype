@@ -3,9 +3,10 @@ import 'server-only';
 import { auth } from '@/auth';
 import { db } from '@/lib/db';
 import { projects, userProjects } from '@/db/schema';
-import { eq } from 'drizzle-orm';
+import { eq, and } from 'drizzle-orm';
 import { getProject, getProjectLabels, createProjectWebhook } from '@/lib/gitlab';
 import { revalidatePath } from 'next/cache';
+import { isMockMode, getMockToken } from '@/lib/mode';
 
 export async function addUserProject(projectId: number) {
     const session = await auth();
@@ -69,13 +70,14 @@ export async function configureProjectLabels(
 }
 
 export async function getUserProjects(groupId?: number) {
-    if (process.env.NEXT_PUBLIC_MOCK_MODE === 'true') {
+    if (isMockMode()) {
         const { getAccessibleProjects, getGroupProjects } = await import('@/lib/gitlab');
+        const token = getMockToken();
 
         if (groupId) {
-            return getGroupProjects(groupId, 'mock-token') as any;
+            return getGroupProjects(groupId, token) as any;
         }
-        return getAccessibleProjects('mock-token') as any;
+        return getAccessibleProjects(token) as any;
     }
 
     const session = await auth();
@@ -89,7 +91,7 @@ export async function getUserProjects(groupId?: number) {
         .innerJoin(projects, eq(userProjects.projectId, projects.id))
         .where(
             groupId
-                ? eq(userProjects.userId, session.user.id) && eq(projects.groupId, groupId)
+                ? and(eq(userProjects.userId, session.user.id), eq(projects.groupId, groupId))
                 : eq(userProjects.userId, session.user.id)
         );
 
@@ -97,9 +99,10 @@ export async function getUserProjects(groupId?: number) {
 }
 
 export async function getProjectUsers(projectId: number) {
-    if (process.env.NEXT_PUBLIC_MOCK_MODE === 'true') {
-        const { getProjectMembers } = await import('@/lib/gitlab');
-        const members = await getProjectMembers(projectId, 'mock-token');
+    const { getProjectMembers } = await import('@/lib/gitlab');
+
+    if (isMockMode()) {
+        const members = await getProjectMembers(projectId, getMockToken());
         return members.map((m: any) => ({
             id: m.id,
             name: m.name,
@@ -111,7 +114,6 @@ export async function getProjectUsers(projectId: number) {
     const session = await auth();
     if (!session?.accessToken) throw new Error('Unauthorized');
 
-    const { getProjectMembers } = await import('@/lib/gitlab');
     const members = await getProjectMembers(projectId, session.accessToken);
     return members.map((m: any) => ({
         id: m.id,
@@ -122,25 +124,21 @@ export async function getProjectUsers(projectId: number) {
 }
 
 export async function getProjectLabelsAction(projectId: number) {
-    if (process.env.NEXT_PUBLIC_MOCK_MODE === 'true') {
-        const { getProjectLabels } = await import('@/lib/gitlab');
-        const labels = await getProjectLabels(projectId, 'mock-token');
-        return labels.map((l: any) => ({
-            id: l.id,
-            title: l.name,
-            color: l.color,
-            textColor: l.text_color || '#fff'
-        }));
+    const mapLabel = (l: any) => ({
+        id: l.id,
+        title: l.name,
+        color: l.color,
+        textColor: l.text_color || '#fff'
+    });
+
+    if (isMockMode()) {
+        const labels = await getProjectLabels(projectId, getMockToken());
+        return labels.map(mapLabel);
     }
 
     const session = await auth();
     if (!session?.accessToken) throw new Error('Unauthorized');
 
     const labels = await getProjectLabels(projectId, session.accessToken);
-    return labels.map((l: any) => ({
-        id: l.id,
-        title: l.name,
-        color: l.color,
-        textColor: l.text_color || '#fff'
-    }));
+    return labels.map(mapLabel);
 }

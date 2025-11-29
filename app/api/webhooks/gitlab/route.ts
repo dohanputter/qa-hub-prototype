@@ -1,10 +1,12 @@
 import { headers } from 'next/headers';
 import { revalidateTag } from 'next/cache';
 import { db } from '@/lib/db';
-import { qaIssues, qaRuns, notifications, projects, users } from '@/db/schema';
+import { qaIssues, qaRuns, notifications, projects } from '@/db/schema';
 import { eq, and, desc } from 'drizzle-orm';
 import { mapLabelToStatus } from '@/lib/utils';
 import { env } from '@/lib/env';
+import { ensureWebhookUser } from '@/lib/mock-user';
+import { SYSTEM_USERS } from '@/lib/constants';
 
 export async function POST(req: Request) {
     const headersList = await headers();
@@ -108,27 +110,8 @@ async function handleIssueEvent(event: any) {
         const activeRun = runs.find(r => r.status === 'pending');
 
         if (!activeRun) {
-            // Check who triggered this. If it was the system (via our own action), we might want to be careful.
-            // But usually webhooks come from GitLab user actions.
-            // We need a user ID for 'createdBy'. We'll try to find the GitLab user in our DB, or use a system user.
-
-            const gitlabUserId = event.user.id; // numeric ID
-            // We don't store numeric gitlab IDs in users table (we store UUIDs or strings).
-            // We need a fallback mechanism.
-            // For now, let's see if we can find a user by email if provided, or use a default "System/Webhook" user.
-
-            // Simplified: Use the first admin or a placeholder.
-            // Better: Create a system user if not exists.
-
-            const systemUserId = 'system-webhook-runner';
-            const [sysUser] = await db.select().from(users).where(eq(users.id, systemUserId));
-            if (!sysUser) {
-                await db.insert(users).values({
-                    id: systemUserId,
-                    name: 'GitLab Webhook',
-                    email: 'webhook@system.local',
-                });
-            }
+            // Ensure webhook system user exists
+            await ensureWebhookUser();
 
             const nextRunNumber = (runs[0]?.runNumber || 0) + 1;
 
@@ -136,7 +119,7 @@ async function handleIssueEvent(event: any) {
                 qaIssueId: qaIssueId,
                 runNumber: nextRunNumber,
                 status: 'pending',
-                createdBy: systemUserId,
+                createdBy: SYSTEM_USERS.WEBHOOK,
             });
             console.log(`[Webhook] Started Run #${nextRunNumber} for Issue #${issue.iid} (status changed from ${oldStatus || 'none'} to pending)`);
         } else {

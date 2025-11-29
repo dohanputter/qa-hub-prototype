@@ -2,10 +2,10 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Activity, CheckCircle, Clock, AlertCircle } from 'lucide-react';
 import { DashboardCharts } from '@/components/dashboard/DashboardCharts';
 import { RecentNotifications } from '@/components/dashboard/RecentNotifications';
-import { DashboardStats } from '@/components/dashboard/DashboardStats';
+import type { DashboardStats as DashboardStatsType } from '@/types/dashboard';
 
 interface DashboardViewProps {
-    stats: any; // Type this properly if possible, or import the return type of getDashboardStats
+    stats: DashboardStatsType;
     projectId?: number;
 }
 

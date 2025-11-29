@@ -313,8 +313,12 @@ export function QADetail({ issue, qaIssue, runs = [], allAttachments = [], membe
                                     className="w-full mt-2"
                                     disabled={isUpdatingLabels}
                                 >
-                                    <Plus className="h-4 w-4 mr-2" />
-                                    Add label
+                                    {isUpdatingLabels ? (
+                                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                    ) : (
+                                        <Plus className="h-4 w-4 mr-2" />
+                                    )}
+                                    {isUpdatingLabels ? 'Updating...' : 'Add label'}
                                 </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="start" className="w-56">

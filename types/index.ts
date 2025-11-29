@@ -84,3 +84,82 @@ export type ViewState =
     | { type: 'TEST_DATA_GEN' }
     | { type: 'TICKET_DETAIL'; issueId: number }
     | { type: 'CREATE_ISSUE' };
+
+// ============================================
+// Kanban Board Types (GitLab API-compatible)
+// ============================================
+
+export interface GitLabUser {
+    id: number;
+    name: string;
+    username: string;
+    state: string;
+    avatar_url: string;
+    web_url: string;
+}
+
+export interface GitLabLabel {
+    id: number;
+    name: string;
+    color: string;
+    text_color: string;
+    description?: string;
+}
+
+export interface QALabelMapping {
+    pending: string;
+    passed: string;
+    failed: string;
+}
+
+export interface KanbanProject {
+    id: number;
+    name: string;
+    description?: string;
+    path_with_namespace: string;
+    web_url: string;
+    avatar_url?: string | null;
+    namespace?: {
+        id: number;
+        name: string;
+        path: string;
+        kind: string;
+        full_path: string;
+    };
+    qaLabelMapping: QALabelMapping;
+}
+
+export interface KanbanIssue {
+    id: number;
+    iid: number;
+    project_id: number;
+    title: string;
+    description?: string;
+    state: 'opened' | 'closed';
+    created_at: string;
+    updated_at: string;
+    author?: GitLabUser;
+    assignee?: GitLabUser | null;
+    assignees?: GitLabUser[];
+    labels: string[];
+    web_url: string;
+}
+
+export type KanbanColumnId = 'backlog' | 'pending' | 'passed' | 'failed';
+
+// Re-export dashboard and editor types
+export type { 
+    DashboardStats, 
+    DashboardKPI, 
+    ProjectStat, 
+    TimeStat, 
+    PassRateStat 
+} from './dashboard';
+
+export type { 
+    TiptapEditorProps, 
+    EditorMember, 
+    EditorSnippet, 
+    ImageUploadResult,
+    ProjectLabel 
+} from './editor';

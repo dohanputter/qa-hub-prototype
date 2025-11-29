@@ -49,7 +49,7 @@ export default async function BoardPage({
             <KanbanBoard
                 issues={issues}
                 project={project as any}
-                labels={labels}
+                labels={labels as any}
                 projectId={projectIdNum}
             />
         </div>

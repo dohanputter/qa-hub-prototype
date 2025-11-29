@@ -4,22 +4,24 @@ import { auth } from '@/auth';
 import { getUserProjects } from './project';
 import { getIssues } from '@/lib/gitlab';
 import { revalidatePath } from 'next/cache';
+import { isMockMode, getMockToken } from '@/lib/mode';
+import { SYSTEM_USERS, DEFAULT_QA_LABELS, MOCK_PROJECT_IDS } from '@/lib/constants';
+import { ensureMockUser, ensureMockGroup, ensureMockProject } from '@/lib/mock-user';
+import { createIssueSchema, safeParse } from '@/lib/validations';
 
 export async function getAllIssues(params?: { state?: 'opened' | 'closed'; search?: string; projectId?: string; labels?: string }) {
-    if (process.env.NEXT_PUBLIC_MOCK_MODE === 'true') {
+    if (isMockMode()) {
         const { getIssues, getProject } = await import('@/lib/gitlab');
+        const token = getMockToken();
 
-        let projectsToFetch = [];
-        if (params?.projectId) {
-            projectsToFetch = [{ id: Number(params.projectId) }];
-        } else {
-            // Fetch for all mock projects (IDs 500, 501, 502)
-            projectsToFetch = [{ id: 500 }, { id: 501 }, { id: 502 }];
-        }
+        // Use configured mock project IDs
+        const projectsToFetch = params?.projectId 
+            ? [{ id: Number(params.projectId) }]
+            : MOCK_PROJECT_IDS.slice(0, 3).map(id => ({ id }));
 
         const issuesPromises = projectsToFetch.map(async (p: { id: number }) => {
-            const issues = await getIssues(p.id, 'mock-token', { ...params });
-            const project = await getProject(p.id, 'mock-token');
+            const issues = await getIssues(p.id, token, { ...params });
+            const project = await getProject(p.id, token);
             return issues.map((i: any) => ({
                 ...i,
                 projectId: i.project_id,
@@ -30,7 +32,7 @@ export async function getAllIssues(params?: { state?: 'opened' | 'closed'; searc
                     ...i.author,
                     avatarUrl: i.author?.avatar_url
                 },
-                assignee: i.assignees?.[0] || null, // Transform assignees array to single assignee
+                assignee: i.assignees?.[0] || null,
                 project
             }));
         });
@@ -104,77 +106,64 @@ export async function getAllIssues(params?: { state?: 'opened' | 'closed'; searc
     );
 }
 
-export async function createIssue(projectId: number, data: any) {
-    if (process.env.NEXT_PUBLIC_MOCK_MODE === 'true') {
+export async function createIssue(projectId: number, data: unknown) {
+    // Validate input data
+    const parsed = safeParse(createIssueSchema, data);
+    if (!parsed.success) {
+        throw new Error(`Validation error: ${parsed.error}`);
+    }
+    const validatedData = parsed.data;
+
+    if (isMockMode()) {
         // Simulate realistic errors that can occur in production
-        const { simulateRealisticError } = await import('@/lib/gitlab');
+        const { simulateRealisticError, getProject } = await import('@/lib/gitlab');
         simulateRealisticError('write');
-        const { getProject } = await import('@/lib/gitlab');
         const { db } = await import('@/lib/db');
-        const { qaIssues, users, projects } = await import('@/db/schema');
+        const { qaIssues, projects } = await import('@/db/schema');
         const { mapLabelToStatus } = await import('@/lib/utils');
         const { eq } = await import('drizzle-orm');
+        const token = getMockToken();
 
         // Handle both 'labels' (comma-separated) and 'labelId' (single label) from form
-        const issueLabels = data.labels
-            ? data.labels.split(',').map((l: string) => l.trim()).filter((l: string) => l)
-            : (data.labelId ? [data.labelId] : []);
+        const issueLabels = validatedData.labels
+            ? validatedData.labels.split(',').map((l: string) => l.trim()).filter((l: string) => l)
+            : (validatedData.labelId ? [validatedData.labelId] : []);
 
         console.log(`[MOCK] Creating issue with labels:`, issueLabels);
 
         // Ensure mock user exists in database (for foreign key constraint)
-        const mockUserId = 'mock-user-00000000-0000-0000-0000-000000000001';
-        const existingUser = await db.select().from(users).where(eq(users.id, mockUserId)).limit(1);
-
-        if (existingUser.length === 0) {
-            await db.insert(users).values({
-                id: mockUserId,
-                email: 'mock@example.com',
-                name: 'Mock User',
-                image: 'https://picsum.photos/32/32?random=999',
-            });
-        }
+        await ensureMockUser();
 
         // Get project data from mock store
-        const project = await getProject(projectId, 'mock-token');
+        const project = await getProject(projectId, token);
 
         // Ensure mock group exists in database (for nested foreign key constraint)
         if (project.namespace?.id) {
-            const { groups } = await import('@/db/schema');
-            const existingGroup = await db.select().from(groups).where(eq(groups.id, project.namespace.id)).limit(1);
-
-            if (existingGroup.length === 0) {
-                await db.insert(groups).values({
-                    id: project.namespace.id,
-                    name: project.namespace.name || 'Mock Group',
-                    fullPath: project.namespace.full_path || project.namespace.path || 'mock-group',
-                    description: null,
-                    webUrl: `https://gitlab.com/groups/${project.namespace.path || 'mock-group'}`,
-                    avatarUrl: null,
-                    createdAt: new Date(),
-                });
-            }
+            await ensureMockGroup({
+                id: project.namespace.id,
+                name: project.namespace.name || 'Mock Group',
+                fullPath: project.namespace.full_path || project.namespace.path || 'mock-group',
+            });
         }
 
         // Ensure mock project exists in database (for foreign key constraint)
-        const existingProject = await db.select().from(projects).where(eq(projects.id, projectId)).limit(1);
-
-        if (existingProject.length === 0) {
-            await db.insert(projects).values({
-                id: projectId,
-                groupId: project.namespace?.id || null,
-                name: project.name,
-                description: project.description || null,
-                webUrl: project.web_url,
-                qaLabelMapping: (project.qaLabelMapping || {
-                    pending: 'qa::ready',
-                    passed: 'qa::passed',
-                    failed: 'qa::failed'
-                }) as { pending: string; passed: string; failed: string },
-                isConfigured: true,
-                createdAt: new Date(),
-            });
-        }
+        // Validate qaLabelMapping has required properties
+        const projectLabelMapping = (project.qaLabelMapping && 
+            typeof project.qaLabelMapping === 'object' &&
+            'pending' in project.qaLabelMapping && 
+            'passed' in project.qaLabelMapping && 
+            'failed' in project.qaLabelMapping) 
+            ? project.qaLabelMapping as { pending: string; passed: string; failed: string }
+            : null;
+        
+        await ensureMockProject({
+            id: projectId,
+            name: project.name,
+            webUrl: project.web_url,
+            description: project.description,
+            groupId: project.namespace?.id,
+            qaLabelMapping: projectLabelMapping,
+        });
 
         // Get next IID for this project
         const existingIssues = await db.select().from(qaIssues).where(eq(qaIssues.gitlabProjectId, projectId));
@@ -185,14 +174,10 @@ export async function createIssue(projectId: number, data: any) {
         const newId = -(Date.now());
 
         // Determine status from labels
-        const labelMapping = (project.qaLabelMapping ?? {
-            pending: 'qa::ready',
-            passed: 'qa::passed',
-            failed: 'qa::failed'
-        }) as { pending: string; passed: string; failed: string };
+        const labelMapping = (project.qaLabelMapping ?? DEFAULT_QA_LABELS) as { pending: string; passed: string; failed: string };
         const status = mapLabelToStatus(issueLabels, labelMapping) || 'pending';
 
-        const assigneeId = data.assigneeId ? Number(data.assigneeId) : null;
+        const assigneeId = validatedData.assigneeId ? Number(validatedData.assigneeId) : null;
 
         console.log(`[MOCK] Writing issue to DB - IID: ${newIid}, Labels: ${issueLabels.join(', ')}, AssigneeId: ${assigneeId}, Status: ${status}`);
 
@@ -202,8 +187,8 @@ export async function createIssue(projectId: number, data: any) {
                 gitlabIssueId: newId,
                 gitlabIssueIid: newIid,
                 gitlabProjectId: projectId,
-                issueTitle: data.title,
-                issueDescription: data.description || '',
+                issueTitle: validatedData.title,
+                issueDescription: validatedData.description || '',
                 issueUrl: `https://gitlab.com/mock/issues/${newId}`,
                 status,
                 jsonLabels: issueLabels,
@@ -231,14 +216,14 @@ export async function createIssue(projectId: number, data: any) {
             // Create notification for the new issue
             const { notifications } = await import('@/db/schema');
             const session = await auth();
-            const userIdToNotify = session?.user?.id || mockUserId;
+            const userIdToNotify = session?.user?.id || SYSTEM_USERS.MOCK;
 
             if (assigneeId) {
                 await db.insert(notifications).values({
                     userId: userIdToNotify,
                     type: 'assignment',
                     title: 'New Issue Assigned',
-                    message: `You have been assigned to issue #${newIid}: ${data.title}`,
+                    message: `You have been assigned to issue #${newIid}: ${validatedData.title}`,
                     resourceType: 'issue',
                     resourceId: newId.toString(),
                     actionUrl: `/${projectId}/issues/${newIid}`,
@@ -275,8 +260,8 @@ export async function createIssue(projectId: number, data: any) {
                     gitlabIssueId: newId,
                     gitlabIssueIid: retryIid,
                     gitlabProjectId: projectId,
-                    issueTitle: data.title,
-                    issueDescription: data.description || '',
+                    issueTitle: validatedData.title,
+                    issueDescription: validatedData.description || '',
                     issueUrl: `https://gitlab.com/mock/issues/${newId}`,
                     status,
                     jsonLabels: issueLabels,
@@ -297,14 +282,14 @@ export async function createIssue(projectId: number, data: any) {
                         },
                     });
                     await simulateWebhook('Issue Hook', webhookPayload);
-                } catch (error) {
-                    console.warn('[MOCK] Failed to simulate webhook for new issue (retry):', error);
+                } catch (webhookError) {
+                    console.warn('[MOCK] Failed to simulate webhook for new issue (retry):', webhookError);
                 }
 
                 // Create notification for retry case too
                 const { notifications } = await import('@/db/schema');
                 const session = await auth();
-                const userIdToNotify = session?.user?.id || mockUserId;
+                const userIdToNotify = session?.user?.id || SYSTEM_USERS.MOCK;
 
                 await db.insert(notifications).values({
                     userId: userIdToNotify,
@@ -334,20 +319,20 @@ export async function createIssue(projectId: number, data: any) {
     const gitlab = getGitlabClient(session.accessToken);
 
     try {
-        return await gitlab.Issues.create(projectId, data.title, {
-            description: data.description,
-            assigneeIds: data.assigneeId ? [Number(data.assigneeId)] : [],
-            labels: data.labels, // Expecting comma-separated string or array? GitLab expects string or array.
+        return await gitlab.Issues.create(projectId, validatedData.title, {
+            description: validatedData.description,
+            assigneeIds: validatedData.assigneeId ? [Number(validatedData.assigneeId)] : [],
+            labels: validatedData.labels,
         });
     } catch (error) {
         console.error('Failed to create issue', error);
-        throw new Error('Failed to create issue');
+        throw new Error('Failed to create issue. Please try again.');
     }
 }
 
 export async function deleteIssue(projectId: number, issueIid: number) {
     // Only allow deletion in mock mode - GitLab API doesn't support issue deletion
-    if (process.env.NEXT_PUBLIC_MOCK_MODE !== 'true') {
+    if (!isMockMode()) {
         throw new Error('Issue deletion is not supported in production mode. GitLab does not allow deleting issues via API.');
     }
 
@@ -376,15 +361,15 @@ export async function deleteIssue(projectId: number, issueIid: number) {
 
 export async function getProjectStats(projectIds: number[]) {
     const session = await auth();
-    if (!session?.accessToken && process.env.NEXT_PUBLIC_MOCK_MODE !== 'true') return {};
+    if (!session?.accessToken && !isMockMode()) return {};
 
-    const isMockMode = process.env.NEXT_PUBLIC_MOCK_MODE === 'true';
     const stats: Record<number, { open: number; closed: number; total: number }> = {};
 
-    if (isMockMode) {
+    if (isMockMode()) {
         const { getIssues } = await import('@/lib/gitlab');
+        const token = getMockToken();
         for (const pid of projectIds) {
-            const issues = await getIssues(pid, 'mock-token');
+            const issues = await getIssues(pid, token);
             stats[pid] = {
                 open: issues.filter((i: any) => i.state === 'opened').length,
                 closed: issues.filter((i: any) => i.state === 'closed').length,
@@ -427,10 +412,11 @@ export async function getProjectStats(projectIds: number[]) {
 }
 
 export async function getDashboardStats(projectId?: number) {
-    const isMockMode = process.env.NEXT_PUBLIC_MOCK_MODE === 'true';
     const session = await auth();
 
-    if (!isMockMode && !session?.accessToken) return { projectStats: [], timeStats: [], passRates: [] };
+    if (!isMockMode() && !session?.accessToken) {
+        return { projectStats: [], timeStats: [], passRates: [], kpi: { avgTimeToTest: 0, firstTimePassRate: 0, issuesFound: 0, activeTests: 0 } };
+    }
 
     // Imports for DB access
     const { db } = await import('@/lib/db');

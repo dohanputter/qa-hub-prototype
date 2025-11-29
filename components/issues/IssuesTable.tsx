@@ -8,29 +8,57 @@ import { formatDistanceToNow } from "date-fns";
 import Link from "next/link";
 import { Trash2 } from "lucide-react";
 import { deleteIssue } from "@/app/actions/issues";
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 
 const isMockMode = process.env.NEXT_PUBLIC_MOCK_MODE === 'true';
 
-// Mock label definitions with colors
-const MOCK_LABELS = [
-    { id: 1, name: 'bug', color: '#dc2626', text_color: '#fff' },
-    { id: 2, name: 'feature', color: '#2563eb', text_color: '#fff' },
-    { id: 3, name: 'critical', color: '#7f1d1d', text_color: '#fff' },
-    { id: 4, name: 'frontend', color: '#0891b2', text_color: '#fff' },
-    { id: 5, name: 'backend', color: '#6366f1', text_color: '#fff' },
-    { id: 6, name: 'qa::ready', color: '#f59e0b', text_color: '#fff' },
-    { id: 7, name: 'qa::passed', color: '#10b981', text_color: '#fff' },
-    { id: 8, name: 'qa::failed', color: '#ef4444', text_color: '#fff' },
-];
+interface LabelInfo {
+    id?: number;
+    name: string;
+    color: string;
+    text_color: string;
+}
 
-const getLabelColor = (labelName: string) => {
-    const label = MOCK_LABELS.find(l => l.name === labelName);
-    return label ? { bg: label.color, text: label.text_color } : { bg: '#6b7280', text: '#fff' };
-};
+/**
+ * Generate a consistent hash-based color for labels not in the provided list
+ */
+function generateLabelColor(labelName: string): { bg: string; text: string } {
+    const hash = labelName.split('').reduce((acc, char) => {
+        return char.charCodeAt(0) + ((acc << 5) - acc);
+    }, 0);
+    const hue = Math.abs(hash) % 360;
+    return { bg: `hsl(${hue}, 65%, 45%)`, text: '#fff' };
+}
 
-export function IssuesTable({ issues, projectId }: { issues: any[]; projectId: number }) {
+export function IssuesTable({ issues, projectId, labels = [] }: { issues: any[]; projectId: number; labels?: LabelInfo[] }) {
+    // Create a memoized label color lookup map
+    const getLabelColor = useMemo(() => {
+        const colorMap = new Map<string, { bg: string; text: string }>();
+        
+        // Build map from provided labels
+        labels.forEach(label => {
+            colorMap.set(label.name, { bg: label.color, text: label.text_color });
+        });
+        
+        // Cache for generated colors
+        const generatedCache = new Map<string, { bg: string; text: string }>();
+        
+        return (labelName: string) => {
+            // First check provided labels
+            const mapped = colorMap.get(labelName);
+            if (mapped) return mapped;
+            
+            // Check generated cache
+            const cached = generatedCache.get(labelName);
+            if (cached) return cached;
+            
+            // Generate and cache
+            const generated = generateLabelColor(labelName);
+            generatedCache.set(labelName, generated);
+            return generated;
+        };
+    }, [labels]);
     const router = useRouter();
     const [deletingIssueId, setDeletingIssueId] = useState<number | null>(null);
 

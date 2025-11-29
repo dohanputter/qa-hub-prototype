@@ -6,12 +6,14 @@ import { revalidatePath } from 'next/cache';
 import { db } from '@/lib/db';
 import { projects } from '@/db/schema';
 import { eq } from 'drizzle-orm';
+import { isMockMode, getMockToken, getTokenOrMock } from '@/lib/mode';
+import { DEFAULT_QA_LABELS } from '@/lib/constants';
 
 export async function moveIssue(projectId: number, issueIid: number, newLabel: string, oldLabel: string) {
     const session = await auth();
-    const isMockMode = process.env.NEXT_PUBLIC_MOCK_MODE === 'true';
+    const inMockMode = isMockMode();
 
-    if (!session?.accessToken && !isMockMode) throw new Error('Unauthorized');
+    if (!session?.accessToken && !inMockMode) throw new Error('Unauthorized');
 
     try {
         // 1. Fetch project to get label mapping
@@ -21,11 +23,7 @@ export async function moveIssue(projectId: number, issueIid: number, newLabel: s
         const projectResults = await db.select().from(projects).where(eq(projects.id, projectId)).limit(1);
         const project = projectResults[0];
 
-        const labelMapping = project?.qaLabelMapping || {
-            pending: 'qa::ready',
-            passed: 'qa::passed',
-            failed: 'qa::failed'
-        };
+        const labelMapping = project?.qaLabelMapping || DEFAULT_QA_LABELS;
 
         // 2. Handle QA Run Logic BEFORE updating labels
         // Check if we are moving TO a QA status
@@ -79,14 +77,15 @@ export async function moveIssue(projectId: number, issueIid: number, newLabel: s
         console.log(`[moveIssue] Moving issue #${issueIid} in project ${projectId}`, {
             add: newLabel || '(none)',
             remove: oldLabel || '(none)',
-            isMockMode
+            inMockMode
         });
 
-        await updateIssueLabels(projectId, issueIid, session?.accessToken || 'mock-token', updateOptions);
+        const token = getTokenOrMock(session?.accessToken);
+        await updateIssueLabels(projectId, issueIid, token, updateOptions);
 
         // In mock mode, don't revalidate - the optimistic update in KanbanBoard is sufficient
         // and revalidation causes the mockIssuesStore update to revert
-        if (!isMockMode) {
+        if (!inMockMode) {
             // Revalidate all board-related paths for production
             revalidatePath(`/${projectId}`);
             revalidatePath(`/${projectId}/board`);
@@ -100,6 +99,10 @@ export async function moveIssue(projectId: number, issueIid: number, newLabel: s
         return { success: true };
     } catch (error) {
         console.error('Failed to move issue:', error);
-        return { success: false, error: `Failed to update issue: ${error}` };
+        // Sanitize error message to avoid exposing sensitive information
+        const errorMessage = error instanceof Error && error.message.includes('rate limit')
+            ? error.message  // Rate limit messages are safe and helpful
+            : 'Failed to update issue. Please try again.';
+        return { success: false, error: errorMessage };
     }
 }

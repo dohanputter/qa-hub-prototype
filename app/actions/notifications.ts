@@ -5,13 +5,13 @@ import { db } from '@/lib/db';
 import { notifications } from '@/db/schema';
 import { eq, desc } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
+import { isMockMode } from '@/lib/mode';
+import { SYSTEM_USERS } from '@/lib/constants';
 
 export async function getUserNotifications(limit = 50, offset = 0) {
     const session = await auth();
-    const isMockMode = process.env.NEXT_PUBLIC_MOCK_MODE === 'true';
-    const mockUserId = 'mock-user-00000000-0000-0000-0000-000000000001';
 
-    const userId = session?.user?.id || (isMockMode ? mockUserId : null);
+    const userId = session?.user?.id || (isMockMode() ? SYSTEM_USERS.MOCK : null);
 
     if (!userId) throw new Error('Unauthorized');
 
@@ -26,12 +26,10 @@ export async function getUserNotifications(limit = 50, offset = 0) {
 
 export async function markNotificationAsRead(notificationId: string) {
     const session = await auth();
-    const isMockMode = process.env.NEXT_PUBLIC_MOCK_MODE === 'true';
 
     // In mock mode we don't strictly enforce user check for the specific notification ownership 
     // (simplified for prototype), but we still need a "user" context if we were to be strict.
-    // Here we just check if we have a user ID or are in mock mode.
-    if (!session?.user?.id && !isMockMode) throw new Error('Unauthorized');
+    if (!session?.user?.id && !isMockMode()) throw new Error('Unauthorized');
 
     await db.update(notifications)
         .set({ isRead: true })
@@ -43,10 +41,8 @@ export async function markNotificationAsRead(notificationId: string) {
 
 export async function markAllNotificationsAsRead() {
     const session = await auth();
-    const isMockMode = process.env.NEXT_PUBLIC_MOCK_MODE === 'true';
-    const mockUserId = 'mock-user-00000000-0000-0000-0000-000000000001';
 
-    const userId = session?.user?.id || (isMockMode ? mockUserId : null);
+    const userId = session?.user?.id || (isMockMode() ? SYSTEM_USERS.MOCK : null);
 
     if (!userId) throw new Error('Unauthorized');
 

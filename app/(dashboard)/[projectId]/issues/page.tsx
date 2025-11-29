@@ -54,6 +54,7 @@ export default async function IssuesPage({
             <IssuesTable
                 issues={issues}
                 projectId={projectIdNum}
+                labels={labels as any}
             />
         </div>
     );
