@@ -5,7 +5,7 @@ import { getUserProjects } from './project';
 import { getIssues } from '@/lib/gitlab';
 import { revalidatePath } from 'next/cache';
 
-export async function getAllIssues(params?: { state?: 'opened' | 'closed'; search?: string; projectId?: string }) {
+export async function getAllIssues(params?: { state?: 'opened' | 'closed'; search?: string; projectId?: string; labels?: string }) {
     if (process.env.NEXT_PUBLIC_MOCK_MODE === 'true') {
         const { getIssues, getProject } = await import('@/lib/gitlab');
 

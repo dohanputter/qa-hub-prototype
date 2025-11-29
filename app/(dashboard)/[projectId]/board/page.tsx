@@ -1,5 +1,5 @@
 import { getAllIssues } from '@/app/actions/issues';
-import { getProject } from '@/lib/gitlab';
+import { getProject, getProjectLabels } from '@/lib/gitlab';
 import { auth } from '@/auth';
 import { KanbanBoard } from '@/components/board/KanbanBoard';
 import { Button } from '@/components/ui/button';
@@ -27,6 +27,7 @@ export default async function BoardPage({
     });
 
     const project = await getProject(projectIdNum, session.accessToken);
+    const labels = await getProjectLabels(projectIdNum, session.accessToken);
 
     return (
         <div className="flex-1 space-y-4 p-8 pt-6">
@@ -47,8 +48,8 @@ export default async function BoardPage({
 
             <KanbanBoard
                 issues={issues}
-                project={project}
-                labels={[]}
+                project={project as any}
+                labels={labels}
                 projectId={projectIdNum}
             />
         </div>

@@ -1,10 +1,10 @@
 import { getAllIssues } from '@/app/actions/issues';
-import { getProject } from '@/lib/gitlab';
+import { getProject, getProjectLabels } from '@/lib/gitlab';
 import { auth } from '@/auth';
 import { IssuesTable } from '@/components/issues/IssuesTable';
+import { IssueSearch } from '@/components/issues/IssueSearch';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Search, Plus } from 'lucide-react';
+import { Plus } from 'lucide-react';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 
@@ -13,22 +13,24 @@ export default async function IssuesPage({
     searchParams,
 }: {
     params: Promise<{ projectId: string }>;
-    searchParams: Promise<{ search?: string; state?: string }>;
+    searchParams: Promise<{ search?: string; state?: string; labels?: string }>;
 }) {
     const session = await auth();
     if (!session?.accessToken) redirect('/auth/signin');
 
     const { projectId } = await params;
-    const { search, state } = await searchParams;
+    const { search, state, labels: labelParams } = await searchParams;
     const projectIdNum = Number(projectId);
 
     const issues = await getAllIssues({
         projectId: projectId,
         search: search,
         state: (state as 'opened' | 'closed') || 'opened',
+        labels: labelParams,
     });
 
     const project = await getProject(projectIdNum, session.accessToken);
+    const labels = await getProjectLabels(projectIdNum, session.accessToken);
 
     return (
         <div className="flex-1 space-y-4 p-8 pt-6">
@@ -46,10 +48,7 @@ export default async function IssuesPage({
             </div>
 
             <div className="flex items-center gap-4">
-                <div className="relative flex-1 max-w-sm">
-                    <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-                    <Input placeholder="Search issues..." className="pl-8" />
-                </div>
+                <IssueSearch labels={labels} projectId={projectIdNum} />
             </div>
 
             <IssuesTable
