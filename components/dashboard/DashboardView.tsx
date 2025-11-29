@@ -3,6 +3,7 @@ import { Activity, CheckCircle, Clock, AlertCircle } from 'lucide-react';
 import { DashboardCharts } from '@/components/dashboard/DashboardCharts';
 import { RecentNotifications } from '@/components/dashboard/RecentNotifications';
 import type { DashboardStats as DashboardStatsType } from '@/types/dashboard';
+import Link from 'next/link';
 
 interface DashboardViewProps {
     stats: DashboardStatsType;
@@ -22,9 +23,9 @@ export function DashboardView({ stats, projectId }: DashboardViewProps) {
                     </p>
                 </div>
                 {projectId && (
-                    <a href="/" className="text-sm text-primary hover:underline">
+                    <Link href="/" className="text-sm text-primary hover:underline">
                         View Global Dashboard
-                    </a>
+                    </Link>
                 )}
             </div>
 

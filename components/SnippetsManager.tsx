@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { ScrollText, Plus, Search, Trash2, Edit2, Save, X, CheckSquare, AlertCircle, Clock, ArrowLeft } from 'lucide-react';
 import { Snippet } from '@/types';
 import { getSnippetsAction, createSnippetAction, updateSnippetAction, deleteSnippetAction } from '@/app/actions/snippets';
@@ -31,12 +31,7 @@ export const SnippetsManager: React.FC = () => {
     // Deletion State (Custom Modal)
     const [snippetToDelete, setSnippetToDelete] = useState<number | null>(null);
 
-    useEffect(() => {
-        loadSnippets();
-        loadContext();
-    }, []);
-
-    const loadContext = async () => {
+    const loadContext = useCallback(async () => {
         try {
             const projects = await getUserProjects();
             if (projects && projects.length > 0) {
@@ -48,9 +43,9 @@ export const SnippetsManager: React.FC = () => {
         } catch (error) {
             console.error("Failed to load context for editor", error);
         }
-    };
+    }, []);
 
-    const loadSnippets = async () => {
+    const loadSnippets = useCallback(async () => {
         try {
             const data = await getSnippetsAction();
             setSnippets(data);
@@ -62,7 +57,12 @@ export const SnippetsManager: React.FC = () => {
                 variant: "destructive"
             });
         }
-    };
+    }, [toast]);
+
+    useEffect(() => {
+        loadSnippets();
+        loadContext();
+    }, [loadSnippets, loadContext]);
 
     const refreshSnippets = () => {
         loadSnippets();

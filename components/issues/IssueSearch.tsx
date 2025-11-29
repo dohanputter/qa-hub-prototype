@@ -1,8 +1,8 @@
-"use client";
+'use client';
 
-import { useState, useEffect, useRef } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
-import { Search, X } from "lucide-react";
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { Search, X } from 'lucide-react';
 
 interface IssueSearchProps {
     labels: any[];
@@ -45,8 +45,10 @@ export function IssueSearch({ labels, projectId }: IssueSearchProps) {
         return () => document.removeEventListener('mousedown', handleClickOutside);
     }, []);
 
-    const handleSearch = (value: string) => {
-        const params = new URLSearchParams(searchParams.toString());
+    const searchParamsString = useMemo(() => searchParams.toString(), [searchParams]);
+
+    const handleSearch = useCallback((value: string) => {
+        const params = new URLSearchParams(searchParamsString);
 
         if (value.startsWith('@')) {
             const labelName = value.substring(1);
@@ -81,8 +83,10 @@ export function IssueSearch({ labels, projectId }: IssueSearchProps) {
             }
         }
 
-        router.push(`?${params.toString()}`);
-    };
+        const nextSearch = params.toString();
+        if (nextSearch === searchParamsString) return;
+        router.push(nextSearch ? `?${nextSearch}` : '?');
+    }, [labels, router, searchParamsString]);
 
     // Debounce search
     useEffect(() => {
@@ -95,7 +99,7 @@ export function IssueSearch({ labels, projectId }: IssueSearchProps) {
         }, 500);
 
         return () => clearTimeout(timer);
-    }, [query, showSuggestions]);
+    }, [query, showSuggestions, handleSearch]);
 
     const handleKeyDown = (e: React.KeyboardEvent) => {
         if (showSuggestions && filteredLabels.length > 0) {

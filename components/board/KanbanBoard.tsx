@@ -101,7 +101,7 @@ export function KanbanBoard({
         }
 
         previousIssueIdsRef.current = currentIssueIds;
-    }, [initialIssues, project.id]);
+    }, [initialIssues, issues, project.id]);
 
     // Close dropdown when clicking outside
     useEffect(() => {

@@ -55,21 +55,19 @@ export function QADetail({ issue, qaIssue, runs = [], allAttachments = [], membe
     // Ensure state syncs when active run changes (including when it becomes null after submission)
     useEffect(() => {
         if (activeRun) {
-            // There's an active run - sync state if needed
             setTestCases(activeRun.testCasesContent || null);
             setIssuesFound(activeRun.issuesFoundContent || null);
             setRunId(activeRun.id);
             setAttachments(allAttachments.filter((a: any) => a.qaRunId === activeRun.id));
             setViewMode('active');
         } else {
-            // No active run - reset state and switch to history
             setRunId(null);
             setTestCases(null);
             setIssuesFound(null);
             setAttachments([]);
             setViewMode('history');
         }
-    }, [activeRun?.id, runs.length]);
+    }, [activeRun, allAttachments]);
 
     const handleSave = async (silent = false) => {
         setSaving(true);

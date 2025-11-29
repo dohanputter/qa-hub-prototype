@@ -11,6 +11,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useRouter } from 'next/navigation';
 import { getUserProjects, getProjectUsers, getProjectLabelsAction } from '@/app/actions/project';
 import { createIssue } from '@/app/actions/issues';
+import Image from 'next/image';
 
 interface CreateIssueWizardProps {
     onClose?: () => void;
@@ -309,7 +310,14 @@ export const CreateIssueWizard: React.FC<CreateIssueWizardProps> = ({ onClose, o
 
                             {assignee ? (
                                 <div className="flex items-center gap-2 mt-2">
-                                    <img src={assignee.avatarUrl} className="w-6 h-6 rounded-full" />
+                                    <Image
+                                        src={assignee.avatarUrl}
+                                        alt={`${assignee.name} avatar`}
+                                        width={24}
+                                        height={24}
+                                        className="h-6 w-6 rounded-full object-cover"
+                                        unoptimized
+                                    />
                                     <span className="text-sm text-gray-800 font-medium">{assignee.name}</span>
                                     <button onClick={() => setAssignee(undefined)} className="ml-auto text-gray-400 hover:text-red-500"><X size={14} /></button>
                                 </div>
@@ -326,7 +334,14 @@ export const CreateIssueWizard: React.FC<CreateIssueWizardProps> = ({ onClose, o
                                             onClick={() => { setAssignee(u); setShowAssigneeDropdown(false); }}
                                             className="w-full text-left px-3 py-2 hover:bg-gray-50 flex items-center gap-2"
                                         >
-                                            <img src={u.avatarUrl} className="w-5 h-5 rounded-full" />
+                                            <Image
+                                                src={u.avatarUrl}
+                                                alt={`${u.name} avatar`}
+                                                width={20}
+                                                height={20}
+                                                className="h-5 w-5 rounded-full object-cover"
+                                                unoptimized
+                                            />
                                             <span className="text-sm text-gray-700">{u.name}</span>
                                         </button>
                                     ))}

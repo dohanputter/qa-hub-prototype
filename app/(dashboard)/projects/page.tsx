@@ -18,7 +18,7 @@ export default async function ProjectsRedirect() {
     return (
         <div className="container mx-auto px-4 py-12">
             <h1 className="text-2xl font-bold">No Projects Available</h1>
-            <p className="text-muted-foreground">You don't have access to any projects.</p>
+            <p className="text-muted-foreground">You don&apos;t have access to any projects.</p>
         </div>
     );
 }
