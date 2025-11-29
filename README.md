@@ -210,11 +210,6 @@ GEMINI_API_KEY=your-gemini-key
 
 3. **Click "Sign in with GitLab"** - You'll be instantly logged in as "Mock Tester"
 
-4. **Explore the app** with pre-populated mock data:
-   - 4 mock projects (Bob Go, Bobe, Bob Shop App, Bob Pay)
-   - 5 mock issues with various labels
-   - Project-specific labels and team members
-
 ## Database Management
 
 ```bash
