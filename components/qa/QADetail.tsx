@@ -1,5 +1,6 @@
 'use client';
 
+// Refined Issue Detail Page
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { TiptapEditor } from './TiptapEditor';
@@ -7,7 +8,6 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Label } from '@/components/ui/label';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Separator } from '@/components/ui/separator';
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -19,7 +19,7 @@ import { uploadAttachment } from '@/app/actions/uploadAttachment';
 import { removeAttachment } from '@/app/actions/removeAttachment';
 import { getSnippetsAction } from '@/app/actions/snippets';
 import { toast } from '@/components/ui/use-toast';
-import { Loader2, Paperclip, CheckCircle, XCircle, ExternalLink, Save, History, PlayCircle, Clock, Plus, X, Trash2 } from 'lucide-react';
+import { Loader2, Paperclip, ExternalLink, Save, PlayCircle, Plus, X } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
@@ -255,33 +255,38 @@ export function QADetail({ issue, qaIssue, runs = [], allAttachments = [], membe
     return (
         <div className="flex h-screen overflow-hidden bg-background">
             {/* Left Panel: GitLab Info */}
-            <div className="w-1/3 border-r bg-muted/30 flex flex-col overflow-y-auto">
-                <div className="p-6 space-y-6">
-                    <div>
-                        <div className="flex items-center gap-2 mb-2">
-                            <span className="text-sm text-muted-foreground font-mono">#{issue.iid}</span>
-                            <Badge variant={issue.state === 'opened' ? 'default' : 'secondary'}>{issue.state}</Badge>
-                        </div>
-                        <h1 className="text-2xl font-bold text-foreground leading-tight">{issue.title}</h1>
-                    </div>
-
-                    <div className="flex items-center gap-4">
+            <div className="w-[400px] border-r border-border/40 flex flex-col overflow-y-auto bg-slate-50/50 dark:bg-zinc-900/30">
+                <div className="p-8 space-y-8">
+                    {/* Header */}
+                    <div className="space-y-4">
                         <div className="flex items-center gap-2">
-                            <Avatar className="h-6 w-6">
-                                <AvatarImage src={issue.author.avatar_url} />
-                                <AvatarFallback>{issue.author.name[0]}</AvatarFallback>
-                            </Avatar>
-                            <span className="text-sm text-muted-foreground">Created by {issue.author.name}</span>
+                            <span className="font-mono text-sm text-muted-foreground">#{issue.iid}</span>
+                            <Badge variant={issue.state === 'opened' ? 'default' : 'secondary'} className="rounded-md px-2 font-normal capitalize">
+                                {issue.state}
+                            </Badge>
                         </div>
-                        <span className="text-sm text-muted-foreground">{formatDistanceToNow(new Date(issue.created_at))} ago</span>
+                        <h1 className="text-2xl font-bold leading-tight tracking-tight text-foreground">{issue.title}</h1>
+
+                        <div className="flex items-center gap-3 text-sm text-muted-foreground">
+                            <div className="flex items-center gap-2">
+                                <Avatar className="h-5 w-5 border border-border/40">
+                                    <AvatarImage src={issue.author.avatar_url} />
+                                    <AvatarFallback>{issue.author.name[0]}</AvatarFallback>
+                                </Avatar>
+                                <span className="font-medium text-foreground/80">{issue.author.name}</span>
+                            </div>
+                            <span>•</span>
+                            <span>{formatDistanceToNow(new Date(issue.created_at))} ago</span>
+                        </div>
                     </div>
 
-                    <Separator />
+                    {/* Description */}
+                    <div className="prose prose-sm max-w-none text-foreground/90 dark:prose-invert">
+                        <div dangerouslySetInnerHTML={{ __html: issue.description_html || issue.description }} />
+                    </div>
 
-                    <div className="prose prose-sm max-w-none text-foreground dark:prose-invert" dangerouslySetInnerHTML={{ __html: issue.description_html || issue.description }} />
-
-                    <div className="space-y-2">
-                        <Label className="text-sm font-medium text-foreground">Labels</Label>
+                    {/* Labels & Link */}
+                    <div className="space-y-6 pt-4">
                         <div className="flex flex-wrap gap-2">
                             {issueLabels.map((labelName: string) => {
                                 const labelInfo = projectLabels?.find((l: any) => l.name === labelName);
@@ -289,7 +294,7 @@ export function QADetail({ issue, qaIssue, runs = [], allAttachments = [], membe
                                     <Badge
                                         key={labelName}
                                         variant="outline"
-                                        className="flex items-center gap-1 pr-1 px-2 py-0.5 h-6 rounded-full border-0 font-medium"
+                                        className="flex items-center gap-1 pr-1 px-2 py-0.5 h-6 rounded-md border-0 font-medium transition-colors"
                                         style={{
                                             backgroundColor: `${labelInfo?.color || '#6b7280'}15`,
                                             color: labelInfo?.color || '#6b7280'
@@ -303,70 +308,69 @@ export function QADetail({ issue, qaIssue, runs = [], allAttachments = [], membe
                                     </Badge>
                                 );
                             })}
-                        </div>
-                        <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                                <Button
-                                    type="button"
-                                    variant="outline"
-                                    size="sm"
-                                    className="w-full mt-2"
-                                    disabled={isUpdatingLabels}
-                                >
-                                    {isUpdatingLabels ? (
-                                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                            
+                            <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                    <Button
+                                        type="button"
+                                        variant="outline"
+                                        size="sm"
+                                        className="h-6 text-xs border-dashed text-muted-foreground hover:text-foreground"
+                                        disabled={isUpdatingLabels}
+                                    >
+                                        <Plus className="h-3 w-3 mr-1" />
+                                        Add Label
+                                    </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="start" className="w-56">
+                                    {!filteredProjectLabels || filteredProjectLabels.length === 0 ? (
+                                        <div className="px-2 py-1.5 text-sm text-muted-foreground">No labels available</div>
                                     ) : (
-                                        <Plus className="h-4 w-4 mr-2" />
+                                        filteredProjectLabels.map((label: any) => (
+                                            <DropdownMenuCheckboxItem
+                                                key={label.name}
+                                                checked={issueLabels.includes(label.name)}
+                                                onCheckedChange={() => handleLabelToggle(label.name)}
+                                                disabled={isUpdatingLabels}
+                                            >
+                                                <div className="flex items-center gap-2">
+                                                    <div
+                                                        className="w-2.5 h-2.5 rounded-full"
+                                                        style={{ backgroundColor: label.color }}
+                                                    />
+                                                    <span>{label.name}</span>
+                                                </div>
+                                            </DropdownMenuCheckboxItem>
+                                        ))
                                     )}
-                                    {isUpdatingLabels ? 'Updating...' : 'Add label'}
-                                </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="start" className="w-56">
-                                {!filteredProjectLabels || filteredProjectLabels.length === 0 ? (
-                                    <div className="px-2 py-1.5 text-sm text-muted-foreground">No labels available</div>
-                                ) : (
-                                    filteredProjectLabels.map((label: any) => (
-                                        <DropdownMenuCheckboxItem
-                                            key={label.name}
-                                            checked={issueLabels.includes(label.name)}
-                                            onCheckedChange={() => handleLabelToggle(label.name)}
-                                            disabled={isUpdatingLabels}
-                                        >
-                                            <div className="flex items-center gap-2">
-                                                <div
-                                                    className="w-3 h-3 rounded-full"
-                                                    style={{ backgroundColor: label.color }}
-                                                />
-                                                <span>{label.name}</span>
-                                            </div>
-                                        </DropdownMenuCheckboxItem>
-                                    ))
-                                )}
-                            </DropdownMenuContent>
-                        </DropdownMenu>
-                    </div>
+                                </DropdownMenuContent>
+                            </DropdownMenu>
+                        </div>
 
-                    <div className="pt-4">
-                        <Link href={issue.web_url} target="_blank" className="text-sm text-primary hover:underline flex items-center gap-1">
-                            View in GitLab <ExternalLink className="h-3 w-3" />
-                        </Link>
+                        <div className="flex items-center gap-2 text-sm pt-4 border-t border-border/40">
+                            <Link href={issue.web_url} target="_blank" className="text-muted-foreground hover:text-primary transition-colors flex items-center gap-1.5">
+                                <ExternalLink className="h-3.5 w-3.5" />
+                                View in GitLab
+                            </Link>
+                        </div>
                     </div>
                 </div>
             </div>
 
             {/* Right Panel: QA Work */}
             <div className="flex-1 flex flex-col overflow-hidden bg-background relative">
-                <div className="flex items-center justify-between px-6 py-4 glass z-20">
+                {/* Header */}
+                <div className="flex items-center justify-between px-8 py-6 shrink-0">
                     <div className="flex items-center gap-4">
-                        <h2 className="font-semibold text-lg">QA Testing</h2>
+                        <h2 className="font-semibold text-xl tracking-tight">QA Testing</h2>
                         {runs.length > 0 && (
-                            <div className="flex gap-1">
-                                {runs.map((r: any) => (
+                            <div className="flex -space-x-1 ml-2">
+                                {runs.slice(0, 5).map((r: any) => (
                                     <div key={r.id}
                                         className={cn(
-                                            "w-2 h-2 rounded-full",
-                                            r.status === 'passed' ? "bg-green-500" :
-                                                r.status === 'failed' ? "bg-red-500" : "bg-blue-500 animate-pulse"
+                                            "w-2.5 h-2.5 rounded-full ring-2 ring-background",
+                                            r.status === 'passed' ? "bg-emerald-500" :
+                                                r.status === 'failed' ? "bg-red-500" : "bg-blue-500"
                                         )}
                                         title={`Run #${r.runNumber}: ${r.status}`}
                                     />
@@ -375,18 +379,19 @@ export function QADetail({ issue, qaIssue, runs = [], allAttachments = [], membe
                         )}
                     </div>
 
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-3">
                         {activeRun ? (
                             <>
-                                <Button variant="outline" onClick={() => handleSave(false)} disabled={saving}>
+                                <Button variant="ghost" onClick={() => handleSave(false)} disabled={saving} className="text-muted-foreground hover:text-foreground">
                                     {saving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Save className="h-4 w-4 mr-2" />}
                                     Save Draft
                                 </Button>
-                                <Button variant="destructive" onClick={() => handleSubmit('failed')} disabled={submitting} className="shadow-lg shadow-red-500/20 hover:shadow-red-500/40 transition-all">
-                                    <XCircle className="h-4 w-4 mr-2" /> Fail
+                                <div className="h-6 w-px bg-border/60 mx-1" />
+                                <Button variant="destructive" size="sm" onClick={() => handleSubmit('failed')} disabled={submitting} className="shadow-none">
+                                    Fail
                                 </Button>
-                                <Button className="bg-emerald-500 hover:bg-emerald-600 text-white shadow-lg shadow-emerald-500/20 hover:shadow-emerald-500/40 transition-all" onClick={() => handleSubmit('passed')} disabled={submitting}>
-                                    <CheckCircle className="h-4 w-4 mr-2" /> Pass
+                                <Button size="sm" className="bg-emerald-600 hover:bg-emerald-700 text-white shadow-none" onClick={() => handleSubmit('passed')} disabled={submitting}>
+                                    Pass
                                 </Button>
                             </>
                         ) : (
@@ -398,16 +403,29 @@ export function QADetail({ issue, qaIssue, runs = [], allAttachments = [], membe
                 </div>
 
                 <Tabs value={viewMode} onValueChange={setViewMode} className="flex-1 flex flex-col overflow-hidden">
-                    <div className="px-6 border-b bg-muted/50">
-                        <TabsList>
-                            <TabsTrigger value="active" disabled={!activeRun}>Active Run {activeRun && `#${activeRun.runNumber}`}</TabsTrigger>
-                            <TabsTrigger value="history">History ({runs.length})</TabsTrigger>
+                    <div className="px-8 border-b border-border/40 shrink-0">
+                        <TabsList className="bg-transparent p-0 h-auto gap-8 w-full justify-start rounded-none">
+                            <TabsTrigger
+                                value="active"
+                                disabled={!activeRun}
+                                className="data-[state=active]:text-primary data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none border-b-2 border-transparent rounded-none px-0 py-3 transition-colors hover:text-foreground/80 disabled:opacity-50"
+                            >
+                                Current Run
+                            </TabsTrigger>
+                            <TabsTrigger
+                                value="history"
+                                className="data-[state=active]:text-primary data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none border-b-2 border-transparent rounded-none px-0 py-3 transition-colors hover:text-foreground/80"
+                            >
+                                History
+                            </TabsTrigger>
                         </TabsList>
                     </div>
 
-                    <TabsContent value="active" className="flex-1 overflow-y-auto p-6 space-y-8 mt-0 data-[state=inactive]:hidden">
-                        <div className="space-y-2">
-                            <h3 className="font-medium text-foreground">Test Cases Executed</h3>
+                    <TabsContent value="active" className="flex-1 overflow-y-auto p-8 space-y-10 outline-none">
+                        <div className="space-y-4">
+                            <div className="flex items-center justify-between">
+                                <Label className="text-base font-medium">Test Cases</Label>
+                            </div>
                             <TiptapEditor
                                 content={testCases}
                                 onChange={setTestCases}
@@ -415,11 +433,14 @@ export function QADetail({ issue, qaIssue, runs = [], allAttachments = [], membe
                                 placeholder="List test cases..."
                                 snippets={testCaseSnippets}
                                 onImagePaste={handleImagePaste}
+                                className="border-border/40 shadow-none bg-background focus-within:ring-1 focus-within:ring-primary/20"
                             />
                         </div>
 
-                        <div className="space-y-2">
-                            <h3 className="font-medium text-red-600">Issues Found</h3>
+                        <div className="space-y-4">
+                            <div className="flex items-center justify-between">
+                                <Label className="text-base font-medium text-red-600/90">Issues Found</Label>
+                            </div>
                             <TiptapEditor
                                 content={issuesFound}
                                 onChange={setIssuesFound}
@@ -427,91 +448,89 @@ export function QADetail({ issue, qaIssue, runs = [], allAttachments = [], membe
                                 placeholder="Describe any issues found..."
                                 snippets={issueSnippets}
                                 onImagePaste={handleImagePaste}
+                                className="border-red-100 dark:border-red-900/30 shadow-none bg-red-50/10 focus-within:ring-1 focus-within:ring-red-500/20"
                             />
                         </div>
 
-                        <div className="space-y-2">
-                            <h3 className="font-medium text-foreground">Attachments</h3>
-                            <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-4">
+                            <Label className="text-base font-medium">Attachments</Label>
+                            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                                 {attachments.map((att: any) => (
-                                    <div key={att.id} className="flex items-center gap-2 p-3 border rounded-lg bg-card hover:bg-muted transition-colors group">
-                                        <Paperclip className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-                                        <a href={att.url} target="_blank" className="text-sm text-primary hover:underline truncate flex-1">{att.filename}</a>
+                                    <div key={att.id} className="group relative flex flex-col items-center justify-center p-4 border border-border/40 rounded-xl bg-slate-50/50 hover:bg-slate-100/50 transition-all text-center gap-3">
+                                        <div className="h-10 w-10 rounded-full bg-background flex items-center justify-center border border-border/20 shadow-sm">
+                                            <Paperclip className="h-5 w-5 text-muted-foreground" />
+                                        </div>
+                                        <a href={att.url} target="_blank" className="text-sm font-medium text-foreground hover:underline truncate w-full px-2" title={att.filename}>{att.filename}</a>
                                         <button
                                             onClick={() => handleRemoveAttachment(att.id, att.filename)}
-                                            className="opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:bg-destructive/10 rounded"
-                                            title="Remove attachment"
+                                            className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity p-1.5 hover:bg-destructive/10 rounded-full text-destructive"
                                         >
-                                            <Trash2 className="h-4 w-4 text-destructive" />
+                                            <X className="h-3.5 w-3.5" />
                                         </button>
                                     </div>
                                 ))}
-                                <label className="flex items-center justify-center p-4 border-2 border-dashed border-border rounded-lg cursor-pointer hover:bg-muted/50 hover:border-primary/50 transition-all">
-                                    <input type="file" className="hidden" onChange={handleFileUpload} />
-                                    <div className="text-center">
-                                        <span className="text-sm font-medium text-primary">Click to upload</span>
-                                        <p className="text-xs text-muted-foreground mt-1">or drag and drop</p>
+                                <label className="flex flex-col items-center justify-center p-4 border border-dashed border-border/60 rounded-xl cursor-pointer hover:bg-slate-50/50 hover:border-primary/40 transition-all gap-2 text-muted-foreground hover:text-primary">
+                                    <div className="h-10 w-10 rounded-full bg-slate-50 flex items-center justify-center">
+                                        <Plus className="h-5 w-5" />
                                     </div>
+                                    <span className="text-sm font-medium">Add File</span>
+                                    <input type="file" className="hidden" onChange={handleFileUpload} />
                                 </label>
                             </div>
                         </div>
                     </TabsContent>
 
-                    <TabsContent value="history" className="flex-1 overflow-y-auto p-6 mt-0 data-[state=inactive]:hidden">
-                        {runs.length === 0 ? (
-                            <div className="text-center py-12 text-muted-foreground">
-                                <History className="h-12 w-12 mx-auto mb-4 opacity-20" />
-                                <p>No QA runs recorded yet.</p>
-                            </div>
-                        ) : (
-                            <div className="space-y-6">
-                                {runs.map((run: any) => (
-                                    <div key={run.id} className="border rounded-lg overflow-hidden bg-card shadow-sm">
-                                        <div className={cn(
-                                            "px-4 py-3 flex items-center justify-between border-b",
-                                            run.status === 'passed' ? "bg-green-500/10" :
-                                                run.status === 'failed' ? "bg-destructive/10" : "bg-blue-500/10"
+                    <TabsContent value="history" className="flex-1 overflow-y-auto p-8 outline-none">
+                        <div className="space-y-0 max-w-3xl">
+                            {runs.length === 0 ? (
+                                <div className="text-center py-12 text-muted-foreground">
+                                    <p>No history yet.</p>
+                                </div>
+                            ) : runs.map((run: any) => (
+                                <div key={run.id} className="relative pl-8 pb-10 border-l border-border/40 last:pb-0 last:border-0">
+                                    <div className={cn(
+                                        "absolute left-0 top-0 -translate-x-1/2 w-3 h-3 rounded-full border-2 border-background",
+                                        run.status === 'passed' ? "bg-emerald-500" :
+                                            run.status === 'failed' ? "bg-red-500" : "bg-blue-500"
+                                    )} />
+
+                                    <div className="flex items-center gap-4 mb-4 -mt-1.5">
+                                        <span className="font-semibold text-lg">Run #{run.runNumber}</span>
+                                        <Badge variant="outline" className={cn(
+                                            "uppercase text-[10px] tracking-wider border-0 px-2 py-0.5",
+                                            run.status === 'passed' ? "bg-emerald-500/10 text-emerald-600" :
+                                                run.status === 'failed' ? "bg-red-500/10 text-red-600" : "bg-blue-500/10 text-blue-600"
                                         )}>
-                                            <div className="flex items-center gap-3">
-                                                <Badge variant={
-                                                    run.status === 'passed' ? 'default' :
-                                                        run.status === 'failed' ? 'destructive' : 'secondary'
-                                                } className={cn(
-                                                    run.status === 'passed' && "bg-green-600 hover:bg-green-700",
-                                                    run.status === 'pending' && "bg-blue-500 hover:bg-blue-600"
-                                                )}>
-                                                    {run.status.toUpperCase()}
-                                                </Badge>
-                                                <span className="font-semibold">Run #{run.runNumber}</span>
-                                            </div>
-                                            <div className="text-xs text-muted-foreground flex items-center gap-1">
-                                                <Clock className="h-3 w-3" />
-                                                {run.completedAt ? formatDistanceToNow(new Date(run.completedAt)) + ' ago' : 'In Progress'}
-                                            </div>
-                                        </div>
-                                        <div className="p-4 space-y-4 opacity-80 pointer-events-none">
-                                            {/* Read only view of content (simplified) */}
-                                            {run.issuesFoundContent && (
-                                                <div>
-                                                    <h4 className="text-xs font-semibold uppercase text-red-600 mb-2">Issues Found</h4>
-                                                    <div className="text-sm border-l-2 border-red-200 pl-3">
-                                                        <TiptapEditor content={run.issuesFoundContent} onChange={() => { }} readOnly={true} />
-                                                    </div>
-                                                </div>
-                                            )}
-                                            {run.testCasesContent && (
-                                                <div>
-                                                    <h4 className="text-xs font-semibold uppercase text-muted-foreground mb-2">Test Cases</h4>
-                                                    <div className="text-sm border-l-2 border-border pl-3">
-                                                        <TiptapEditor content={run.testCasesContent} onChange={() => { }} readOnly={true} />
-                                                    </div>
-                                                </div>
-                                            )}
-                                        </div>
+                                            {run.status}
+                                        </Badge>
+                                        <span className="text-sm text-muted-foreground ml-auto">
+                                            {run.completedAt ? formatDistanceToNow(new Date(run.completedAt)) + ' ago' : 'In Progress'}
+                                        </span>
                                     </div>
-                                ))}
-                            </div>
-                        )}
+
+                                    <div className="space-y-4 text-sm text-muted-foreground pl-1">
+                                        {run.issuesFoundContent && (
+                                            <div className="bg-red-50/50 rounded-lg p-4 border border-red-100/50">
+                                                <div className="font-medium text-red-700 mb-2 text-xs uppercase tracking-wider flex items-center gap-2">
+                                                    <span className="w-1.5 h-1.5 rounded-full bg-red-500" />
+                                                    Issues Found
+                                                </div>
+                                                <TiptapEditor content={run.issuesFoundContent} readOnly={true} className="border-0 bg-transparent p-0 min-h-0" />
+                                            </div>
+                                        )}
+                                        {run.testCasesContent && (
+                                            <div className="bg-slate-50/50 rounded-lg p-4 border border-border/40">
+                                                <div className="font-medium text-foreground/70 mb-2 text-xs uppercase tracking-wider flex items-center gap-2">
+                                                    <span className="w-1.5 h-1.5 rounded-full bg-slate-400" />
+                                                    Test Cases
+                                                </div>
+                                                <TiptapEditor content={run.testCasesContent} readOnly={true} className="border-0 bg-transparent p-0 min-h-0" />
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
                     </TabsContent>
                 </Tabs>
             </div>

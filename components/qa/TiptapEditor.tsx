@@ -1,5 +1,6 @@
 'use client';
 
+// Enhanced Tiptap Editor
 import { useState } from 'react';
 import { useEditor, EditorContent, ReactRenderer } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
@@ -52,6 +53,7 @@ export function TiptapEditor({
         : content;
 
     const editor = useEditor({
+        editable: !readOnly,
         extensions: [
             StarterKit,
             TextStyle,
@@ -187,13 +189,20 @@ export function TiptapEditor({
         content: normalizedContent,
         immediatelyRender: false, // Fix for SSR hydration in Next.js with React 19
         onUpdate: ({ editor }) => {
-            onChange(editor.getJSON());
+            if (!readOnly && onChange) {
+                onChange(editor.getJSON());
+            }
         },
         editorProps: {
             attributes: {
-                class: 'prose prose-sm sm:prose max-w-none focus:outline-none min-h-[150px] p-4 bg-transparent dark:prose-invert',
+                class: cn(
+                    'prose prose-sm sm:prose max-w-none focus:outline-none min-h-[150px] p-4 bg-transparent dark:prose-invert',
+                    readOnly && 'min-h-0 p-0'
+                ),
             },
             handlePaste: (view, event, slice) => {
+                if (readOnly) return false;
+                
                 // Check if there are files in the clipboard
                 const items = event.clipboardData?.items;
                 if (!items) return false;
@@ -267,118 +276,127 @@ export function TiptapEditor({
     };
 
     return (
-        <div className={cn("flex flex-col border rounded-xl bg-card/50 focus-within:ring-2 focus-within:ring-primary/20 focus-within:border-primary/50 transition-all duration-200 max-h-[600px]", className)}>
-            <div className="flex items-center gap-1 border-b px-2 py-1 bg-muted/50 rounded-t-xl shrink-0">
-                <Button variant="ghost" size="sm" onClick={() => editor.chain().focus().toggleBold().run()} className={editor.isActive('bold') ? 'bg-muted' : ''}>
-                    <Bold className="h-4 w-4" />
-                </Button>
-                <Button variant="ghost" size="sm" onClick={() => editor.chain().focus().toggleItalic().run()} className={editor.isActive('italic') ? 'bg-muted' : ''}>
-                    <Italic className="h-4 w-4" />
-                </Button>
-                <Button variant="ghost" size="sm" onClick={() => editor.chain().focus().toggleBulletList().run()} className={editor.isActive('bulletList') ? 'bg-muted' : ''}>
-                    <List className="h-4 w-4" />
-                </Button>
-                <Button variant="ghost" size="sm" onClick={() => editor.chain().focus().toggleOrderedList().run()} className={editor.isActive('orderedList') ? 'bg-muted' : ''}>
-                    <ListOrdered className="h-4 w-4" />
-                </Button>
-                <Button variant="ghost" size="sm" onClick={() => editor.chain().focus().toggleCodeBlock().run()} className={editor.isActive('codeBlock') ? 'bg-muted' : ''}>
-                    <Code className="h-4 w-4" />
-                </Button>
+        <div className={cn(
+            "flex flex-col border rounded-xl bg-card focus-within:ring-2 focus-within:ring-primary/20 focus-within:border-primary/50 transition-all duration-200 overflow-hidden",
+            readOnly && "border-0 bg-transparent shadow-none focus-within:ring-0 rounded-none",
+            className
+        )}>
+            {!readOnly && (
+                <div className="flex items-center gap-1 border-b px-2 py-1 bg-muted/30 rounded-t-xl shrink-0">
+                    <Button variant="ghost" size="sm" onClick={() => editor.chain().focus().toggleBold().run()} className={editor.isActive('bold') ? 'bg-muted' : ''}>
+                        <Bold className="h-4 w-4" />
+                    </Button>
+                    <Button variant="ghost" size="sm" onClick={() => editor.chain().focus().toggleItalic().run()} className={editor.isActive('italic') ? 'bg-muted' : ''}>
+                        <Italic className="h-4 w-4" />
+                    </Button>
+                    <Button variant="ghost" size="sm" onClick={() => editor.chain().focus().toggleBulletList().run()} className={editor.isActive('bulletList') ? 'bg-muted' : ''}>
+                        <List className="h-4 w-4" />
+                    </Button>
+                    <Button variant="ghost" size="sm" onClick={() => editor.chain().focus().toggleOrderedList().run()} className={editor.isActive('orderedList') ? 'bg-muted' : ''}>
+                        <ListOrdered className="h-4 w-4" />
+                    </Button>
+                    <Button variant="ghost" size="sm" onClick={() => editor.chain().focus().toggleCodeBlock().run()} className={editor.isActive('codeBlock') ? 'bg-muted' : ''}>
+                        <Code className="h-4 w-4" />
+                    </Button>
 
-                <Popover open={isTablePopoverOpen} onOpenChange={setIsTablePopoverOpen}>
-                    <PopoverTrigger asChild>
-                        <Button variant="ghost" size="sm" className={editor.isActive('table') ? 'bg-muted' : ''}>
-                            <TableIcon className="h-4 w-4" />
-                        </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-3" align="start">
-                        <div className="flex flex-col gap-2">
-                            <div
-                                className="grid grid-cols-5 gap-1"
-                                onMouseLeave={() => setGridSelection({ rows: 1, cols: 1 })}
-                            >
-                                {Array.from({ length: 25 }).map((_, i) => {
-                                    const row = Math.floor(i / 5) + 1;
-                                    const col = (i % 5) + 1;
-                                    const isSelected = row <= gridSelection.rows && col <= gridSelection.cols;
+                    <Popover open={isTablePopoverOpen} onOpenChange={setIsTablePopoverOpen}>
+                        <PopoverTrigger asChild>
+                            <Button variant="ghost" size="sm" className={editor.isActive('table') ? 'bg-muted' : ''}>
+                                <TableIcon className="h-4 w-4" />
+                            </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-3" align="start">
+                            <div className="flex flex-col gap-2">
+                                <div
+                                    className="grid grid-cols-5 gap-1"
+                                    onMouseLeave={() => setGridSelection({ rows: 1, cols: 1 })}
+                                >
+                                    {Array.from({ length: 25 }).map((_, i) => {
+                                        const row = Math.floor(i / 5) + 1;
+                                        const col = (i % 5) + 1;
+                                        const isSelected = row <= gridSelection.rows && col <= gridSelection.cols;
 
-                                    return (
-                                        <button
-                                            key={i}
-                                            className={cn(
-                                                "w-6 h-6 border rounded-sm transition-all",
-                                                isSelected
-                                                    ? "bg-primary/20 border-primary"
-                                                    : "bg-muted/50 border-transparent hover:border-muted-foreground/30"
-                                            )}
-                                            onMouseEnter={() => setGridSelection({ rows: row, cols: col })}
-                                            onClick={() => insertTable(row, col)}
-                                            type="button"
-                                            aria-label={`Select ${row} rows and ${col} columns`}
-                                        />
-                                    );
-                                })}
+                                        return (
+                                            <button
+                                                key={i}
+                                                className={cn(
+                                                    "w-6 h-6 border rounded-sm transition-all",
+                                                    isSelected
+                                                        ? "bg-primary/20 border-primary"
+                                                        : "bg-muted/50 border-transparent hover:border-muted-foreground/30"
+                                                )}
+                                                onMouseEnter={() => setGridSelection({ rows: row, cols: col })}
+                                                onClick={() => insertTable(row, col)}
+                                                type="button"
+                                                aria-label={`Select ${row} rows and ${col} columns`}
+                                            />
+                                        );
+                                    })}
+                                </div>
+                                <div className="text-center text-xs text-muted-foreground font-medium">
+                                    Insert a {gridSelection.rows}×{gridSelection.cols} table
+                                </div>
                             </div>
-                            <div className="text-center text-xs text-muted-foreground font-medium">
-                                Insert a {gridSelection.rows}×{gridSelection.cols} table
-                            </div>
-                        </div>
-                    </PopoverContent>
-                </Popover>
+                        </PopoverContent>
+                    </Popover>
 
-                <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="sm" className={editor.isActive('textStyle', { fontSize: '12px' }) || editor.isActive('textStyle', { fontSize: '18px' }) || editor.isActive('textStyle', { fontSize: '24px' }) || editor.isActive('textStyle', { fontSize: '30px' }) ? 'bg-muted' : ''}>
-                            <Type className="h-4 w-4" />
-                        </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="start" className="w-32">
-                        <DropdownMenuItem onClick={() => editor.chain().focus().setFontSize('12px').run()}>
-                            <span className="text-xs">Small</span>
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => editor.chain().focus().unsetFontSize().run()}>
-                            <span className="text-sm">Normal</span>
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => editor.chain().focus().setFontSize('18px').run()}>
-                            <span className="text-lg">Large</span>
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => editor.chain().focus().setFontSize('24px').run()}>
-                            <span className="text-xl">Extra Large</span>
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => editor.chain().focus().setFontSize('30px').run()}>
-                            <span className="text-2xl">Huge</span>
-                        </DropdownMenuItem>
-                    </DropdownMenuContent>
-                </DropdownMenu>
-
-                <div className="ml-auto">
                     <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="sm" className="gap-2 text-primary hover:text-primary hover:bg-primary/10">
-                                <ScrollText className="h-4 w-4" />
-                                <span className="text-xs font-medium">Snippets</span>
+                            <Button variant="ghost" size="sm" className={editor.isActive('textStyle', { fontSize: '12px' }) || editor.isActive('textStyle', { fontSize: '18px' }) || editor.isActive('textStyle', { fontSize: '24px' }) || editor.isActive('textStyle', { fontSize: '30px' }) ? 'bg-muted' : ''}>
+                                <Type className="h-4 w-4" />
                             </Button>
                         </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" className="w-56">
-                            {snippets && snippets.length > 0 ? (
-                                snippets.map((snippet: EditorSnippet) => (
-                                    <DropdownMenuItem key={snippet.id} onClick={() => insertSnippet(snippet.content)}>
-                                        <div className="flex flex-col gap-1">
-                                            <span className="font-medium">{snippet.title}</span>
-                                            <span className="text-xs text-muted-foreground line-clamp-1">{snippet.content}</span>
-                                        </div>
-                                    </DropdownMenuItem>
-                                ))
-                            ) : (
-                                <div className="p-2 text-xs text-muted-foreground text-center">No snippets available</div>
-                            )}
+                        <DropdownMenuContent align="start" className="w-32">
+                            <DropdownMenuItem onClick={() => editor.chain().focus().setFontSize('12px').run()}>
+                                <span className="text-xs">Small</span>
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => editor.chain().focus().unsetFontSize().run()}>
+                                <span className="text-sm">Normal</span>
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => editor.chain().focus().setFontSize('18px').run()}>
+                                <span className="text-lg">Large</span>
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => editor.chain().focus().setFontSize('24px').run()}>
+                                <span className="text-xl">Extra Large</span>
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => editor.chain().focus().setFontSize('30px').run()}>
+                                <span className="text-2xl">Huge</span>
+                            </DropdownMenuItem>
                         </DropdownMenuContent>
                     </DropdownMenu>
+
+                    <div className="ml-auto">
+                        <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="sm" className="gap-2 text-primary hover:text-primary hover:bg-primary/10">
+                                    <ScrollText className="h-4 w-4" />
+                                    <span className="text-xs font-medium">Snippets</span>
+                                </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" className="w-56">
+                                {snippets && snippets.length > 0 ? (
+                                    snippets.map((snippet: EditorSnippet) => (
+                                        <DropdownMenuItem key={snippet.id} onClick={() => insertSnippet(snippet.content)}>
+                                            <div className="flex flex-col gap-1">
+                                                <span className="font-medium">{snippet.title}</span>
+                                                <span className="text-xs text-muted-foreground line-clamp-1">{snippet.content}</span>
+                                            </div>
+                                        </DropdownMenuItem>
+                                    ))
+                                ) : (
+                                    <div className="p-2 text-xs text-muted-foreground text-center">No snippets available</div>
+                                )}
+                            </DropdownMenuContent>
+                        </DropdownMenu>
+                    </div>
                 </div>
-            </div>
-            <div className="flex-1 overflow-y-auto overflow-x-auto min-h-[150px]">
+            )}
+            <div className={cn(
+                "flex-1 overflow-y-auto overflow-x-auto min-h-[150px]",
+                readOnly && "min-h-0 overflow-visible"
+            )}>
                 <EditorContent editor={editor} className="h-full" />
-                <TableBubbleMenu editor={editor} />
+                {!readOnly && <TableBubbleMenu editor={editor} />}
             </div>
         </div>
     );
