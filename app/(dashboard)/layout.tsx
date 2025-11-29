@@ -14,8 +14,8 @@ export default function DashboardLayout({
     const isBoardView = /^\/\d+$/.test(pathname);
 
     return (
-        <div className="min-h-screen bg-[#f9fafb]">
-            <React.Suspense fallback={<div className="w-64 h-screen bg-[#1e1e2f] fixed left-0 top-0 z-50 border-r border-gray-700" />}>
+        <div className="min-h-screen bg-background">
+            <React.Suspense fallback={<div className="w-64 h-screen bg-background fixed left-0 top-0 z-50 border-r border-border" />}>
                 <Sidebar />
             </React.Suspense>
             <main

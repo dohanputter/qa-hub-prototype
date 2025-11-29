@@ -24,14 +24,14 @@ export function ToolsView({ projectId }: ToolsViewProps) {
             </div>
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                 <Link href={getHref("/tools/snippets")}>
-                    <Card className="hover:bg-gray-50 cursor-pointer transition-colors h-full">
+                    <Card className="group hover:bg-muted/50 cursor-pointer transition-colors h-full">
                         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                            <div className="p-2 bg-blue-100 rounded-lg">
-                                <FileCode className="h-6 w-6 text-blue-600" />
+                            <div className="p-2 bg-blue-500/10 rounded-lg">
+                                <FileCode className="h-6 w-6 text-blue-500" />
                             </div>
                         </CardHeader>
                         <CardContent className="pt-4">
-                            <CardTitle className="text-lg font-medium mb-2">Snippets</CardTitle>
+                            <CardTitle className="text-lg font-medium mb-2 group-hover:text-primary">Snippets</CardTitle>
                             <div className="text-sm text-muted-foreground">
                                 Manage reusable text snippets for test cases and issue reporting.
                             </div>
@@ -40,14 +40,14 @@ export function ToolsView({ projectId }: ToolsViewProps) {
                 </Link>
 
                 <Link href={getHref("/tools/generator")}>
-                    <Card className="hover:bg-gray-50 cursor-pointer transition-colors h-full">
+                    <Card className="group hover:bg-muted/50 cursor-pointer transition-colors h-full">
                         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                            <div className="p-2 bg-purple-100 rounded-lg">
-                                <Database className="h-6 w-6 text-purple-600" />
+                            <div className="p-2 bg-purple-500/10 rounded-lg">
+                                <Database className="h-6 w-6 text-purple-500" />
                             </div>
                         </CardHeader>
                         <CardContent className="pt-4">
-                            <CardTitle className="text-lg font-medium mb-2">Test Data Generator</CardTitle>
+                            <CardTitle className="text-lg font-medium mb-2 group-hover:text-primary">Test Data Generator</CardTitle>
                             <div className="text-sm text-muted-foreground">
                                 Generate mock identities, financial data, and address sets for testing.
                             </div>

@@ -22,7 +22,7 @@ export function KanbanColumn({ id, title, issues, projectId }: KanbanColumnProps
             "flex flex-col h-full w-80 min-w-[20rem] rounded-xl transition-colors",
             isOver && "bg-muted/50"
         )}>
-            <div className="p-4 flex items-center justify-between border-b border-gray-100">
+            <div className="p-4 flex items-center justify-between border-b border-border">
                 <div className="flex items-center gap-2">
                     <div className={cn("w-2 h-2 rounded-full",
                         id === 'backlog' ? "bg-gray-400" :
@@ -30,7 +30,7 @@ export function KanbanColumn({ id, title, issues, projectId }: KanbanColumnProps
                                 id === 'passed' ? "bg-green-500" :
                                     id === 'failed' ? "bg-red-500" : "bg-gray-400"
                     )} />
-                    <h3 className="font-semibold text-sm text-gray-700">{title}</h3>
+                    <h3 className="font-semibold text-sm text-foreground">{title}</h3>
                 </div>
                 <Badge variant="secondary" className="text-xs font-mono bg-card shadow-sm">{issues.length}</Badge>
             </div>

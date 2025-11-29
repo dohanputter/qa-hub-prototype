@@ -105,7 +105,7 @@ export function DashboardCharts({ projectStats, timeStats, passRates }: Dashboar
                                     <stop offset="95%" stopColor="#8884d8" stopOpacity={0} />
                                 </linearGradient>
                             </defs>
-                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e5e7eb" />
+                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
                             <XAxis dataKey="date" fontSize={12} tickLine={false} axisLine={false} stroke="#888888" />
                             <YAxis fontSize={12} tickLine={false} axisLine={false} stroke="#888888" />
                             <Tooltip content={<CustomTooltip />} />

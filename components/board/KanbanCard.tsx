@@ -62,7 +62,7 @@ export function IssueCard({ issue, projectId, isOverlay = false }: { issue: any,
                 <div className="flex justify-between items-start gap-2">
                     <Link
                         href={`/${issue.project_id || projectId}/qa/${issue.iid}`}
-                        className="font-medium text-sm hover:text-indigo-600 hover:underline line-clamp-2 leading-tight flex-1"
+                        className="font-medium text-sm hover:text-primary hover:underline line-clamp-2 leading-tight flex-1"
                         onPointerDown={(e) => e.stopPropagation()} // Allow clicking link without dragging
                     >
                         {issue.title}
@@ -73,7 +73,7 @@ export function IssueCard({ issue, projectId, isOverlay = false }: { issue: any,
                             <Button
                                 variant="ghost"
                                 size="icon"
-                                className="h-5 w-5 text-red-600 hover:text-red-700 hover:bg-red-50 -mr-1"
+                                className="h-5 w-5 text-destructive hover:text-destructive hover:bg-destructive/10 -mr-1"
                                 onClick={handleDelete}
                                 onPointerDown={(e) => e.stopPropagation()} // Prevent drag when clicking delete
                                 disabled={isDeleting}
@@ -114,8 +114,8 @@ export function IssueCard({ issue, projectId, isOverlay = false }: { issue: any,
                                 <AvatarFallback className="text-[9px]">{issue.assignee.name[0]}</AvatarFallback>
                             </Avatar>
                         ) : (
-                            <div className="h-5 w-5 rounded-full bg-gray-100 flex items-center justify-center border border-gray-200">
-                                <span className="text-[9px] text-gray-400">?</span>
+                            <div className="h-5 w-5 rounded-full bg-muted flex items-center justify-center border border-border">
+                                <span className="text-[9px] text-muted-foreground">?</span>
                             </div>
                         )}
                         {issue.assignee && <span className="text-[10px] text-muted-foreground truncate max-w-[80px]">{issue.assignee.name}</span>}

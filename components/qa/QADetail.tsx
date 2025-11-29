@@ -244,14 +244,14 @@ export function QADetail({ issue, qaIssue, runs = [], allAttachments = [], membe
     return (
         <div className="flex h-screen overflow-hidden bg-background">
             {/* Left Panel: GitLab Info */}
-            <div className="w-1/3 border-r bg-gray-50 flex flex-col overflow-y-auto">
+            <div className="w-1/3 border-r bg-muted/30 flex flex-col overflow-y-auto">
                 <div className="p-6 space-y-6">
                     <div>
                         <div className="flex items-center gap-2 mb-2">
                             <span className="text-sm text-muted-foreground font-mono">#{issue.iid}</span>
                             <Badge variant={issue.state === 'opened' ? 'default' : 'secondary'}>{issue.state}</Badge>
                         </div>
-                        <h1 className="text-2xl font-bold text-gray-900 leading-tight">{issue.title}</h1>
+                        <h1 className="text-2xl font-bold text-foreground leading-tight">{issue.title}</h1>
                     </div>
 
                     <div className="flex items-center gap-4">
@@ -267,10 +267,10 @@ export function QADetail({ issue, qaIssue, runs = [], allAttachments = [], membe
 
                     <Separator />
 
-                    <div className="prose prose-sm max-w-none text-gray-700" dangerouslySetInnerHTML={{ __html: issue.description_html || issue.description }} />
+                    <div className="prose prose-sm max-w-none text-foreground dark:prose-invert" dangerouslySetInnerHTML={{ __html: issue.description_html || issue.description }} />
 
                     <div className="space-y-2">
-                        <Label className="text-sm font-medium text-gray-700">Labels</Label>
+                        <Label className="text-sm font-medium text-foreground">Labels</Label>
                         <div className="flex flex-wrap gap-2">
                             {issueLabels.map((labelName: string) => {
                                 const labelInfo = projectLabels?.find((l: any) => l.name === labelName);
@@ -280,9 +280,9 @@ export function QADetail({ issue, qaIssue, runs = [], allAttachments = [], membe
                                         variant="outline"
                                         className="flex items-center gap-1 pr-1"
                                         style={{
-                                            backgroundColor: labelInfo?.color || '#e5e7eb',
-                                            color: labelInfo?.text_color || '#000',
-                                            borderColor: labelInfo?.color || '#e5e7eb'
+                                            backgroundColor: labelInfo?.color || 'hsl(var(--muted))',
+                                            color: labelInfo?.text_color || 'hsl(var(--foreground))',
+                                            borderColor: labelInfo?.color || 'hsl(var(--border))'
                                         }}
                                     >
                                         {labelName}
@@ -333,7 +333,7 @@ export function QADetail({ issue, qaIssue, runs = [], allAttachments = [], membe
                     </div>
 
                     <div className="pt-4">
-                        <Link href={issue.web_url} target="_blank" className="text-sm text-indigo-600 hover:underline flex items-center gap-1">
+                        <Link href={issue.web_url} target="_blank" className="text-sm text-primary hover:underline flex items-center gap-1">
                             View in GitLab <ExternalLink className="h-3 w-3" />
                         </Link>
                     </div>
@@ -384,7 +384,7 @@ export function QADetail({ issue, qaIssue, runs = [], allAttachments = [], membe
                 </div>
 
                 <Tabs value={viewMode} onValueChange={setViewMode} className="flex-1 flex flex-col overflow-hidden">
-                    <div className="px-6 border-b bg-gray-50/50">
+                    <div className="px-6 border-b bg-muted/50">
                         <TabsList>
                             <TabsTrigger value="active" disabled={!activeRun}>Active Run {activeRun && `#${activeRun.runNumber}`}</TabsTrigger>
                             <TabsTrigger value="history">History ({runs.length})</TabsTrigger>
@@ -393,7 +393,7 @@ export function QADetail({ issue, qaIssue, runs = [], allAttachments = [], membe
 
                     <TabsContent value="active" className="flex-1 overflow-y-auto p-6 space-y-8 mt-0 data-[state=inactive]:hidden">
                         <div className="space-y-2">
-                            <h3 className="font-medium text-gray-900">Test Cases Executed</h3>
+                            <h3 className="font-medium text-foreground">Test Cases Executed</h3>
                             <TiptapEditor
                                 content={testCases}
                                 onChange={setTestCases}
@@ -417,18 +417,18 @@ export function QADetail({ issue, qaIssue, runs = [], allAttachments = [], membe
                         </div>
 
                         <div className="space-y-2">
-                            <h3 className="font-medium text-gray-900">Attachments</h3>
+                            <h3 className="font-medium text-foreground">Attachments</h3>
                             <div className="grid grid-cols-2 gap-4">
                                 {attachments.map((att: any) => (
-                                    <div key={att.id} className="flex items-center gap-2 p-3 border rounded-lg bg-gray-50 hover:bg-gray-100 transition-colors">
-                                        <Paperclip className="h-4 w-4 text-gray-400" />
-                                        <a href={att.url} target="_blank" className="text-sm text-indigo-600 hover:underline truncate flex-1">{att.filename}</a>
+                                    <div key={att.id} className="flex items-center gap-2 p-3 border rounded-lg bg-card hover:bg-muted transition-colors">
+                                        <Paperclip className="h-4 w-4 text-muted-foreground" />
+                                        <a href={att.url} target="_blank" className="text-sm text-primary hover:underline truncate flex-1">{att.filename}</a>
                                     </div>
                                 ))}
-                                <label className="flex items-center justify-center p-4 border-2 border-dashed border-gray-200 rounded-lg cursor-pointer hover:bg-gray-50 hover:border-gray-300 transition-all">
+                                <label className="flex items-center justify-center p-4 border-2 border-dashed border-border rounded-lg cursor-pointer hover:bg-muted/50 hover:border-primary/50 transition-all">
                                     <input type="file" className="hidden" onChange={handleFileUpload} />
                                     <div className="text-center">
-                                        <span className="text-sm font-medium text-indigo-600">Click to upload</span>
+                                        <span className="text-sm font-medium text-primary">Click to upload</span>
                                         <p className="text-xs text-muted-foreground mt-1">or drag and drop</p>
                                     </div>
                                 </label>
@@ -448,8 +448,8 @@ export function QADetail({ issue, qaIssue, runs = [], allAttachments = [], membe
                                     <div key={run.id} className="border rounded-lg overflow-hidden bg-card shadow-sm">
                                         <div className={cn(
                                             "px-4 py-3 flex items-center justify-between border-b",
-                                            run.status === 'passed' ? "bg-green-50/50" :
-                                                run.status === 'failed' ? "bg-red-50/50" : "bg-blue-50/50"
+                                            run.status === 'passed' ? "bg-green-500/10" :
+                                                run.status === 'failed' ? "bg-destructive/10" : "bg-blue-500/10"
                                         )}>
                                             <div className="flex items-center gap-3">
                                                 <Badge variant={
@@ -480,8 +480,8 @@ export function QADetail({ issue, qaIssue, runs = [], allAttachments = [], membe
                                             )}
                                             {run.testCasesContent && (
                                                 <div>
-                                                    <h4 className="text-xs font-semibold uppercase text-gray-500 mb-2">Test Cases</h4>
-                                                    <div className="text-sm border-l-2 border-gray-200 pl-3">
+                                                    <h4 className="text-xs font-semibold uppercase text-muted-foreground mb-2">Test Cases</h4>
+                                                    <div className="text-sm border-l-2 border-border pl-3">
                                                         <TiptapEditor content={run.testCasesContent} onChange={() => { }} readOnly={true} />
                                                     </div>
                                                 </div>

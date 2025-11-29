@@ -41,14 +41,14 @@ export default async function ProjectsPage() {
                                         {project.description || 'No description'}
                                     </p>
                                     <div className="flex items-center justify-between mt-4">
-                                        <div className="flex items-center text-sm text-gray-500">
-                                            <span className="font-mono bg-gray-100 px-2 py-1 rounded">
+                                        <div className="flex items-center text-sm text-muted-foreground">
+                                            <span className="font-mono bg-muted px-2 py-1 rounded">
                                                 {project.path_with_namespace}
                                             </span>
                                         </div>
                                         <div className="flex gap-3 text-sm">
-                                            <span className="text-green-600 font-medium">{projectStats.open} Open</span>
-                                            <span className="text-gray-500">{projectStats.closed} Closed</span>
+                                            <span className="text-green-600 dark:text-green-400 font-medium">{projectStats.open} Open</span>
+                                            <span className="text-muted-foreground">{projectStats.closed} Closed</span>
                                         </div>
                                     </div>
                                 </CardContent>

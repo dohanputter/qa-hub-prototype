@@ -22,7 +22,7 @@ export function TiptapEditor({ content, onChange, members, placeholder, snippets
             StarterKit,
             Mention.configure({
                 HTMLAttributes: {
-                    class: 'mention font-medium text-indigo-600 bg-indigo-50 px-1 rounded-sm',
+                    class: 'mention font-medium text-primary bg-primary/10 px-1 rounded-sm',
                 },
                 suggestion: {
                     items: ({ query }: any) => {
@@ -90,7 +90,7 @@ export function TiptapEditor({ content, onChange, members, placeholder, snippets
         },
         editorProps: {
             attributes: {
-                class: 'prose prose-sm sm:prose lg:prose-lg xl:prose-2xl mx-auto focus:outline-none min-h-[150px] p-4 bg-transparent',
+                class: 'prose prose-sm sm:prose lg:prose-lg xl:prose-2xl mx-auto focus:outline-none min-h-[150px] p-4 bg-transparent dark:prose-invert',
             },
             handlePaste: (view, event, slice) => {
                 // Check if there are files in the clipboard
@@ -182,7 +182,7 @@ export function TiptapEditor({ content, onChange, members, placeholder, snippets
                 <div className="ml-auto">
                     <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="sm" className="gap-2 text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50">
+                            <Button variant="ghost" size="sm" className="gap-2 text-primary hover:text-primary hover:bg-primary/10">
                                 <ScrollText className="h-4 w-4" />
                                 <span className="text-xs font-medium">Snippets</span>
                             </Button>

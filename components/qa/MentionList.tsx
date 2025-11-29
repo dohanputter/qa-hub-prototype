@@ -50,7 +50,7 @@ export const MentionList = forwardRef((props: any, ref) => {
             {props.items.length ? (
                 props.items.map((item: any, index: number) => (
                     <button
-                        className={`flex items-center gap-2 w-full text-left px-2 py-1.5 text-sm rounded-sm ${index === selectedIndex ? 'bg-indigo-50 text-indigo-900' : 'hover:bg-gray-50'
+                        className={`flex items-center gap-2 w-full text-left px-2 py-1.5 text-sm rounded-sm ${index === selectedIndex ? 'bg-primary/10 text-primary' : 'hover:bg-muted/50'
                             }`}
                         key={index}
                         onClick={() => selectItem(index)}

@@ -30,10 +30,10 @@ export default function SignInPage() {
             </div>
 
             <div className="space-y-2">
-                <h1 className="text-2xl font-bold tracking-tight text-gray-900">
+                <h1 className="text-2xl font-bold tracking-tight text-foreground">
                     Welcome to QA Hub
                 </h1>
-                <p className="text-sm text-gray-500">
+                <p className="text-sm text-muted-foreground">
                     Sign in with your GitLab account to continue
                 </p>
             </div>
@@ -54,7 +54,7 @@ export default function SignInPage() {
             </Button>
 
             {process.env.NEXT_PUBLIC_MOCK_MODE === 'true' && (
-                <div className="p-4 bg-yellow-50 text-yellow-800 text-xs rounded-md border border-yellow-200">
+                <div className="p-4 bg-yellow-500/10 text-yellow-600 dark:text-yellow-400 text-xs rounded-md border border-yellow-500/20">
                     Mock Mode Enabled: GitLab auth will use mock provider if configured, or you might need to bypass auth for local dev.
                 </div>
             )}

@@ -96,10 +96,10 @@ export const TestDataGenerator: React.FC = () => {
                         <ArrowLeft size={20} />
                     </button>
                     <div>
-                        <h2 className="text-3xl font-bold text-gray-800 flex items-center gap-3">
-                            <Database className="text-purple-600" /> Test Data Generator
+                        <h2 className="text-3xl font-bold text-foreground flex items-center gap-3">
+                            <Database className="text-primary" /> Test Data Generator
                         </h2>
-                        <p className="text-gray-500 mt-1">Generate random South African mock data for your test cases.</p>
+                        <p className="text-muted-foreground mt-1">Generate random South African mock data for your test cases.</p>
                     </div>
                 </div>
             </div>
@@ -108,25 +108,25 @@ export const TestDataGenerator: React.FC = () => {
                 {/* Left Side: Controls */}
                 <div className="w-80 flex flex-col gap-6">
                     <div className="bg-card rounded-xl shadow-sm border border-border overflow-hidden">
-                        <div className="p-4 bg-gray-50 border-b border-gray-200 font-bold text-gray-700 text-sm uppercase tracking-wider">
+                        <div className="p-4 bg-muted/50 border-b border-border font-bold text-foreground text-sm uppercase tracking-wider">
                             Categories
                         </div>
                         <div className="p-2">
                             <button
                                 onClick={() => setActiveCategory('identity')}
-                                className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors text-left mb-1 ${activeCategory === 'identity' ? 'bg-purple-50 text-purple-700 font-medium' : 'hover:bg-gray-50 text-gray-600'}`}
+                                className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors text-left mb-1 ${activeCategory === 'identity' ? 'bg-primary/10 text-primary font-medium' : 'hover:bg-muted/50 text-muted-foreground'}`}
                             >
                                 <User size={18} /> Identity
                             </button>
                             <button
                                 onClick={() => setActiveCategory('finance')}
-                                className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors text-left mb-1 ${activeCategory === 'finance' ? 'bg-purple-50 text-purple-700 font-medium' : 'hover:bg-gray-50 text-gray-600'}`}
+                                className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors text-left mb-1 ${activeCategory === 'finance' ? 'bg-primary/10 text-primary font-medium' : 'hover:bg-muted/50 text-muted-foreground'}`}
                             >
                                 <CreditCard size={18} /> Finance
                             </button>
                             <button
                                 onClick={() => setActiveCategory('location')}
-                                className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors text-left ${activeCategory === 'location' ? 'bg-purple-50 text-purple-700 font-medium' : 'hover:bg-gray-50 text-gray-600'}`}
+                                className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors text-left ${activeCategory === 'location' ? 'bg-primary/10 text-primary font-medium' : 'hover:bg-muted/50 text-muted-foreground'}`}
                             >
                                 <MapPin size={18} /> Location
                             </button>
@@ -134,19 +134,19 @@ export const TestDataGenerator: React.FC = () => {
                     </div>
 
                     <div className="bg-card rounded-xl shadow-sm border border-border p-5">
-                        <h3 className="font-bold text-gray-800 text-sm mb-4">Configuration</h3>
+                        <h3 className="font-bold text-foreground text-sm mb-4">Configuration</h3>
 
                         <div className="mb-6">
-                            <label className="block text-xs font-semibold text-gray-500 uppercase mb-2">Record Count: {count}</label>
+                            <label className="block text-xs font-semibold text-muted-foreground uppercase mb-2">Record Count: {count}</label>
                             <input
                                 type="range"
                                 min="1"
                                 max="50"
                                 value={count}
                                 onChange={(e) => setCount(parseInt(e.target.value))}
-                                className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-purple-600"
+                                className="w-full h-2 bg-muted rounded-lg appearance-none cursor-pointer accent-primary"
                             />
-                            <div className="flex justify-between text-xs text-gray-400 mt-1">
+                            <div className="flex justify-between text-xs text-muted-foreground mt-1">
                                 <span>1</span>
                                 <span>50</span>
                             </div>
@@ -154,7 +154,7 @@ export const TestDataGenerator: React.FC = () => {
 
                         <button
                             onClick={handleGenerate}
-                            className="w-full bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 rounded-lg transition-all shadow-md hover:shadow-lg flex items-center justify-center gap-2"
+                            className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-bold py-3 rounded-lg transition-all shadow-md hover:shadow-lg flex items-center justify-center gap-2"
                         >
                             <RefreshCw size={18} /> Generate
                         </button>
@@ -163,8 +163,8 @@ export const TestDataGenerator: React.FC = () => {
 
                 {/* Right Side: Output */}
                 <div className="flex-1 bg-card rounded-xl shadow-sm border border-border flex flex-col overflow-hidden">
-                    <div className="p-4 border-b border-gray-200 flex justify-between items-center bg-gray-50">
-                        <h3 className="font-bold text-gray-700 text-sm">Result (JSON)</h3>
+                    <div className="p-4 border-b border-border flex justify-between items-center bg-muted/50">
+                        <h3 className="font-bold text-foreground text-sm">Result (JSON)</h3>
                         <div className="flex gap-2">
                             {generatedData && (
                                 <button
@@ -183,8 +183,8 @@ export const TestDataGenerator: React.FC = () => {
                                 {generatedData}
                             </pre>
                         ) : (
-                            <div className="absolute inset-0 flex flex-col items-center justify-center text-gray-400">
-                                <Database size={48} className="text-gray-200 mb-4" />
+                            <div className="absolute inset-0 flex flex-col items-center justify-center text-muted-foreground">
+                                <Database size={48} className="text-muted-foreground/20 mb-4" />
                                 <p>Select a category and click Generate</p>
                             </div>
                         )}

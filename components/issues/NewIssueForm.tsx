@@ -176,7 +176,7 @@ export function NewIssueForm() {
                         <div className="min-h-[200px] border rounded-md p-2">
                             <textarea
                                 id="description"
-                                className="w-full h-full min-h-[200px] resize-none outline-none"
+                                className="w-full h-full min-h-[200px] resize-none outline-none bg-transparent text-foreground placeholder:text-muted-foreground"
                                 placeholder="Describe the issue..."
                                 value={formData.description}
                                 onChange={(e) => setFormData({ ...formData, description: e.target.value })}

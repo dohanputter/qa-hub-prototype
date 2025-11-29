@@ -144,12 +144,12 @@ export function IssueSearch({ labels, projectId }: IssueSearchProps) {
     return (
         <div className="relative flex-1 max-w-sm" ref={containerRef}>
             <div className="relative">
-                <Search className="absolute left-3 top-2.5 text-gray-400" size={16} />
+                <Search className="absolute left-3 top-2.5 text-muted-foreground" size={16} />
                 <input
                     ref={inputRef}
                     type="text"
                     placeholder="Search issues or type @ for labels..."
-                    className="w-full pl-10 pr-8 py-2 border border-input rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-background shadow-sm text-foreground"
+                    className="w-full pl-10 pr-8 py-2 border border-input rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary bg-background shadow-sm text-foreground"
                     value={query}
                     onChange={handleChange}
                     onKeyDown={handleKeyDown}
@@ -162,7 +162,7 @@ export function IssueSearch({ labels, projectId }: IssueSearchProps) {
                             setShowSuggestions(false);
                             inputRef.current?.focus();
                         }}
-                        className="absolute right-2 top-2.5 text-gray-400 hover:text-gray-600"
+                        className="absolute right-2 top-2.5 text-muted-foreground hover:text-foreground"
                     >
                         <X size={16} />
                     </button>
@@ -172,7 +172,7 @@ export function IssueSearch({ labels, projectId }: IssueSearchProps) {
             {/* Autocomplete Dropdown */}
             {showSuggestions && filteredLabels.length > 0 && (
                 <div className="absolute top-full left-0 right-0 mt-2 bg-popover border border-border rounded-lg shadow-lg z-50 overflow-hidden">
-                    <div className="px-3 py-2 bg-gray-50 border-b border-gray-100 text-xs font-semibold text-gray-500 uppercase">
+                    <div className="px-3 py-2 bg-muted/50 border-b border-border text-xs font-semibold text-muted-foreground uppercase">
                         Select Label
                     </div>
                     <ul className="max-h-48 overflow-y-auto">
@@ -181,12 +181,12 @@ export function IssueSearch({ labels, projectId }: IssueSearchProps) {
                                 key={label.id}
                                 onClick={() => selectLabel(label.name)}
                                 className={`px-3 py-2 flex items-center gap-2 cursor-pointer text-sm ${index === activeSuggestionIndex
-                                    ? 'bg-indigo-50 text-indigo-900'
-                                    : 'hover:bg-gray-50 text-gray-700'
+                                    ? 'bg-primary/10 text-primary'
+                                    : 'hover:bg-muted/50 text-foreground'
                                     }`}
                             >
                                 <span
-                                    className="w-3 h-3 rounded-full border border-black/10"
+                                    className="w-3 h-3 rounded-full border border-foreground/10"
                                     style={{ backgroundColor: label.color }}
                                 ></span>
                                 <span className="font-medium">{label.name}</span>

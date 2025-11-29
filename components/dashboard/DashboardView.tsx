@@ -14,7 +14,7 @@ export function DashboardView({ stats, projectId }: DashboardViewProps) {
         <div className="container mx-auto px-4 py-8 max-w-7xl">
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
                 <div>
-                    <h1 className="text-3xl font-bold tracking-tight text-gray-900">
+                    <h1 className="text-3xl font-bold tracking-tight text-foreground">
                         {projectId ? 'Project Dashboard' : 'Global Dashboard'}
                     </h1>
                     <p className="text-muted-foreground mt-1">
@@ -22,7 +22,7 @@ export function DashboardView({ stats, projectId }: DashboardViewProps) {
                     </p>
                 </div>
                 {projectId && (
-                    <a href="/" className="text-sm text-blue-600 hover:underline">
+                    <a href="/" className="text-sm text-primary hover:underline">
                         View Global Dashboard
                     </a>
                 )}

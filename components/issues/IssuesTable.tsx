@@ -72,7 +72,7 @@ export function IssuesTable({ issues, projectId }: { issues: any[]; projectId: n
                             <TableCell>
                                 <Link
                                     href={`/${issue.project.id}/qa/${issue.iid}`}
-                                    className="font-medium hover:text-indigo-600 hover:underline block"
+                                    className="font-medium hover:text-indigo-600 dark:hover:text-indigo-400 hover:underline block"
                                 >
                                     {issue.title}
                                 </Link>
@@ -124,7 +124,7 @@ export function IssuesTable({ issues, projectId }: { issues: any[]; projectId: n
                                     <Button
                                         variant="ghost"
                                         size="icon"
-                                        className="h-8 w-8 text-red-600 hover:text-red-700 hover:bg-red-50"
+                                        className="h-8 w-8 text-red-600 hover:text-red-700 hover:bg-destructive/10"
                                         onClick={() => handleDelete(issue.iid)}
                                         disabled={deletingIssueId === issue.iid}
                                     >
