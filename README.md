@@ -59,11 +59,17 @@ The application is now fully functional in **Mock Mode** for offline development
 - ✅ `db.ts` - Database connection with Drizzle
 - ✅ `utils.ts` - Utility functions (cn, tiptapToMarkdown, extractMentions)
 - ✅ `rateLimit.ts` - Upload rate limiting (10/min per user)
-- ✅ `gitlab.ts` - GitLab API wrapper with mock mode support
+- ✅ `mode.ts` - Centralized mock/production mode utilities
+- ✅ `constants.ts` - Shared constants (system users, default labels, rate limits)
+- ✅ `mock-user.ts` - Mock user/project/group creation utilities
+- ✅ `validations.ts` - Zod validation schemas for server actions
 
-#### 4. GitLab Integration (`/lib/gitlab.ts`)
-- ✅ Client wrapper with mock mode detection
-- ✅ Mock data: 2 projects, 2 issues, 4 labels
+#### 4. GitLab Integration (`/lib/gitlab/`)
+- ✅ `index.ts` - Module re-exports
+- ✅ `types.ts` - GitLab-related TypeScript types
+- ✅ `mock-data.ts` - Centralized mock data (4 projects, users, labels)
+- ✅ `simulation.ts` - Error simulation, webhook simulation, data evolution
+- ✅ `../gitlab.ts` - Main GitLab API wrapper with mock mode support
 - ✅ Project fetching methods
 - ✅ Issue CRUD operations
 - ✅ Label management
@@ -124,9 +130,10 @@ The application is now fully functional in **Mock Mode** for offline development
 
 4. **Type Safety**
    - 100% TypeScript
-   - Zod validation for environment
+   - Zod validation for environment and server actions
    - Drizzle ORM type inference
    - NextAuth type augmentation
+   - Dedicated type files for dashboard and editor components
 
 ## Installation
 
@@ -204,9 +211,9 @@ GEMINI_API_KEY=your-gemini-key
 3. **Click "Sign in with GitLab"** - You'll be instantly logged in as "Mock Tester"
 
 4. **Explore the app** with pre-populated mock data:
-   - 2 mock projects
-   - 2 mock issues
-   - Mock labels and members
+   - 4 mock projects (Bob Go, Bobe, Bob Shop App, Bob Pay)
+   - 5 mock issues with various labels
+   - Project-specific labels and team members
 
 ## Database Management
 
