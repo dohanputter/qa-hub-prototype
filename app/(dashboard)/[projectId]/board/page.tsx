@@ -38,7 +38,7 @@ export default async function BoardPage({
                         Drag QA records between columns
                     </p>
                 </div>
-                <Button asChild className="bg-indigo-600 hover:bg-indigo-700">
+                <Button asChild className="bg-primary hover:bg-primary/90">
                     <Link href={`/issues/new?projectId=${projectId}`}>
                         <Plus className="mr-2 h-4 w-4" />
                         Create Issue

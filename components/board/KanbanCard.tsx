@@ -160,7 +160,7 @@ export function IssueCard({ issue, projectId, isOverlay = false }: { issue: Kanb
                                 <Badge
                                     key={l}
                                     variant="outline"
-                                    className="text-[10px] px-2 py-0.5 h-5 font-medium rounded-full border-0"
+                                    className="text-xs px-2.5 py-1 h-6 font-medium rounded-full border-0"
                                     style={{ backgroundColor: `${colors.bg}15`, color: colors.bg }}
                                 >
                                     {l}
@@ -168,7 +168,7 @@ export function IssueCard({ issue, projectId, isOverlay = false }: { issue: Kanb
                             );
                         })}
                     {issue.labels.filter((l: string) => !l.startsWith('qa::')).length > 3 && (
-                        <span className="text-[10px] text-muted-foreground">+{issue.labels.filter((l: string) => !l.startsWith('qa::')).length - 3}</span>
+                        <span className="text-xs text-muted-foreground">+{issue.labels.filter((l: string) => !l.startsWith('qa::')).length - 3}</span>
                     )}
                 </div>
 

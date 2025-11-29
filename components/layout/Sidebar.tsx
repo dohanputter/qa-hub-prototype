@@ -47,7 +47,7 @@ export function Sidebar() {
         <div className="w-64 h-screen bg-background/80 backdrop-blur-xl border-r border-border/40 flex flex-col fixed left-0 top-0 z-50 transition-all duration-300">
             <div className="p-6 flex flex-col gap-4">
                 <div className="flex items-center gap-3 px-2">
-                    <div className="w-8 h-8 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-lg shadow-lg shadow-indigo-500/20 flex items-center justify-center text-white font-bold text-sm">
+                    <div className="w-8 h-8 bg-gradient-to-br from-teal-500 to-emerald-600 rounded-lg shadow-lg shadow-teal-500/20 flex items-center justify-center text-white font-bold text-sm">
                         QA
                     </div>
                     <h1 className="text-lg font-bold text-foreground tracking-tight">QA Hub</h1>

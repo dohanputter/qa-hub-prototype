@@ -292,7 +292,7 @@ export function QADetail({ issue, qaIssue, runs = [], allAttachments = [], membe
                                     <Badge
                                         key={labelName}
                                         variant="outline"
-                                        className="flex items-center gap-1 pr-1 px-2 py-0.5 h-6 rounded-md border-0 font-medium transition-colors"
+                                        className="flex items-center gap-1 pr-1 px-2.5 py-1 h-6 text-sm rounded-md border-0 font-medium transition-colors"
                                         style={{
                                             backgroundColor: `${labelInfo?.color || '#6b7280'}15`,
                                             color: labelInfo?.color || '#6b7280'

@@ -39,7 +39,7 @@ export default async function IssuesPage({
                     <h2 className="text-3xl font-bold tracking-tight">{project.name} Issues</h2>
                     <p className="text-muted-foreground">Manage QA issues and test runs for {project.name}</p>
                 </div>
-                <Button asChild className="bg-indigo-600 hover:bg-indigo-700">
+                <Button asChild className="bg-primary hover:bg-primary/90">
                     <Link href={`/issues/new?projectId=${projectId}`}>
                         <Plus className="mr-2 h-4 w-4" />
                         Create Issue

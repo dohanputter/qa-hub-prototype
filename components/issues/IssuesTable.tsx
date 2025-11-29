@@ -100,7 +100,7 @@ export function IssuesTable({ issues, projectId, labels = [] }: { issues: any[];
                             <TableCell>
                                 <Link
                                     href={`/${issue.project.id}/qa/${issue.iid}`}
-                                    className="font-medium hover:text-indigo-600 dark:hover:text-indigo-400 hover:underline block"
+                                    className="font-medium hover:text-primary hover:underline block"
                                 >
                                     {issue.title}
                                 </Link>
@@ -120,7 +120,7 @@ export function IssuesTable({ issues, projectId, labels = [] }: { issues: any[];
                                                 <Badge
                                                     key={label}
                                                     variant="outline"
-                                                    className="text-xs font-medium px-2 py-0.5 h-5 rounded-full border-0"
+                                                    className="text-sm font-medium px-2.5 py-1 h-6 rounded-full border-0"
                                                     style={{ backgroundColor: `${colors.bg}15`, color: colors.bg }}
                                                 >
                                                     {label}

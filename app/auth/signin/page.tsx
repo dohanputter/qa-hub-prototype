@@ -25,7 +25,7 @@ export default function SignInPage() {
 
     return (
         <div className="flex flex-col items-center text-center space-y-6">
-            <div className="w-12 h-12 bg-indigo-600 rounded-lg flex items-center justify-center text-white font-bold text-xl">
+            <div className="w-12 h-12 bg-primary rounded-lg flex items-center justify-center text-primary-foreground font-bold text-xl">
                 QA
             </div>
 

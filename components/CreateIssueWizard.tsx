@@ -171,18 +171,18 @@ export const CreateIssueWizard: React.FC<CreateIssueWizardProps> = ({ onClose, o
                                     <button
                                         key={proj.id}
                                         onClick={() => handleProjectSelect(proj)}
-                                        className="flex items-center justify-between p-4 border border-gray-200 rounded-lg hover:border-indigo-500 hover:bg-indigo-50 hover:shadow-sm transition-all text-left group"
+                                        className="flex items-center justify-between p-4 border border-border rounded-lg hover:border-primary/50 hover:bg-muted hover:shadow-sm transition-all text-left group"
                                     >
                                         <div className="flex items-center gap-4">
-                                            <div className="w-10 h-10 bg-muted rounded flex items-center justify-center text-gray-500 group-hover:bg-card group-hover:text-indigo-600">
+                                            <div className="w-10 h-10 bg-muted rounded flex items-center justify-center text-muted-foreground group-hover:bg-primary/10 group-hover:text-primary">
                                                 <Folder size={20} />
                                             </div>
                                             <div>
-                                                <h3 className="font-semibold text-gray-800 group-hover:text-indigo-700">{proj.name}</h3>
-                                                <p className="text-sm text-gray-500">{proj.description}</p>
+                                                <h3 className="font-semibold text-foreground group-hover:text-primary">{proj.name}</h3>
+                                                <p className="text-sm text-muted-foreground">{proj.description}</p>
                                             </div>
                                         </div>
-                                        <ChevronRight className="text-gray-300 group-hover:text-indigo-400" size={20} />
+                                        <ChevronRight className="text-muted-foreground group-hover:text-primary/50" size={20} />
                                     </button>
                                 ))
                             )}
@@ -220,7 +220,7 @@ export const CreateIssueWizard: React.FC<CreateIssueWizardProps> = ({ onClose, o
                     </button>
                     <button
                         onClick={handleSubmit}
-                        className="px-6 py-2 bg-indigo-600 text-white font-medium rounded-lg hover:bg-indigo-700 shadow-sm transition-colors"
+                        className="px-6 py-2 bg-primary text-primary-foreground font-medium rounded-lg hover:bg-primary/90 shadow-sm transition-colors"
                     >
                         Create issue
                     </button>
@@ -237,11 +237,11 @@ export const CreateIssueWizard: React.FC<CreateIssueWizardProps> = ({ onClose, o
                         <div className="w-48">
                             <label className="block text-sm font-bold text-gray-700 mb-2">Type</label>
                             <div className="relative">
-                                <select className="w-full appearance-none bg-card border border-input text-foreground py-2 px-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+                                <select className="w-full appearance-none bg-card border border-input text-foreground py-2 px-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary">
                                     <option>Issue</option>
                                     <option>Incident</option>
                                 </select>
-                                <ChevronDown className="absolute right-3 top-3 text-gray-400 pointer-events-none" size={16} />
+                                <ChevronDown className="absolute right-3 top-3 text-muted-foreground pointer-events-none" size={16} />
                             </div>
                         </div>
 
@@ -254,23 +254,23 @@ export const CreateIssueWizard: React.FC<CreateIssueWizardProps> = ({ onClose, o
                                 onChange={(e) => { setTitle(e.target.value); setTitleError(''); }}
                                 placeholder="Add a title"
                                 autoFocus
-                                className={`w-full px-4 py-2.5 bg-card border rounded-lg text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-base ${titleError ? 'border-red-500' : 'border-input'}`}
+                                className={`w-full px-4 py-2.5 bg-card border rounded-lg text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary text-base ${titleError ? 'border-destructive' : 'border-input'}`}
                             />
-                            {titleError && <p className="mt-1 text-sm text-red-500">{titleError}</p>}
+                            {titleError && <p className="mt-1 text-sm text-destructive">{titleError}</p>}
                         </div>
 
                         {/* Description */}
                         <div>
                             <div className="flex justify-between items-center mb-2">
-                                <label className="block text-sm font-bold text-gray-700">Description</label>
+                                <label className="block text-sm font-bold text-foreground">Description</label>
                                 <div className="relative group">
-                                    <button className="text-sm text-gray-500 hover:text-indigo-600 flex items-center gap-1">
+                                    <button className="text-sm text-muted-foreground hover:text-primary flex items-center gap-1">
                                         Choose a template <ChevronDown size={14} />
                                     </button>
                                 </div>
                             </div>
 
-                            <div className="border border-input rounded-lg overflow-hidden bg-card focus-within:ring-2 focus-within:ring-indigo-500 focus-within:border-indigo-500 transition-shadow">
+                            <div className="border border-input rounded-lg overflow-hidden bg-card focus-within:ring-2 focus-within:ring-primary/20 focus-within:border-primary transition-shadow">
                                 {/* Mock Toolbar */}
                                 <div className="bg-gray-50 border-b border-gray-200 px-3 py-2 flex items-center gap-2 text-gray-600">
                                     <span className="text-xs font-semibold px-2 py-1 rounded hover:bg-gray-200 cursor-pointer">Normal text</span>
@@ -299,10 +299,10 @@ export const CreateIssueWizard: React.FC<CreateIssueWizardProps> = ({ onClose, o
                         {/* Assignee */}
                         <div className="pb-4 border-b border-gray-200 relative" ref={assigneeRef}>
                             <div className="flex justify-between items-center mb-1">
-                                <span className="text-sm font-bold text-gray-700">Assignee</span>
+                                <span className="text-sm font-bold text-foreground">Assignee</span>
                                 <button
                                     onClick={() => setShowAssigneeDropdown(!showAssigneeDropdown)}
-                                    className="text-sm text-indigo-600 hover:underline"
+                                    className="text-sm text-primary hover:underline"
                                 >
                                     Edit
                                 </button>
@@ -318,11 +318,11 @@ export const CreateIssueWizard: React.FC<CreateIssueWizardProps> = ({ onClose, o
                                         className="h-6 w-6 rounded-full object-cover"
                                         unoptimized
                                     />
-                                    <span className="text-sm text-gray-800 font-medium">{assignee.name}</span>
-                                    <button onClick={() => setAssignee(undefined)} className="ml-auto text-gray-400 hover:text-red-500"><X size={14} /></button>
+                                    <span className="text-sm text-foreground font-medium">{assignee.name}</span>
+                                    <button onClick={() => setAssignee(undefined)} className="ml-auto text-muted-foreground hover:text-destructive"><X size={14} /></button>
                                 </div>
                             ) : (
-                                <div className="text-sm text-gray-500 mt-1">None - <span className="cursor-pointer hover:text-indigo-600" onClick={() => setAssignee(users[0])}>assign yourself</span></div>
+                                <div className="text-sm text-muted-foreground mt-1">None - <span className="cursor-pointer hover:text-primary" onClick={() => setAssignee(users[0])}>assign yourself</span></div>
                             )}
 
                             {showAssigneeDropdown && (
@@ -350,12 +350,12 @@ export const CreateIssueWizard: React.FC<CreateIssueWizardProps> = ({ onClose, o
                         </div>
 
                         {/* Labels */}
-                        <div className="pb-4 border-b border-gray-200 relative" ref={labelsRef}>
+                        <div className="pb-4 border-b border-border relative" ref={labelsRef}>
                             <div className="flex justify-between items-center mb-1">
-                                <span className="text-sm font-bold text-gray-700">Labels</span>
+                                <span className="text-sm font-bold text-foreground">Labels</span>
                                 <button
                                     onClick={() => setShowLabelDropdown(!showLabelDropdown)}
-                                    className="text-sm text-indigo-600 hover:underline"
+                                    className="text-sm text-primary hover:underline"
                                 >
                                     Edit
                                 </button>
@@ -388,13 +388,13 @@ export const CreateIssueWizard: React.FC<CreateIssueWizardProps> = ({ onClose, o
                                             <button
                                                 key={l.id}
                                                 onClick={() => toggleLabel(l)}
-                                                className="w-full text-left px-3 py-2 hover:bg-gray-50 flex items-center justify-between"
+                                                className="w-full text-left px-3 py-2 hover:bg-muted flex items-center justify-between"
                                             >
                                                 <div className="flex items-center gap-2">
-                                                    <span className="w-3 h-3 rounded bg-gray-200" style={{ backgroundColor: l.color }}></span>
-                                                    <span className="text-sm text-gray-700">{l.title}</span>
+                                                    <span className="w-3 h-3 rounded bg-muted-foreground/20" style={{ backgroundColor: l.color }}></span>
+                                                    <span className="text-sm text-foreground">{l.title}</span>
                                                 </div>
-                                                {isSelected && <div className="text-indigo-600 text-xs font-bold">✓</div>}
+                                                {isSelected && <div className="text-primary text-xs font-bold">✓</div>}
                                             </button>
                                         );
                                     })}
@@ -403,22 +403,22 @@ export const CreateIssueWizard: React.FC<CreateIssueWizardProps> = ({ onClose, o
                         </div>
 
                         {/* Milestone (Mock) */}
-                        <div className="pb-4 border-b border-gray-200">
+                        <div className="pb-4 border-b border-border">
                             <div className="flex justify-between items-center mb-1">
-                                <span className="text-sm font-bold text-gray-700">Milestone</span>
-                                <button className="text-sm text-indigo-600 hover:underline">Edit</button>
+                                <span className="text-sm font-bold text-foreground">Milestone</span>
+                                <button className="text-sm text-primary hover:underline">Edit</button>
                             </div>
-                            <div className="text-sm text-gray-500 mt-1">None</div>
+                            <div className="text-sm text-muted-foreground mt-1">None</div>
                         </div>
 
                         {/* Dates (Mock) */}
-                        <div className="pb-4 border-b border-gray-200">
+                        <div className="pb-4 border-b border-border">
                             <div className="flex justify-between items-center mb-1">
-                                <span className="text-sm font-bold text-gray-700">Dates</span>
-                                <button className="text-sm text-indigo-600 hover:underline">Edit</button>
+                                <span className="text-sm font-bold text-foreground">Dates</span>
+                                <button className="text-sm text-primary hover:underline">Edit</button>
                             </div>
-                            <div className="text-sm text-gray-500 mt-1">Start: None</div>
-                            <div className="text-sm text-gray-500 mt-1">Due: None</div>
+                            <div className="text-sm text-muted-foreground mt-1">Start: None</div>
+                            <div className="text-sm text-muted-foreground mt-1">Due: None</div>
                         </div>
 
                     </div>

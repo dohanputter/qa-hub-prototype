@@ -62,17 +62,17 @@ export function CreateIssueProjectSelector({ open, onSelect, onOpenChange }: Cre
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="sm:max-w-[600px] bg-[#1e1e2f] border-gray-700 text-gray-100">
+            <DialogContent className="sm:max-w-[600px] bg-background border-border text-foreground">
                 <DialogHeader>
-                    <DialogTitle className="text-gray-100">Select Project for New Issue</DialogTitle>
+                    <DialogTitle className="text-foreground">Select Project for New Issue</DialogTitle>
                 </DialogHeader>
                 <div className="grid gap-4 py-4">
-                    <p className="text-sm text-gray-400">
+                    <p className="text-sm text-muted-foreground">
                         Choose the project where you want to create the issue.
                     </p>
                     <div className="space-y-2">
                         {projects.length === 0 ? (
-                            <div className="text-center py-8 text-gray-400">
+                            <div className="text-center py-8 text-muted-foreground">
                                 No projects available. Please select a group first.
                             </div>
                         ) : (
@@ -82,33 +82,33 @@ export function CreateIssueProjectSelector({ open, onSelect, onOpenChange }: Cre
                                     className={cn(
                                         "flex items-center justify-between p-4 border rounded-lg cursor-pointer transition-all duration-200",
                                         selectedProjectId === project.id
-                                            ? "border-indigo-500 bg-indigo-500/10 hover:bg-indigo-500/20"
-                                            : "border-gray-700 hover:bg-gray-800 hover:border-gray-600"
+                                            ? "border-primary bg-primary/10 hover:bg-primary/20"
+                                            : "border-border hover:bg-muted/50 hover:border-muted-foreground/20"
                                     )}
                                     onClick={() => handleSelect(project)}
                                 >
                                     <div className="flex items-center gap-4">
                                         <div className={cn(
                                             "p-2 rounded-md",
-                                            selectedProjectId === project.id ? "bg-indigo-500/20" : "bg-gray-800"
+                                            selectedProjectId === project.id ? "bg-primary/20" : "bg-muted"
                                         )}>
                                             <Folder className={cn(
                                                 "h-5 w-5",
-                                                selectedProjectId === project.id ? "text-indigo-400" : "text-gray-400"
+                                                selectedProjectId === project.id ? "text-primary" : "text-muted-foreground"
                                             )} />
                                         </div>
                                         <div>
-                                            <h4 className="font-medium text-gray-100">{project.name}</h4>
-                                            <p className="text-sm text-gray-400">
+                                            <h4 className="font-medium text-foreground">{project.name}</h4>
+                                            <p className="text-sm text-muted-foreground">
                                                 {project.description || 'No description'}
                                             </p>
                                         </div>
                                     </div>
                                     <div className="flex items-center gap-2">
                                         {selectedProjectId === project.id && (
-                                            <Check className="h-4 w-4 text-indigo-400" />
+                                            <Check className="h-4 w-4 text-primary" />
                                         )}
-                                        <ChevronRight className="h-4 w-4 text-gray-500" />
+                                        <ChevronRight className="h-4 w-4 text-muted-foreground" />
                                     </div>
                                 </div>
                             ))
