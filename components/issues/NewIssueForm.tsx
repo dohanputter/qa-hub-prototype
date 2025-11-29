@@ -178,123 +178,134 @@ export function NewIssueForm() {
 
             <div className="max-w-5xl mx-auto border rounded-lg p-6 bg-card shadow-sm">
                 <form onSubmit={handleSubmit} className="space-y-6">
-                    <div className="space-y-2">
-                        <Label htmlFor="type">Type</Label>
-                        <Select
-                            value={formData.type}
-                            onValueChange={(value) => setFormData({ ...formData, type: value })}
-                        >
-                            <SelectTrigger>
-                                <SelectValue placeholder="Select type" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="issue">Issue</SelectItem>
-                                <SelectItem value="incident">Incident</SelectItem>
-                            </SelectContent>
-                        </Select>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div className="space-y-2">
+                            <Label htmlFor="type">Type</Label>
+                            <Select
+                                value={formData.type}
+                                onValueChange={(value) => setFormData({ ...formData, type: value })}
+                            >
+                                <SelectTrigger>
+                                    <SelectValue placeholder="Select type" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="issue">Issue</SelectItem>
+                                    <SelectItem value="incident">Incident</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
+
+                        <div className="space-y-2">
+                            <Label>Assignee</Label>
+                            <Select
+                                value={formData.assigneeId}
+                                onValueChange={(value) => setFormData({ ...formData, assigneeId: value })}
+                            >
+                                <SelectTrigger>
+                                    <SelectValue placeholder="Unassigned" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="99">Mock Tester</SelectItem>
+                                    <SelectItem value="100">Jane Doe</SelectItem>
+                                    <SelectItem value="101">John Smith</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
                     </div>
 
                     <div className="space-y-2">
-                        <Label htmlFor="title">Title (required)</Label>
+                        <Label htmlFor="title">Title <span className="text-red-500">*</span></Label>
                         <Input
                             id="title"
                             placeholder="Add a title"
                             value={formData.title}
                             onChange={(e) => setFormData({ ...formData, title: e.target.value })}
                             required
+                            className="text-lg font-medium"
                         />
                     </div>
 
                     <div className="space-y-2">
                         <Label htmlFor="description">Description</Label>
-                        <TiptapEditor
-                            content={formData.description}
-                            onChange={handleEditorChange}
-                            members={members}
-                            placeholder="Describe the issue..."
-                            onImagePaste={handleImagePaste}
-                        />
+                        <div className="min-h-[200px] border rounded-md">
+                            <TiptapEditor
+                                content={formData.description}
+                                onChange={handleEditorChange}
+                                members={members}
+                                placeholder="Describe the issue..."
+                                onImagePaste={handleImagePaste}
+                            />
+                        </div>
                         <div className="text-xs text-muted-foreground text-right">Markdown supported</div>
                     </div>
 
                     <div className="space-y-2">
-                        <Label>Assignee</Label>
-                        <Select
-                            value={formData.assigneeId}
-                            onValueChange={(value) => setFormData({ ...formData, assigneeId: value })}
-                        >
-                            <SelectTrigger>
-                                <SelectValue placeholder="Unassigned" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="99">Mock Tester</SelectItem>
-                                <SelectItem value="100">Jane Doe</SelectItem>
-                                <SelectItem value="101">John Smith</SelectItem>
-                            </SelectContent>
-                        </Select>
-                    </div>
-
-                    <div className="space-y-2">
-                        <Label>Labels</Label>
-                        <div className="flex flex-wrap gap-2 mb-2">
-                            {selectedLabels.map(labelName => {
-                                const label = labels.find(l => l.name === labelName);
-                                return (
-                                    <Badge
-                                        key={labelName}
-                                        variant="outline"
-                                        style={{
-                                            backgroundColor: `${label?.color || '#6b7280'}15`,
-                                            color: label?.color || '#6b7280'
-                                        }}
-                                        className="flex items-center gap-1 px-2 py-0.5 h-6 rounded-full border-0 font-medium"
-                                    >
-                                        {labelName}
-                                        <X
-                                            className="h-3 w-3 cursor-pointer hover:opacity-70"
-                                            onClick={() => handleRemoveLabel(labelName)}
-                                        />
-                                    </Badge>
-                                );
-                            })}
+                        <div className="flex items-center justify-between">
+                            <Label>Labels</Label>
+                            <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                    <Button type="button" variant="outline" size="sm" className="h-8">
+                                        <Plus className="h-3.5 w-3.5 mr-1.5" />
+                                        Add label
+                                    </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end" className="w-56">
+                                    {labels.length === 0 ? (
+                                        <div className="px-2 py-1.5 text-sm text-muted-foreground">No labels available</div>
+                                    ) : (
+                                        labels.map(label => (
+                                            <DropdownMenuCheckboxItem
+                                                key={label.name}
+                                                checked={selectedLabels.includes(label.name)}
+                                                onCheckedChange={() => handleLabelToggle(label.name)}
+                                            >
+                                                <div className="flex items-center gap-2">
+                                                    <div
+                                                        className="w-3 h-3 rounded-full"
+                                                        style={{ backgroundColor: label.color }}
+                                                    />
+                                                    <span>{label.name}</span>
+                                                </div>
+                                            </DropdownMenuCheckboxItem>
+                                        ))
+                                    )}
+                                </DropdownMenuContent>
+                            </DropdownMenu>
                         </div>
-                        <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                                <Button type="button" variant="outline" size="sm" className="w-full">
-                                    <Plus className="h-4 w-4 mr-2" />
-                                    Add label
-                                </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="start" className="w-56">
-                                {labels.length === 0 ? (
-                                    <div className="px-2 py-1.5 text-sm text-muted-foreground">No labels available</div>
-                                ) : (
-                                    labels.map(label => (
-                                        <DropdownMenuCheckboxItem
-                                            key={label.name}
-                                            checked={selectedLabels.includes(label.name)}
-                                            onCheckedChange={() => handleLabelToggle(label.name)}
+
+                        {selectedLabels.length > 0 && (
+                            <div className="flex flex-wrap gap-2 pt-2">
+                                {selectedLabels.map(labelName => {
+                                    const label = labels.find(l => l.name === labelName);
+                                    return (
+                                        <Badge
+                                            key={labelName}
+                                            variant="secondary"
+                                            style={{
+                                                backgroundColor: `${label?.color || '#6b7280'}15`,
+                                                color: label?.color || '#6b7280',
+                                                borderColor: `${label?.color || '#6b7280'}30`
+                                            }}
+                                            className="flex items-center gap-1 px-2.5 py-0.5 h-7 rounded-md border font-medium transition-colors hover:bg-opacity-20"
                                         >
-                                            <div className="flex items-center gap-2">
-                                                <div
-                                                    className="w-3 h-3 rounded-full"
-                                                    style={{ backgroundColor: label.color }}
-                                                />
-                                                <span>{label.name}</span>
-                                            </div>
-                                        </DropdownMenuCheckboxItem>
-                                    ))
-                                )}
-                            </DropdownMenuContent>
-                        </DropdownMenu>
+                                            {labelName}
+                                            <X
+                                                className="h-3 w-3 cursor-pointer hover:opacity-70 ml-1"
+                                                onClick={() => handleRemoveLabel(labelName)}
+                                            />
+                                        </Badge>
+                                    );
+                                })}
+                            </div>
+                        )}
                     </div>
 
-                    <div className="flex justify-end gap-4 pt-4">
-                        <Button variant="outline" type="button" asChild>
+                    <div className="flex items-center justify-end gap-3 pt-6 border-t">
+                        <Button variant="ghost" type="button" asChild>
                             <Link href="/issues">Cancel</Link>
                         </Button>
-                        <Button type="submit" disabled={isLoading} className="bg-indigo-600 hover:bg-indigo-700">
-                            {isLoading ? 'Creating...' : 'Create issue'}
+                        <Button type="submit" disabled={isLoading} className="bg-primary hover:bg-primary/90 min-w-[120px]">
+                            {isLoading ? 'Creating...' : 'Create Issue'}
                         </Button>
                     </div>
                 </form>

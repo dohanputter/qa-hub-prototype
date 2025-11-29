@@ -16,9 +16,10 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { getOrCreateQARun, submitQARun } from '@/app/actions/qa';
 import { uploadAttachment } from '@/app/actions/uploadAttachment';
+import { removeAttachment } from '@/app/actions/removeAttachment';
 import { getSnippetsAction } from '@/app/actions/snippets';
 import { toast } from '@/components/ui/use-toast';
-import { Loader2, Paperclip, CheckCircle, XCircle, ExternalLink, Save, History, PlayCircle, Clock, Plus, X } from 'lucide-react';
+import { Loader2, Paperclip, CheckCircle, XCircle, ExternalLink, Save, History, PlayCircle, Clock, Plus, X, Trash2 } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
@@ -166,6 +167,16 @@ export function QADetail({ issue, qaIssue, runs = [], allAttachments = [], membe
         const result = await uploadAttachment(formData);
         setAttachments([...attachments, result]);
         return result;
+    };
+
+    const handleRemoveAttachment = async (attachmentId: string, filename: string) => {
+        try {
+            await removeAttachment(attachmentId);
+            setAttachments(attachments.filter((a: any) => a.id !== attachmentId));
+            toast({ title: "Attachment removed", description: filename });
+        } catch (error: any) {
+            toast({ title: "Failed to remove attachment", description: error.message, variant: "destructive" });
+        }
     };
 
     const handleStartNewRun = async () => {
@@ -419,9 +430,16 @@ export function QADetail({ issue, qaIssue, runs = [], allAttachments = [], membe
                             <h3 className="font-medium text-foreground">Attachments</h3>
                             <div className="grid grid-cols-2 gap-4">
                                 {attachments.map((att: any) => (
-                                    <div key={att.id} className="flex items-center gap-2 p-3 border rounded-lg bg-card hover:bg-muted transition-colors">
-                                        <Paperclip className="h-4 w-4 text-muted-foreground" />
+                                    <div key={att.id} className="flex items-center gap-2 p-3 border rounded-lg bg-card hover:bg-muted transition-colors group">
+                                        <Paperclip className="h-4 w-4 text-muted-foreground flex-shrink-0" />
                                         <a href={att.url} target="_blank" className="text-sm text-primary hover:underline truncate flex-1">{att.filename}</a>
+                                        <button
+                                            onClick={() => handleRemoveAttachment(att.id, att.filename)}
+                                            className="opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:bg-destructive/10 rounded"
+                                            title="Remove attachment"
+                                        >
+                                            <Trash2 className="h-4 w-4 text-destructive" />
+                                        </button>
                                     </div>
                                 ))}
                                 <label className="flex items-center justify-center p-4 border-2 border-dashed border-border rounded-lg cursor-pointer hover:bg-muted/50 hover:border-primary/50 transition-all">

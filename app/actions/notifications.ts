@@ -6,7 +6,7 @@ import { notifications } from '@/db/schema';
 import { eq, desc } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 
-export async function getUserNotifications(limit = 50) {
+export async function getUserNotifications(limit = 50, offset = 0) {
     const session = await auth();
     const isMockMode = process.env.NEXT_PUBLIC_MOCK_MODE === 'true';
     const mockUserId = 'mock-user-00000000-0000-0000-0000-000000000001';
@@ -20,7 +20,8 @@ export async function getUserNotifications(limit = 50) {
         .from(notifications)
         .where(eq(notifications.userId, userId))
         .orderBy(desc(notifications.createdAt))
-        .limit(limit);
+        .limit(limit)
+        .offset(offset);
 }
 
 export async function markNotificationAsRead(notificationId: string) {

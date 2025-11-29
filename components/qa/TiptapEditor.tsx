@@ -5,17 +5,21 @@ import { useEditor, EditorContent, ReactRenderer } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Mention from '@tiptap/extension-mention';
 import { Table } from '@tiptap/extension-table';
+import BubbleMenu from '@tiptap/extension-bubble-menu';
 import { TableCell } from '@tiptap/extension-table-cell';
 import Emoji from '@tiptap/extension-emoji';
 import { TableHeader } from '@tiptap/extension-table-header';
 import { TableRow } from '@tiptap/extension-table-row';
 import { Button } from '@/components/ui/button';
-import { Bold, Italic, List, ListOrdered, Code, ScrollText, Table as TableIcon } from 'lucide-react';
+import { Bold, Italic, List, ListOrdered, Code, ScrollText, Table as TableIcon, Type } from 'lucide-react';
 import tippy from 'tippy.js';
 // import 'tippy.js/dist/tippy.css';
 import { MentionList } from './MentionList';
 import { EmojiList } from './EmojiList';
+import { TableBubbleMenu } from './TableBubbleMenu';
 import { emojis } from './emojis';
+import { TextStyle } from '@tiptap/extension-text-style';
+import { FontSize } from './extensions/FontSize';
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -38,6 +42,8 @@ export function TiptapEditor({ content, onChange, members, placeholder, snippets
     const editor = useEditor({
         extensions: [
             StarterKit,
+            TextStyle,
+            FontSize,
             Table.configure({
                 resizable: true,
             }),
@@ -173,7 +179,7 @@ export function TiptapEditor({ content, onChange, members, placeholder, snippets
         },
         editorProps: {
             attributes: {
-                class: 'prose prose-sm sm:prose lg:prose-lg xl:prose-2xl mx-auto focus:outline-none min-h-[150px] p-4 bg-transparent dark:prose-invert',
+                class: 'prose prose-sm sm:prose max-w-none focus:outline-none min-h-[150px] p-4 bg-transparent dark:prose-invert',
             },
             handlePaste: (view, event, slice) => {
                 // Check if there are files in the clipboard
@@ -308,6 +314,31 @@ export function TiptapEditor({ content, onChange, members, placeholder, snippets
                     </PopoverContent>
                 </Popover>
 
+                <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="sm" className={editor.isActive('textStyle', { fontSize: '12px' }) || editor.isActive('textStyle', { fontSize: '18px' }) || editor.isActive('textStyle', { fontSize: '24px' }) || editor.isActive('textStyle', { fontSize: '30px' }) ? 'bg-muted' : ''}>
+                            <Type className="h-4 w-4" />
+                        </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="start" className="w-32">
+                        <DropdownMenuItem onClick={() => editor.chain().focus().setFontSize('12px').run()}>
+                            <span className="text-xs">Small</span>
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => editor.chain().focus().unsetFontSize().run()}>
+                            <span className="text-sm">Normal</span>
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => editor.chain().focus().setFontSize('18px').run()}>
+                            <span className="text-lg">Large</span>
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => editor.chain().focus().setFontSize('24px').run()}>
+                            <span className="text-xl">Extra Large</span>
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => editor.chain().focus().setFontSize('30px').run()}>
+                            <span className="text-2xl">Huge</span>
+                        </DropdownMenuItem>
+                    </DropdownMenuContent>
+                </DropdownMenu>
+
                 <div className="ml-auto">
                     <DropdownMenu>
                         <DropdownMenuTrigger asChild>
@@ -335,6 +366,7 @@ export function TiptapEditor({ content, onChange, members, placeholder, snippets
             </div>
             <div className="flex-1 overflow-y-auto overflow-x-auto min-h-[150px]">
                 <EditorContent editor={editor} className="h-full" />
+                <TableBubbleMenu editor={editor} />
             </div>
         </div>
     );
