@@ -98,4 +98,74 @@
   .shadow-glow-primary {
     box-shadow: 0 0 20px -5px hsl(var(--primary) / 0.3);
   }
+
+  /* Tiptap Table Styles - Aggressive Override */
+  .prose .tiptap-table,
+  .ProseMirror table {
+    border-collapse: collapse !important;
+    table-layout: fixed;
+    width: 100%;
+    margin: 0;
+    overflow: visible !important;
+    /* Allow handles to stick out */
+  }
+
+  /* Remove default prose row borders */
+  .ProseMirror tr {
+    border-bottom: none !important;
+  }
+
+  .prose .tiptap-table td,
+  .prose .tiptap-table th,
+  .ProseMirror table td,
+  .ProseMirror table th {
+    min-width: 1em;
+    border: 1px solid #d1d5db !important;
+    /* Hardcoded gray-300 */
+    padding: 12px !important;
+    /* Increased padding for better spacing */
+    vertical-align: top;
+    box-sizing: border-box;
+    position: relative;
+  }
+
+  /* Enhance border visibility in light mode - Redundant but safe */
+  .prose .tiptap-table td,
+  .prose .tiptap-table th,
+  .ProseMirror table td,
+  .ProseMirror table th {
+    border-color: #d1d5db !important;
+  }
+
+  /* Enhance border visibility in dark mode */
+  .dark .prose .tiptap-table td,
+  .dark .prose .tiptap-table th,
+  .dark .ProseMirror table td,
+  .dark .ProseMirror table th {
+    border-color: #3f3f46 !important;
+    /* Hardcoded zinc-700 */
+  }
+
+  .tiptap-table th,
+  .ProseMirror th {
+    font-weight: bold;
+    text-align: left;
+    background-color: hsl(var(--muted));
+  }
+
+  .ProseMirror .selectedCell:after {
+    z-index: 2;
+    position: absolute;
+    content: "";
+    left: 0;
+    right: 0;
+    top: 0;
+    bottom: 0;
+    background: rgba(200, 200, 255, 0.4);
+    pointer-events: none;
+  }
+
+  .ProseMirror p {
+    margin: 0;
+  }
 }

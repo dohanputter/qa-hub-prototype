@@ -94,7 +94,7 @@ export function tiptapToMarkdown(content: JSONContent): string {
                 const cells: string[] = [];
                 rowNode.content.forEach((cellNode) => {
                     const cellContent = cellNode.content
-                        ? cellNode.content.map(processNode).join('').trim()
+                        ? cellNode.content.map(processNode).join('').trim().replace(/\n/g, '<br>')
                         : '';
                     cells.push(cellContent);
                 });

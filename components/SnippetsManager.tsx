@@ -6,6 +6,10 @@ import { Snippet } from '@/types';
 import { getSnippetsAction, createSnippetAction, updateSnippetAction, deleteSnippetAction } from '@/app/actions/snippets';
 import { useToast } from '@/components/ui/use-toast';
 import { useRouter } from 'next/navigation';
+import { TiptapEditor } from '@/components/qa/TiptapEditor';
+import { tiptapToMarkdown } from '@/lib/utils';
+import { uploadAttachment } from '@/app/actions/uploadAttachment';
+import { getUserProjects, getProjectUsers } from '@/app/actions/project';
 
 export const SnippetsManager: React.FC = () => {
     const { toast } = useToast();
@@ -16,6 +20,10 @@ export const SnippetsManager: React.FC = () => {
     const [isEditing, setIsEditing] = useState(false);
     const [currentSnippet, setCurrentSnippet] = useState<Partial<Snippet>>({});
 
+    // Editor context state
+    const [defaultProjectId, setDefaultProjectId] = useState<number | null>(null);
+    const [members, setMembers] = useState<any[]>([]);
+
     // Validation State
     const [titleError, setTitleError] = useState('');
     const [contentError, setContentError] = useState('');
@@ -25,7 +33,22 @@ export const SnippetsManager: React.FC = () => {
 
     useEffect(() => {
         loadSnippets();
+        loadContext();
     }, []);
+
+    const loadContext = async () => {
+        try {
+            const projects = await getUserProjects();
+            if (projects && projects.length > 0) {
+                const pid = projects[0].id;
+                setDefaultProjectId(pid);
+                const projectMembers = await getProjectUsers(pid);
+                setMembers(projectMembers);
+            }
+        } catch (error) {
+            console.error("Failed to load context for editor", error);
+        }
+    };
 
     const loadSnippets = async () => {
         try {
@@ -94,6 +117,30 @@ export const SnippetsManager: React.FC = () => {
             }
             setSnippetToDelete(null);
         }
+    };
+
+    const handleEditorChange = (jsonContent: any) => {
+        const markdown = tiptapToMarkdown(jsonContent);
+        setCurrentSnippet(prev => ({ ...prev, content: markdown }));
+        setContentError('');
+    };
+
+    const handleImagePaste = async (file: File) => {
+        if (!defaultProjectId) {
+            toast({
+                title: "Upload failed",
+                description: "No project context available for uploads",
+                variant: "destructive"
+            });
+            throw new Error("No project context available");
+        }
+
+        const formData = new FormData();
+        formData.append('file', file);
+        formData.append('projectId', defaultProjectId.toString());
+
+        const result = await uploadAttachment(formData);
+        return result;
     };
 
     const handleSave = async () => {
@@ -310,12 +357,14 @@ export const SnippetsManager: React.FC = () => {
                                     </button>
                                 </div>
                             </div>
-                            <div className="flex-1 flex flex-col relative">
-                                <textarea
-                                    value={currentSnippet.content}
-                                    onChange={e => { setCurrentSnippet({ ...currentSnippet, content: e.target.value }); setContentError(''); }}
-                                    className={`flex-1 p-6 w-full resize-none focus:outline-none font-mono text-sm leading-relaxed text-foreground bg-card ${contentError ? 'ring-1 ring-inset ring-destructive/50 bg-destructive/10' : ''}`}
+                            <div className="flex-1 flex flex-col relative p-4">
+                                <TiptapEditor
+                                    content={currentSnippet.content}
+                                    onChange={handleEditorChange}
+                                    members={members}
                                     placeholder="Enter your snippet content here..."
+                                    onImagePaste={handleImagePaste}
+                                    className="h-full max-h-none"
                                 />
                                 {contentError && (
                                     <div className="absolute bottom-12 left-6 text-xs text-destructive bg-card/90 px-2 py-1 rounded border border-destructive/20 shadow-sm">

@@ -21,9 +21,13 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { createIssue } from '@/app/actions/issues';
 import { getLabelsAction } from '@/app/actions/labels';
+import { uploadAttachment } from '@/app/actions/uploadAttachment';
 import { ArrowLeft, Plus, X } from 'lucide-react';
 import Link from 'next/link';
 import { CreateIssueProjectSelector } from '@/components/issues/CreateIssueProjectSelector';
+import { TiptapEditor } from '@/components/qa/TiptapEditor';
+import { tiptapToMarkdown } from '@/lib/utils';
+import { toast } from '@/components/ui/use-toast';
 
 export function NewIssueForm() {
     const router = useRouter();
@@ -41,6 +45,13 @@ export function NewIssueForm() {
         type: 'issue',
         assigneeId: '',
     });
+
+    // Mock members for mentions
+    const members = [
+        { name: 'Mock Tester', username: 'mock_tester', avatar_url: '' },
+        { name: 'Jane Doe', username: 'jane_doe', avatar_url: '' },
+        { name: 'John Smith', username: 'john_smith', avatar_url: '' },
+    ];
 
     // Load labels when project is selected
     useEffect(() => {
@@ -81,6 +92,24 @@ export function NewIssueForm() {
         setSelectedLabels(prev => prev.filter(l => l !== labelName));
     };
 
+    const handleEditorChange = (jsonContent: any) => {
+        const markdown = tiptapToMarkdown(jsonContent);
+        setFormData(prev => ({ ...prev, description: markdown }));
+    };
+
+    const handleImagePaste = async (file: File) => {
+        if (!selectedProjectId) {
+            throw new Error('Please select a project first');
+        }
+
+        const formData = new FormData();
+        formData.append('file', file);
+        formData.append('projectId', selectedProjectId);
+
+        const result = await uploadAttachment(formData);
+        return result;
+    };
+
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setIsLoading(true);
@@ -93,6 +122,11 @@ export function NewIssueForm() {
             router.refresh();
         } catch (error) {
             console.error('Failed to create issue', error);
+            toast({
+                title: "Error",
+                description: "Failed to create issue",
+                variant: "destructive",
+            });
         } finally {
             setIsLoading(false);
         }
@@ -142,7 +176,7 @@ export function NewIssueForm() {
                 </div>
             </div>
 
-            <div className="max-w-2xl mx-auto border rounded-lg p-6 bg-card shadow-sm">
+            <div className="max-w-5xl mx-auto border rounded-lg p-6 bg-card shadow-sm">
                 <form onSubmit={handleSubmit} className="space-y-6">
                     <div className="space-y-2">
                         <Label htmlFor="type">Type</Label>
@@ -173,15 +207,13 @@ export function NewIssueForm() {
 
                     <div className="space-y-2">
                         <Label htmlFor="description">Description</Label>
-                        <div className="min-h-[200px] border rounded-md p-2">
-                            <textarea
-                                id="description"
-                                className="w-full h-full min-h-[200px] resize-none outline-none bg-transparent text-foreground placeholder:text-muted-foreground"
-                                placeholder="Describe the issue..."
-                                value={formData.description}
-                                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                            />
-                        </div>
+                        <TiptapEditor
+                            content={formData.description}
+                            onChange={handleEditorChange}
+                            members={members}
+                            placeholder="Describe the issue..."
+                            onImagePaste={handleImagePaste}
+                        />
                         <div className="text-xs text-muted-foreground text-right">Markdown supported</div>
                     </div>
 
@@ -212,11 +244,10 @@ export function NewIssueForm() {
                                         key={labelName}
                                         variant="outline"
                                         style={{
-                                            backgroundColor: label?.color || '#e5e7eb',
-                                            color: label?.text_color || '#000',
-                                            borderColor: label?.color || '#e5e7eb'
+                                            backgroundColor: `${label?.color || '#6b7280'}15`,
+                                            color: label?.color || '#6b7280'
                                         }}
-                                        className="flex items-center gap-1"
+                                        className="flex items-center gap-1 px-2 py-0.5 h-6 rounded-full border-0 font-medium"
                                     >
                                         {labelName}
                                         <X

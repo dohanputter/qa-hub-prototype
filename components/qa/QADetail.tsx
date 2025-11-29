@@ -278,11 +278,10 @@ export function QADetail({ issue, qaIssue, runs = [], allAttachments = [], membe
                                     <Badge
                                         key={labelName}
                                         variant="outline"
-                                        className="flex items-center gap-1 pr-1"
+                                        className="flex items-center gap-1 pr-1 px-2 py-0.5 h-6 rounded-full border-0 font-medium"
                                         style={{
-                                            backgroundColor: labelInfo?.color || 'hsl(var(--muted))',
-                                            color: labelInfo?.text_color || 'hsl(var(--foreground))',
-                                            borderColor: labelInfo?.color || 'hsl(var(--border))'
+                                            backgroundColor: `${labelInfo?.color || '#6b7280'}15`,
+                                            color: labelInfo?.color || '#6b7280'
                                         }}
                                     >
                                         {labelName}

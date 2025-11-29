@@ -92,8 +92,8 @@ export function IssuesTable({ issues, projectId }: { issues: any[]; projectId: n
                                                 <Badge
                                                     key={label}
                                                     variant="outline"
-                                                    className="text-xs font-normal px-2 py-0 h-5 border-0"
-                                                    style={{ backgroundColor: colors.bg, color: colors.text }}
+                                                    className="text-xs font-medium px-2 py-0.5 h-5 rounded-full border-0"
+                                                    style={{ backgroundColor: `${colors.bg}15`, color: colors.bg }}
                                                 >
                                                     {label}
                                                 </Badge>
