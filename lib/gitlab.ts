@@ -162,7 +162,7 @@ export const getIssues = async (projectId: number, token: string, params?: { sta
         try {
             const { db } = await import('@/lib/db');
             const { qaIssues, projects } = await import('@/db/schema');
-            const { sql } = await import('drizzle-orm');
+            const { sql, eq } = await import('drizzle-orm');
 
             console.log(`[MOCK getIssues] Querying DB using SQL raw query for Project: ${projectId}`);
 
@@ -248,7 +248,7 @@ export const getIssue = async (projectId: number, issueIid: number, token: strin
         // In mock mode, database acts as "GitLab" - read directly from it
         try {
             const { db } = await import('@/lib/db');
-            const { qaIssues } = await import('@/db/schema');
+            const { qaIssues, projects } = await import('@/db/schema');
             const { eq, sql } = await import('drizzle-orm');
 
             console.log(`[MOCK getIssue] Querying DB using SQL raw query for Project: ${projectId} (${typeof projectId}), Issue IID: ${issueIid} (${typeof issueIid})`);
@@ -261,11 +261,57 @@ export const getIssue = async (projectId: number, issueIid: number, token: strin
             console.log(`[MOCK getIssue] Found ${dbIssues.length} issues`);
 
             if (dbIssues.length === 0) {
-                console.log(`[MOCK getIssue] Issue #${issueIid} not found in database`);
+                console.log(`[MOCK getIssue] Issue #${issueIid} not found in database. Checking mock store...`);
 
-                // Dump all issues for this project to see what's there
-                const allProjectIssues = await db.select().from(qaIssues).where(eq(qaIssues.gitlabProjectId, projectId));
-                console.log(`[MOCK getIssue] All issues for project ${projectId}:`, allProjectIssues.map(i => ({ iid: i.gitlabIssueIid, id: i.gitlabIssueId })));
+                // Fallback: Check if issue exists in in-memory mock store but not yet in DB
+                const mockIssue = mockIssuesStore.find((i: any) => i.project_id === projectId && i.iid === issueIid);
+
+                if (mockIssue) {
+                    console.log(`[MOCK getIssue] Found issue #${issueIid} in mock store. Syncing to DB...`);
+
+                    // Determine status from labels if possible
+                    const projectResults = await db.select().from(projects).where(eq(projects.id, projectId)).limit(1);
+                    const project = projectResults[0];
+                    const { mapLabelToStatus } = await import('@/lib/utils');
+                    const status = project?.qaLabelMapping
+                        ? (mapLabelToStatus(mockIssue.labels, project.qaLabelMapping) || 'pending')
+                        : 'pending';
+
+                    // Insert into DB
+                    const [createdIssue] = await db.insert(qaIssues).values({
+                        gitlabIssueId: mockIssue.id,
+                        gitlabIssueIid: mockIssue.iid,
+                        gitlabProjectId: mockIssue.project_id,
+                        issueTitle: mockIssue.title,
+                        issueDescription: mockIssue.description || '',
+                        issueUrl: mockIssue.web_url,
+                        status: status,
+                        jsonLabels: mockIssue.labels,
+                        assigneeId: mockIssue.assignees?.[0]?.id || null,
+                        createdAt: new Date(mockIssue.created_at),
+                        updatedAt: new Date(mockIssue.updated_at),
+                    }).returning();
+
+                    console.log(`[MOCK getIssue] Synced issue #${issueIid} to DB`);
+
+                    // Return the mock issue structure directly
+                    return {
+                        id: createdIssue.gitlabIssueId,
+                        iid: createdIssue.gitlabIssueIid,
+                        project_id: createdIssue.gitlabProjectId,
+                        title: createdIssue.issueTitle,
+                        description: createdIssue.issueDescription || '',
+                        state: 'opened',
+                        created_at: createdIssue.createdAt?.toISOString() || new Date().toISOString(),
+                        updated_at: createdIssue.updatedAt?.toISOString() || new Date().toISOString(),
+                        author: MOCK_USERS[0],
+                        assignees: mockIssue.assignees,
+                        labels: mockIssue.labels,
+                        web_url: createdIssue.issueUrl,
+                    };
+                }
+
+                console.log(`[MOCK getIssue] Issue #${issueIid} not found in database or mock store`);
                 return null;
             }
 
