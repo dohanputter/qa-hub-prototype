@@ -3,7 +3,7 @@ import { Image as TiptapImage } from '@tiptap/extension-image';
 // Extend Image with width/height attributes and add resize handles
 export const ResizableImage = TiptapImage.extend({
     name: 'resizableImage',
-    
+
     addOptions() {
         return {
             ...this.parent?.(),
@@ -12,7 +12,7 @@ export const ResizableImage = TiptapImage.extend({
             HTMLAttributes: {},
         } as any;
     },
-    
+
     addAttributes() {
         return {
             ...this.parent?.(),
@@ -67,6 +67,7 @@ export const ResizableImage = TiptapImage.extend({
 
     addNodeView() {
         return ({ node, getPos, editor }) => {
+            let currentNode = node;
             const dom = document.createElement('span');
             dom.className = 'resizable-image-wrapper';
             dom.style.cssText = 'display: inline-block; position: relative; max-width: 100%; vertical-align: middle;';
@@ -78,28 +79,28 @@ export const ResizableImage = TiptapImage.extend({
             const isDataUrl = originalUrl.startsWith('data:');
             // Use proxy ONLY for GitLab URLs to avoid CORS
             // Explicitly exclude placeholder URLs, data URLs, and other public image services
-            const isPlaceholderUrl = originalUrl.includes('via.placeholder.com') || 
-                                    originalUrl.includes('placeholder.com');
-            const isGitLabUrl = !isPlaceholderUrl && !isDataUrl && 
-                               (originalUrl.includes('gitlab.com') || originalUrl.includes('/uploads/'));
+            const isPlaceholderUrl = originalUrl.includes('via.placeholder.com') ||
+                originalUrl.includes('placeholder.com');
+            const isGitLabUrl = !isPlaceholderUrl && !isDataUrl &&
+                (originalUrl.includes('gitlab.com') || originalUrl.includes('/uploads/'));
             const displayUrl = isGitLabUrl
                 ? `/api/images/proxy?url=${encodeURIComponent(originalUrl)}`
                 : originalUrl;
-            
+
             // Set up image element with proper sizing
             img.alt = node.attrs.alt || '';
-            
+
             // Determine initial size - if no width/height set, use a reasonable default
             let imgWidth = node.attrs.width;
             let imgHeight = node.attrs.height;
-            
+
             // If no dimensions set, wait for image to load and use natural size (capped at max)
             if (!imgWidth && !imgHeight) {
                 img.onload = () => {
                     const naturalWidth = img.naturalWidth;
                     const naturalHeight = img.naturalHeight;
                     const maxWidth = 600; // Reasonable max width for editor
-                    
+
                     if (naturalWidth > maxWidth) {
                         const ratio = maxWidth / naturalWidth;
                         imgWidth = maxWidth;
@@ -108,7 +109,7 @@ export const ResizableImage = TiptapImage.extend({
                         imgWidth = naturalWidth;
                         imgHeight = naturalHeight;
                     }
-                    
+
                     // Update the node with calculated dimensions
                     const pos = getPos();
                     if (typeof pos === 'number') {
@@ -121,7 +122,7 @@ export const ResizableImage = TiptapImage.extend({
                     }
                 };
             }
-            
+
             img.style.cssText = `
                 display: block;
                 max-width: 100%;
@@ -132,17 +133,17 @@ export const ResizableImage = TiptapImage.extend({
                 ${imgHeight ? `height: ${imgHeight}px;` : ''}
             `;
             img.draggable = false;
-            
+
             // For data URLs and placeholder URLs, don't set crossOrigin (it can cause issues)
             // For other external URLs, allow anonymous
             if (!isPlaceholderUrl && !isDataUrl && displayUrl.startsWith('http')) {
                 img.crossOrigin = 'anonymous';
             }
-            
+
             // Handle image load errors and sizing
             let errorDiv: HTMLElement | null = null;
             let hasLoaded = false;
-            
+
             img.onload = () => {
                 hasLoaded = true;
                 // Remove error message if image loads successfully
@@ -150,16 +151,16 @@ export const ResizableImage = TiptapImage.extend({
                     errorDiv.remove();
                     errorDiv = null;
                 }
-                
+
                 // Set initial dimensions if not already set
                 if (!node.attrs.width && !node.attrs.height && img.naturalWidth) {
                     const naturalWidth = img.naturalWidth;
                     const naturalHeight = img.naturalHeight;
                     const maxWidth = 600; // Reasonable max width for editor
-                    
+
                     let finalWidth: number;
                     let finalHeight: number;
-                    
+
                     if (naturalWidth > maxWidth) {
                         const ratio = maxWidth / naturalWidth;
                         finalWidth = maxWidth;
@@ -168,12 +169,12 @@ export const ResizableImage = TiptapImage.extend({
                         finalWidth = naturalWidth;
                         finalHeight = naturalHeight;
                     }
-                    
+
                     // Update image styles
                     img.style.width = `${finalWidth}px`;
                     img.style.height = `${finalHeight}px`;
                     img.style.maxWidth = '100%';
-                    
+
                     // Update node attributes
                     const pos = getPos();
                     if (typeof pos === 'number') {
@@ -186,7 +187,7 @@ export const ResizableImage = TiptapImage.extend({
                     }
                 }
             };
-            
+
             img.onerror = (e) => {
                 // Only show error if we haven't loaded successfully
                 if (!hasLoaded && !errorDiv && originalUrl) {
@@ -212,7 +213,7 @@ export const ResizableImage = TiptapImage.extend({
                         newImg.src = displayUrl;
                         return;
                     }
-                    
+
                     // Show error for non-placeholder URLs
                     errorDiv = document.createElement('div');
                     errorDiv.className = 'text-sm text-muted-foreground p-2 border border-destructive/20 rounded bg-destructive/5 my-2';
@@ -224,7 +225,7 @@ export const ResizableImage = TiptapImage.extend({
                     dom.appendChild(errorDiv);
                 }
             };
-            
+
             // Set src after setting up handlers
             if (displayUrl) {
                 img.src = displayUrl;
@@ -242,14 +243,14 @@ export const ResizableImage = TiptapImage.extend({
             const createResizeHandle = (position: string, cursor: string) => {
                 const handle = document.createElement('div');
                 handle.className = `resize-handle resize-handle-${position}`;
-                
+
                 // Determine position styles
                 let top = '';
                 let bottom = '';
                 let left = '';
                 let right = '';
                 let transform = '';
-                
+
                 if (position === 'se') {
                     bottom = '-6px';
                     right = '-6px';
@@ -263,7 +264,7 @@ export const ResizableImage = TiptapImage.extend({
                     top = '-6px';
                     left = '-6px';
                 }
-                
+
                 handle.style.cssText = `
                     position: absolute;
                     width: 12px;
@@ -276,11 +277,11 @@ export const ResizableImage = TiptapImage.extend({
                     ${top} ${bottom} ${left} ${right}
                     transition: background-color 0.2s;
                 `;
-                
+
                 handle.addEventListener('mouseenter', () => {
                     handle.style.backgroundColor = 'hsl(var(--primary) / 0.8)';
                 });
-                
+
                 handle.addEventListener('mouseleave', () => {
                     handle.style.backgroundColor = 'hsl(var(--primary))';
                 });
@@ -292,19 +293,19 @@ export const ResizableImage = TiptapImage.extend({
                     isResizing = true;
                     resizePosition = position;
                     const rect = img.getBoundingClientRect();
-                    startSize = { 
-                        width: node.attrs.width || rect.width, 
-                        height: node.attrs.height || rect.height 
+                    startSize = {
+                        width: currentNode.attrs.width || rect.width,
+                        height: currentNode.attrs.height || rect.height
                     };
                     startPos = { x: e.clientX, y: e.clientY };
                     const aspectRatio = startSize.width / startSize.height;
 
                     const handleMouseMove = (moveEvent: MouseEvent) => {
                         if (!isResizing) return;
-                        
+
                         const deltaX = moveEvent.clientX - startPos.x;
                         const deltaY = moveEvent.clientY - startPos.y;
-                        
+
                         let newWidth = startSize.width;
                         let newHeight = startSize.height;
 
@@ -365,15 +366,15 @@ export const ResizableImage = TiptapImage.extend({
                 // Check if node is selected
                 const { selection } = editor.state;
                 const pos = getPos();
-                
+
                 if (typeof pos === 'number') {
                     // Check if selection includes this node
                     const nodeStart = pos;
-                    const nodeEnd = pos + node.nodeSize;
+                    const nodeEnd = pos + currentNode.nodeSize;
                     const isSelected = (selection.from <= nodeStart && selection.to >= nodeEnd) ||
-                                      (selection.from >= nodeStart && selection.from < nodeEnd) ||
-                                      (selection.to > nodeStart && selection.to <= nodeEnd);
-                    
+                        (selection.from >= nodeStart && selection.from < nodeEnd) ||
+                        (selection.to > nodeStart && selection.to <= nodeEnd);
+
                     if (isSelected) {
                         // Add resize handles
                         resizeHandles.push(createResizeHandle('se', 'se'));
@@ -381,7 +382,7 @@ export const ResizableImage = TiptapImage.extend({
                         resizeHandles.push(createResizeHandle('ne', 'ne'));
                         resizeHandles.push(createResizeHandle('nw', 'nw'));
                         resizeHandles.forEach(handle => dom.appendChild(handle));
-                        
+
                         // Add visual selection indicator
                         dom.style.outline = '2px solid hsl(var(--primary))';
                         dom.style.outlineOffset = '2px';
@@ -398,13 +399,13 @@ export const ResizableImage = TiptapImage.extend({
             // Update handles on selection change
             editor.on('selectionUpdate', updateResizeHandles);
             editor.on('transaction', updateResizeHandles);
-            
+
             // Also listen for clicks on the image to select it
             img.addEventListener('click', (e) => {
                 e.stopPropagation();
                 const pos = getPos();
                 if (typeof pos === 'number' && editor.isEditable) {
-                    editor.commands.setTextSelection({ from: pos, to: pos + node.nodeSize });
+                    editor.commands.setNodeSelection(pos);
                 }
             });
 
@@ -414,26 +415,27 @@ export const ResizableImage = TiptapImage.extend({
                     if (updatedNode.type.name !== this.name) {
                         return false;
                     }
+                    currentNode = updatedNode;
                     // Update image attributes
                     const newOriginalUrl = updatedNode.attrs.src || updatedNode.attrs.url || '';
                     // Use proxy ONLY for GitLab URLs (not placeholder URLs)
-                    const isPlaceholderUrl = newOriginalUrl.includes('via.placeholder.com') || 
-                                            newOriginalUrl.includes('placeholder.com');
-                    const isGitLabUrl = !isPlaceholderUrl && 
-                                       (newOriginalUrl.includes('gitlab.com') || newOriginalUrl.includes('/uploads/'));
+                    const isPlaceholderUrl = newOriginalUrl.includes('via.placeholder.com') ||
+                        newOriginalUrl.includes('placeholder.com');
+                    const isGitLabUrl = !isPlaceholderUrl &&
+                        (newOriginalUrl.includes('gitlab.com') || newOriginalUrl.includes('/uploads/'));
                     const newDisplayUrl = isGitLabUrl
                         ? `/api/images/proxy?url=${encodeURIComponent(newOriginalUrl)}`
                         : newOriginalUrl;
-                    
+
                     if (img.src !== newDisplayUrl && newDisplayUrl) {
                         img.src = newDisplayUrl;
                     }
                     img.alt = updatedNode.attrs.alt || '';
-                    
+
                     // Update dimensions with proper constraints
                     const newWidth = updatedNode.attrs.width;
                     const newHeight = updatedNode.attrs.height;
-                    
+
                     if (newWidth) {
                         img.style.width = `${newWidth}px`;
                         img.style.maxWidth = '100%';
@@ -441,17 +443,21 @@ export const ResizableImage = TiptapImage.extend({
                         img.style.width = 'auto';
                         img.style.maxWidth = '600px';
                     }
-                    
+
                     if (newHeight) {
                         img.style.height = `${newHeight}px`;
                     } else {
                         img.style.height = 'auto';
                     }
-                    
+
                     // Update resize handles visibility
                     updateResizeHandles();
-                    
+
                     return true;
+                },
+                destroy: () => {
+                    editor.off('selectionUpdate', updateResizeHandles);
+                    editor.off('transaction', updateResizeHandles);
                 },
             };
         };
