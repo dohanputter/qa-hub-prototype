@@ -15,7 +15,7 @@ export async function getAllIssues(params?: { state?: 'opened' | 'closed'; searc
         const token = getMockToken();
 
         // Use configured mock project IDs
-        const projectsToFetch = params?.projectId 
+        const projectsToFetch = params?.projectId
             ? [{ id: Number(params.projectId) }]
             : MOCK_PROJECT_IDS.slice(0, 3).map(id => ({ id }));
 
@@ -111,7 +111,7 @@ export async function createIssue(projectId: number, data: unknown) {
     const parsed = safeParse(createIssueSchema, data);
     if (!parsed.success) {
         // Provide more helpful error message
-        const errorMsg = parsed.error.includes('too long') 
+        const errorMsg = parsed.error.includes('too long')
             ? `Description is too long. Please reduce the content size or remove some images. (${parsed.error})`
             : `Validation error: ${parsed.error}`;
         throw new Error(errorMsg);
@@ -152,14 +152,14 @@ export async function createIssue(projectId: number, data: unknown) {
 
         // Ensure mock project exists in database (for foreign key constraint)
         // Validate qaLabelMapping has required properties
-        const projectLabelMapping = (project.qaLabelMapping && 
+        const projectLabelMapping = (project.qaLabelMapping &&
             typeof project.qaLabelMapping === 'object' &&
-            'pending' in project.qaLabelMapping && 
-            'passed' in project.qaLabelMapping && 
-            'failed' in project.qaLabelMapping) 
+            'pending' in project.qaLabelMapping &&
+            'passed' in project.qaLabelMapping &&
+            'failed' in project.qaLabelMapping)
             ? project.qaLabelMapping as { pending: string; passed: string; failed: string }
             : null;
-        
+
         await ensureMockProject({
             id: projectId,
             name: project.name,
@@ -465,7 +465,15 @@ export async function getDashboardStats(projectId?: number) {
     const projectStatsMap = new Map<number, { name: string; open: number; closed: number }>();
 
     // Initialize with known projects
-    allProjects.forEach(p => {
+    // FIX: Use getUserProjects to get the correct source of truth for projects (Mock Data vs DB)
+    const availableProjects = await getUserProjects();
+
+    // Filter available projects if a specific projectId is requested
+    const targetProjects = projectId
+        ? availableProjects.filter((p: any) => p.id === projectId)
+        : availableProjects;
+
+    targetProjects.forEach((p: any) => {
         projectStatsMap.set(p.id, { name: p.name, open: 0, closed: 0 });
     });
 

@@ -165,7 +165,8 @@
   /* GitLab Content Styles for Issue Description */
   .gitlab-content {
     width: 100%;
-    min-width: min-content;
+    overflow-wrap: break-word;
+    word-break: break-word;
   }
 
   /* Ensure tables are visible and scrollable */
@@ -192,7 +193,7 @@
   }
 
   .gitlab-content table th {
-    padding: 0.75rem;
+    padding: 1rem;
     text-align: left;
     font-weight: 600;
     border-bottom: 2px solid hsl(var(--border));
@@ -200,12 +201,17 @@
     white-space: nowrap;
   }
 
+  .gitlab-content table th:first-child {
+    padding-left: 1.5rem;
+  }
+
   .gitlab-content table th:last-child {
     border-right: none;
+    padding-right: 1.5rem;
   }
 
   .gitlab-content table td {
-    padding: 0.75rem;
+    padding: 1rem;
     border-bottom: 1px solid hsl(var(--border));
     border-right: 1px solid hsl(var(--border));
     vertical-align: top;
@@ -213,8 +219,13 @@
     overflow-wrap: break-word;
   }
 
+  .gitlab-content table td:first-child {
+    padding-left: 1.5rem;
+  }
+
   .gitlab-content table td:last-child {
     border-right: none;
+    padding-right: 1.5rem;
   }
 
   .gitlab-content table tr:last-child td {
@@ -228,6 +239,8 @@
   /* Images in GitLab content */
   .gitlab-content img {
     max-width: 100%;
+    max-height: 500px;
+    width: auto;
     height: auto;
     border-radius: 0.5rem;
     margin: 1rem 0;
@@ -382,11 +395,11 @@
 
   .ProseMirror table .resizable-image-wrapper img,
   .prose table .resizable-image-wrapper img {
-    max-width: 100% !important;
-    max-height: 200px !important;
-    width: auto !important;
-    height: auto !important;
-    object-fit: contain !important;
+    max-width: 100%;
+    max-height: 200px;
+    width: auto;
+    height: auto;
+    object-fit: contain;
     display: block;
     margin: 0 auto;
   }

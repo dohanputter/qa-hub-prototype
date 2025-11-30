@@ -1,7 +1,7 @@
 'use client';
 
 // Refined Issue Detail Page
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { TiptapEditor } from './TiptapEditor';
 import { Button } from '@/components/ui/button';
@@ -24,6 +24,16 @@ import { formatDistanceToNow } from 'date-fns';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+    Dialog,
+    DialogContent,
+    DialogHeader,
+    DialogTitle,
+    DialogTrigger,
+} from "@/components/ui/dialog";
+import { marked } from 'marked';
+import { extractImageUrls } from '@/lib/tiptap';
+import { useRef } from 'react';
 
 export function QADetail({ issue, qaIssue, runs = [], allAttachments = [], members, projectId, issueIid, labels: projectLabels }: any) {
     const router = useRouter();
@@ -41,13 +51,24 @@ export function QADetail({ issue, qaIssue, runs = [], allAttachments = [], membe
         }
 
         let rawContent = issue.description_html || issue.description || '';
+
+        // If we don't have HTML but have description (e.g. mock mode), convert markdown to HTML
+        if (!issue.description_html && issue.description) {
+            try {
+                rawContent = marked.parse(issue.description) as string;
+            } catch (e) {
+                console.error('Failed to parse markdown:', e);
+                rawContent = issue.description;
+            }
+        }
+
         if (!rawContent) {
             setProcessedDescription('');
             return;
         }
 
         // Get GitLab base URL from the issue's web_url or default
-        const gitlabBaseUrl = issue.web_url 
+        const gitlabBaseUrl = issue.web_url
             ? new URL(issue.web_url).origin
             : 'https://gitlab.com';
 
@@ -55,24 +76,24 @@ export function QADetail({ issue, qaIssue, runs = [], allAttachments = [], membe
         // Convert markdown image syntax to HTML img tags
         rawContent = rawContent.replace(
             /!\[([^\]]*)\]\(([^)]+)\)/g,
-            (match, alt, url) => {
+            (match: string, alt: string, url: string) => {
                 let absoluteUrl = url.trim();
-                
+
                 // Convert relative URLs to absolute
                 if (absoluteUrl.startsWith('/')) {
                     absoluteUrl = `${gitlabBaseUrl}${absoluteUrl}`;
                 } else if (!absoluteUrl.startsWith('http')) {
                     absoluteUrl = `${gitlabBaseUrl}/${absoluteUrl}`;
                 }
-                
+
                 // Use proxy for GitLab images
-                const isGitLabImage = absoluteUrl.includes('gitlab.com') || 
-                                     absoluteUrl.includes('gitlab') ||
-                                     absoluteUrl.includes('/uploads/');
-                const finalUrl = isGitLabImage 
+                const isGitLabImage = absoluteUrl.includes('gitlab.com') ||
+                    absoluteUrl.includes('gitlab') ||
+                    absoluteUrl.includes('/uploads/');
+                const finalUrl = isGitLabImage
                     ? `/api/images/proxy?url=${encodeURIComponent(absoluteUrl)}`
                     : absoluteUrl;
-                
+
                 return `<img src="${finalUrl}" alt="${alt || 'Issue image'}" style="max-width: 100%; height: auto; display: block; margin: 1rem 0;" loading="lazy" />`;
             }
         );
@@ -83,13 +104,14 @@ export function QADetail({ issue, qaIssue, runs = [], allAttachments = [], membe
 
         // Fix all image sources - handle both img tags and data-src attributes
         const images = doc.querySelectorAll('img, [data-src], [data-canonical-src]');
-        images.forEach((img) => {
+        images.forEach((element) => {
+            const img = element as HTMLImageElement;
             // Check multiple possible src attributes (GitLab uses various formats)
-            let src = img.getAttribute('src') || 
-                     img.getAttribute('data-src') || 
-                     img.getAttribute('data-canonical-src') ||
-                     img.getAttribute('data-original');
-            
+            let src = img.getAttribute('src') ||
+                img.getAttribute('data-src') ||
+                img.getAttribute('data-canonical-src') ||
+                img.getAttribute('data-original');
+
             if (!src) {
                 // Also check for background-image in style attribute
                 const style = img.getAttribute('style') || '';
@@ -98,31 +120,31 @@ export function QADetail({ issue, qaIssue, runs = [], allAttachments = [], membe
                     src = bgMatch[1];
                 }
             }
-            
+
             if (src) {
                 let absoluteUrl = src;
-                
+
                 // Skip if already processed (has proxy URL) or is a data URL
                 if (src.startsWith('/api/images/proxy') || src.startsWith('data:')) {
                     return;
                 }
-                
+
                 // Convert relative URLs to absolute
                 if (src.startsWith('/')) {
                     absoluteUrl = `${gitlabBaseUrl}${src}`;
                 } else if (!src.startsWith('http')) {
                     absoluteUrl = `${gitlabBaseUrl}/${src}`;
                 }
-                
+
                 // Use proxy for GitLab images to avoid CORS issues
-                const isGitLabImage = absoluteUrl.includes('gitlab.com') || 
-                                     absoluteUrl.includes('gitlab') ||
-                                     absoluteUrl.includes('/uploads/') ||
-                                     absoluteUrl.includes('/-/project/');
-                const finalUrl = isGitLabImage 
+                const isGitLabImage = absoluteUrl.includes('gitlab.com') ||
+                    absoluteUrl.includes('gitlab') ||
+                    absoluteUrl.includes('/uploads/') ||
+                    absoluteUrl.includes('/-/project/');
+                const finalUrl = isGitLabImage
                     ? `/api/images/proxy?url=${encodeURIComponent(absoluteUrl)}`
                     : absoluteUrl;
-                
+
                 // Set src attribute
                 if (img.tagName === 'IMG') {
                     img.setAttribute('src', finalUrl);
@@ -139,21 +161,21 @@ export function QADetail({ issue, qaIssue, runs = [], allAttachments = [], membe
                     img.parentNode?.replaceChild(newImg, img);
                     return;
                 }
-                
+
                 // Add loading attribute for better performance
                 img.setAttribute('loading', 'lazy');
-                
+
                 // Add alt text if missing
                 if (!img.getAttribute('alt')) {
                     img.setAttribute('alt', 'Issue image');
                 }
-                
+
                 // Ensure images are styled properly
                 img.style.maxWidth = '100%';
                 img.style.height = 'auto';
                 img.style.display = 'block';
                 img.style.margin = '1rem 0';
-                
+
                 // Add error handler to log failed images
                 img.onerror = () => {
                     console.warn('Failed to load image:', finalUrl);
@@ -196,6 +218,85 @@ export function QADetail({ issue, qaIssue, runs = [], allAttachments = [], membe
     useEffect(() => {
         getSnippetsAction().then(setSnippets).catch(err => console.error("Failed to load snippets", err));
     }, []);
+
+    // Track previous image URLs to detect deletions
+    const prevTestCasesImages = useRef<string[]>([]);
+    const prevIssuesFoundImages = useRef<string[]>([]);
+
+    // Initialize refs when active run changes
+    useEffect(() => {
+        if (activeRun) {
+            prevTestCasesImages.current = extractImageUrls(activeRun.testCasesContent);
+            prevIssuesFoundImages.current = extractImageUrls(activeRun.issuesFoundContent);
+        } else {
+            prevTestCasesImages.current = [];
+            prevIssuesFoundImages.current = [];
+        }
+    }, [activeRun]);
+
+    const handleRemoveAttachment = useCallback(async (attachmentId: string, filename: string) => {
+        try {
+            await removeAttachment(attachmentId);
+            setAttachments((prev: any[]) => prev.filter((a: any) => a.id !== attachmentId));
+            toast({ title: "Attachment removed", description: filename });
+        } catch (error: any) {
+            toast({ title: "Failed to remove attachment", description: error.message, variant: "destructive" });
+        }
+    }, []);
+
+    // Check for deleted images in Test Cases
+    useEffect(() => {
+        if (!testCases) return;
+
+        const currentImages = extractImageUrls(testCases);
+        const prevImages = prevTestCasesImages.current;
+
+        // Find images that were present but are now missing
+        const deletedImages = prevImages.filter(url => !currentImages.includes(url));
+
+        if (deletedImages.length > 0) {
+            deletedImages.forEach(url => {
+                // Find attachment with this URL
+                // Note: Attachment URL might be absolute, but editor URL might be relative or proxied
+                // We need to be careful with matching
+                const attachment = attachments.find((a: any) => {
+                    // Simple check: if attachment URL ends with the same filename or is contained
+                    return url.includes(a.filename) || a.url === url;
+                });
+
+                if (attachment) {
+                    handleRemoveAttachment(attachment.id, attachment.filename);
+                }
+            });
+        }
+
+        prevTestCasesImages.current = currentImages;
+    }, [testCases, attachments, handleRemoveAttachment]);
+
+    // Check for deleted images in Issues Found
+    useEffect(() => {
+        if (!issuesFound) return;
+
+        const currentImages = extractImageUrls(issuesFound);
+        const prevImages = prevIssuesFoundImages.current;
+
+        // Find images that were present but are now missing
+        const deletedImages = prevImages.filter(url => !currentImages.includes(url));
+
+        if (deletedImages.length > 0) {
+            deletedImages.forEach(url => {
+                const attachment = attachments.find((a: any) => {
+                    return url.includes(a.filename) || a.url === url;
+                });
+
+                if (attachment) {
+                    handleRemoveAttachment(attachment.id, attachment.filename);
+                }
+            });
+        }
+
+        prevIssuesFoundImages.current = currentImages;
+    }, [issuesFound, attachments, handleRemoveAttachment]);
 
     // Ensure state syncs when active run changes (including when it becomes null after submission)
     useEffect(() => {
@@ -312,15 +413,7 @@ export function QADetail({ issue, qaIssue, runs = [], allAttachments = [], membe
         return result;
     };
 
-    const handleRemoveAttachment = async (attachmentId: string, filename: string) => {
-        try {
-            await removeAttachment(attachmentId);
-            setAttachments(attachments.filter((a: any) => a.id !== attachmentId));
-            toast({ title: "Attachment removed", description: filename });
-        } catch (error: any) {
-            toast({ title: "Failed to remove attachment", description: error.message, variant: "destructive" });
-        }
-    };
+
 
     const handleStartNewRun = async () => {
         setSaving(true);
@@ -428,13 +521,38 @@ export function QADetail({ issue, qaIssue, runs = [], allAttachments = [], membe
                         <h3 className="text-sm font-semibold text-foreground">Description</h3>
                         <div className="overflow-y-auto overflow-x-auto max-h-[60vh] border border-border/40 rounded-lg p-4 bg-card/50 scrollbar-thin scrollbar-thumb-primary/20 scrollbar-track-transparent">
                             {processedDescription ? (
-                                <div 
+                                <div
                                     className="prose prose-sm max-w-none text-foreground/90 dark:prose-invert gitlab-content min-w-full"
-                                    dangerouslySetInnerHTML={{ __html: processedDescription }} 
+                                    dangerouslySetInnerHTML={{ __html: processedDescription }}
                                 />
                             ) : (
                                 <div className="text-sm text-muted-foreground">No description provided</div>
                             )}
+                        </div>
+                        <div className="pt-2">
+                            <Dialog>
+                                <DialogTrigger asChild>
+                                    <Button variant="outline" size="sm" className="w-full">
+                                        <ExternalLink className="h-3 w-3 mr-2" />
+                                        View Full Description
+                                    </Button>
+                                </DialogTrigger>
+                                <DialogContent className="max-w-[95vw] w-full h-[90vh] overflow-hidden flex flex-col">
+                                    <DialogHeader>
+                                        <DialogTitle>Issue Description</DialogTitle>
+                                    </DialogHeader>
+                                    <div className="flex-1 overflow-y-auto p-4">
+                                        {processedDescription ? (
+                                            <div
+                                                className="prose prose-sm max-w-none text-foreground/90 dark:prose-invert gitlab-content min-w-full"
+                                                dangerouslySetInnerHTML={{ __html: processedDescription }}
+                                            />
+                                        ) : (
+                                            <div className="text-sm text-muted-foreground">No description provided</div>
+                                        )}
+                                    </div>
+                                </DialogContent>
+                            </Dialog>
                         </div>
                     </div>
 
@@ -461,7 +579,7 @@ export function QADetail({ issue, qaIssue, runs = [], allAttachments = [], membe
                                     </Badge>
                                 );
                             })}
-                            
+
                             <DropdownMenu>
                                 <DropdownMenuTrigger asChild>
                                     <Button

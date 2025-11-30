@@ -27,7 +27,7 @@ export interface TiptapEditorProps {
     /** The current editor content - can be TipTap JSON, string (for backwards compat), or null */
     content: JSONContent | string | null | undefined;
     /** Callback when content changes */
-    onChange: (content: JSONContent) => void;
+    onChange?: (content: JSONContent) => void;
     /** List of members available for @mentions */
     members?: EditorMember[];
     /** Placeholder text when editor is empty */

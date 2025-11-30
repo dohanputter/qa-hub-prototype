@@ -35,21 +35,21 @@ import {
 } from "@/components/ui/popover";
 import type { TiptapEditorProps, EditorMember, EditorSnippet } from '@/types/editor';
 
-export function TiptapEditor({ 
-    content, 
-    onChange, 
-    members = [], 
-    placeholder, 
-    snippets = [], 
-    onImagePaste, 
+export function TiptapEditor({
+    content,
+    onChange,
+    members = [],
+    placeholder,
+    snippets = [],
+    onImagePaste,
     className,
-    readOnly = false 
+    readOnly = false
 }: TiptapEditorProps) {
     const [gridSelection, setGridSelection] = useState({ rows: 1, cols: 1 });
     const [isTablePopoverOpen, setIsTablePopoverOpen] = useState(false);
 
     // Normalize content to handle both JSONContent and string types
-    const normalizedContent = typeof content === 'string' 
+    const normalizedContent = typeof content === 'string'
         ? (content ? { type: 'doc', content: [{ type: 'paragraph', content: [{ type: 'text', text: content }] }] } : null)
         : content;
 
@@ -197,16 +197,16 @@ export function TiptapEditor({
                 onChange(editor.getJSON());
             }
         },
-            editorProps: {
+        editorProps: {
             attributes: {
                 class: cn(
-                    'prose prose-sm sm:prose max-w-none focus:outline-none min-h-[150px] p-4 bg-transparent dark:prose-invert',
+                    'prose prose-sm sm:prose max-w-none w-full min-w-full focus:outline-none min-h-[150px] p-4 bg-transparent dark:prose-invert',
                     readOnly && 'min-h-0 p-0'
                 ),
             },
             handlePaste: (view, event, slice) => {
                 if (readOnly) return false;
-                
+
                 // Check if there are files in the clipboard
                 const items = event.clipboardData?.items;
                 if (!items) return false;
@@ -234,13 +234,14 @@ export function TiptapEditor({
                                     if (result?.url) {
                                         // Store the ORIGINAL URL (not proxied) so GitLab can view it
                                         // The ResizableImage extension will handle proxying for display
-                                        const originalUrl = result.url.startsWith('http') 
-                                            ? result.url 
-                                            : result.url.startsWith('/') 
+                                        const originalUrl = result.url.startsWith('http')
+                                            ? result.url
+                                            : result.url.startsWith('/')
                                                 ? `${window.location.origin}${result.url}`
                                                 : result.url;
-                                        
+
                                         // Insert image node with original URL (proxy happens in node view)
+                                        if (!editor) return;
                                         editor.chain()
                                             .focus()
                                             .insertContent({
@@ -251,7 +252,7 @@ export function TiptapEditor({
                                                 },
                                             })
                                             .run();
-                                        
+
                                         toast({
                                             title: "Image uploaded",
                                             description: file.name,
@@ -262,7 +263,7 @@ export function TiptapEditor({
                                         const { tr } = state;
                                         tr.insertText(result.markdown, state.selection.from);
                                         dispatch(tr);
-                                        
+
                                         toast({
                                             title: "Image uploaded",
                                             description: file.name,
