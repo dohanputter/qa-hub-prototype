@@ -37,6 +37,7 @@ export function NotificationsList() {
             return allPages.length * 20;
         },
         initialPageParam: 0,
+        refetchInterval: 5000,
     });
 
     const notifications = data?.pages.flat() || [];

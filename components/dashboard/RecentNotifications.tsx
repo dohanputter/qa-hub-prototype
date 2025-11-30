@@ -14,7 +14,8 @@ export function RecentNotifications() {
             const result = await getUserNotifications(5);
             // Ensure we always return an array
             return Array.isArray(result) ? result : [];
-        }
+        },
+        refetchInterval: 5000
     });
 
     // Safely ensure notifications is always an array
