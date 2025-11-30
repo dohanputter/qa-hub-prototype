@@ -1,7 +1,7 @@
-import { Image } from '@tiptap/extension-image';
+import { Image as TiptapImage } from '@tiptap/extension-image';
 
 // Extend Image with width/height attributes and add resize handles
-export const ResizableImage = Image.extend({
+export const ResizableImage = TiptapImage.extend({
     name: 'resizableImage',
     
     addOptions() {
@@ -10,7 +10,7 @@ export const ResizableImage = Image.extend({
             inline: false,
             allowBase64: true,
             HTMLAttributes: {},
-        };
+        } as any;
     },
     
     addAttributes() {
