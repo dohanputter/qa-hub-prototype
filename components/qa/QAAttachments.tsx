@@ -1,11 +1,6 @@
 import { Label } from '@/components/ui/label';
 import { Paperclip, Plus, X } from 'lucide-react';
-
-interface QAAttachmentsProps {
-    attachments: any[];
-    onRemove: (id: string, filename: string) => void;
-    onUpload: (e: React.ChangeEvent<HTMLInputElement>) => void;
-}
+import type { QAAttachmentsProps } from '@/types/qa';
 
 export function QAAttachments({ attachments, onRemove, onUpload }: QAAttachmentsProps) {
     return (

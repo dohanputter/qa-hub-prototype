@@ -8,6 +8,7 @@ import { projects } from '@/db/schema';
 import { eq } from 'drizzle-orm';
 import { isMockMode, getMockToken, getTokenOrMock } from '@/lib/mode';
 import { DEFAULT_QA_LABELS } from '@/lib/constants';
+import { logger } from '@/lib/logger';
 
 export async function moveIssue(projectId: number, issueIid: number, newLabel: string, oldLabel: string) {
     const session = await auth();
@@ -28,14 +29,14 @@ export async function moveIssue(projectId: number, issueIid: number, newLabel: s
         // 2. Handle QA Run Logic BEFORE updating labels
         // Check if we are moving TO a QA status
         if (newLabel === labelMapping.pending) {
-            console.log('[moveIssue] Moving to Ready for QA - Starting new QA Run');
+            logger.info('moveIssue: Moving to Ready for QA - Starting new QA Run');
             await getOrCreateQARun({
                 projectId,
                 issueIid,
                 forceNewRun: true
             });
         } else if (newLabel === labelMapping.passed) {
-            console.log('[moveIssue] Moving to Passed - Completing QA Run');
+            logger.info('moveIssue: Moving to Passed - Completing QA Run');
             // Find active run and pass it
             const { run } = await getOrCreateQARun({ projectId, issueIid });
             if (run && run.status === 'pending') {
@@ -45,7 +46,7 @@ export async function moveIssue(projectId: number, issueIid: number, newLabel: s
                 }
             }
         } else if (newLabel === labelMapping.failed) {
-            console.log('[moveIssue] Moving to Failed - Failing QA Run');
+            logger.info('moveIssue: Moving to Failed - Failing QA Run');
             const { run } = await getOrCreateQARun({ projectId, issueIid });
             if (run && run.status === 'pending') {
                 const result = await submitQARun(projectId, run.id, 'failed');
@@ -70,11 +71,11 @@ export async function moveIssue(projectId: number, issueIid: number, newLabel: s
 
         // If both are empty, nothing to do
         if (!newLabel && !oldLabel) {
-            console.log('[moveIssue] No labels to add or remove, skipping');
+            logger.info('moveIssue: No labels to add or remove, skipping');
             return { success: true };
         }
 
-        console.log(`[moveIssue] Moving issue #${issueIid} in project ${projectId}`, {
+        logger.info(`moveIssue: Moving issue #${issueIid} in project ${projectId}`, {
             add: newLabel || '(none)',
             remove: oldLabel || '(none)',
             inMockMode
@@ -92,10 +93,10 @@ export async function moveIssue(projectId: number, issueIid: number, newLabel: s
             revalidatePath('/board');
             revalidatePath('/issues');
         } else {
-            console.log('[moveIssue] Mock mode - skipping revalidation to preserve optimistic update');
+            logger.info('moveIssue: Mock mode - skipping revalidation to preserve optimistic update');
         }
 
-        console.log(`[moveIssue] Successfully moved issue #${issueIid}`);
+        logger.info(`moveIssue: Successfully moved issue #${issueIid}`);
         return { success: true };
     } catch (error) {
         console.error('Failed to move issue:', error);

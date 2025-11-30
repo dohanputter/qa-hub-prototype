@@ -5,6 +5,7 @@ import CredentialsProvider from 'next-auth/providers/credentials';
 import { DrizzleAdapter } from '@auth/drizzle-adapter';
 import { db } from '@/lib/db';
 import { env } from '@/lib/env';
+import { logger } from '@/lib/logger';
 
 export const authOptions = {
     // Only use adapter in Node.js runtime (not Edge)
@@ -56,12 +57,12 @@ export const authOptions = {
                 // In production, this would refresh the token
                 // For mock mode, extend the token
                 if (process.env.NEXT_PUBLIC_MOCK_MODE === 'true') {
-                    console.log('[Mock Mode] Extending token expiration');
+                    logger.mock('Extending token expiration');
                     token.accessToken = 'mock-access-token-' + Date.now();
                     token.accessTokenExpires = Date.now() + (3600 * 1000);
                 } else if (token.refreshToken) {
                     try {
-                        console.log('Refreshing GitLab access token...');
+                        logger.info('Refreshing GitLab access token...');
                         const response = await fetch('https://gitlab.com/oauth/token', {
                             headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
                             body: new URLSearchParams({

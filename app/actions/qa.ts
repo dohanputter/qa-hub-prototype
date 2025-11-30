@@ -14,6 +14,7 @@ import {
 import { tiptapToMarkdown, extractMentions } from '@/lib/utils';
 import { revalidatePath, revalidateTag } from 'next/cache';
 import { env } from '@/lib/env';
+import { logger } from '@/lib/logger';
 import type { JSONContent } from '@tiptap/core';
 
 export async function getOrCreateQARun(data: {
@@ -207,7 +208,7 @@ export async function submitQARun(projectId: number, runId: string, result: 'pas
         const labelsToRemove = [labelMapping.pending, labelMapping.passed, labelMapping.failed].filter((l) => l !== newLabel);
 
         if (isMockMode) {
-            console.log('[Mock Mode] Updating labels:', {
+            logger.mock('Updating labels', {
                 add: newLabel,
                 remove: labelsToRemove
             });
@@ -218,7 +219,7 @@ export async function submitQARun(projectId: number, runId: string, result: 'pas
                 removeLabels: labelsToRemove,
             });
 
-            console.log('[Mock Mode] Would create GitLab comment:', commentBody);
+            logger.mock('Would create GitLab comment', commentBody);
         } else if (project?.qaLabelMapping) {
             // Only update GitLab if labels are properly configured
             await createIssueNote(issue.gitlabProjectId, issue.gitlabIssueIid, session.accessToken, commentBody);

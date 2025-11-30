@@ -17,16 +17,7 @@ import {
 import { Plus, X, ExternalLink } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import Link from 'next/link';
-
-interface QAHeaderProps {
-    issue: any;
-    processedDescription: string;
-    issueLabels: string[];
-    projectLabels: any[];
-    isUpdatingLabels: boolean;
-    onLabelToggle: (label: string) => void;
-    onLabelRemove: (label: string) => void;
-}
+import type { QAHeaderProps } from '@/types/qa';
 
 export function QAHeader({
     issue,

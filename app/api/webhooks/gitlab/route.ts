@@ -7,6 +7,7 @@ import { mapLabelToStatus } from '@/lib/utils';
 import { env } from '@/lib/env';
 import { ensureWebhookUser } from '@/lib/mock-user';
 import { SYSTEM_USERS } from '@/lib/constants';
+import { logger } from '@/lib/logger';
 
 export async function POST(req: Request) {
     const headersList = await headers();
@@ -95,7 +96,7 @@ async function handleIssueEvent(event: any) {
         oldStatus = null; // Issue is new, no old status
     }
 
-    console.log(`[Webhook] Status change for Issue #${issue.iid}: ${oldStatus || 'new'} -> ${newStatus}`);
+    logger.info(`Webhook: Status change for Issue #${issue.iid}: ${oldStatus || 'new'} -> ${newStatus}`);
 
     // 2. Handle Run Logic based on Status Change
     // Only start a run if status is CHANGING TO pending (not already pending)
@@ -121,9 +122,9 @@ async function handleIssueEvent(event: any) {
                 status: 'pending',
                 createdBy: SYSTEM_USERS.WEBHOOK,
             });
-            console.log(`[Webhook] Started Run #${nextRunNumber} for Issue #${issue.iid} (status changed from ${oldStatus || 'none'} to pending)`);
+            logger.info(`Webhook: Started Run #${nextRunNumber} for Issue #${issue.iid} (status changed from ${oldStatus || 'none'} to pending)`);
         } else {
-            console.log(`[Webhook] Run #${activeRun.runNumber} already exists for Issue #${issue.iid}, not creating new run`);
+            logger.info(`Webhook: Run #${activeRun.runNumber} already exists for Issue #${issue.iid}, not creating new run`);
         }
     } else if ((newStatus === 'passed' || newStatus === 'failed') && oldStatus === 'pending') {
         // Only close run if transitioning FROM pending TO passed/failed
@@ -141,10 +142,10 @@ async function handleIssueEvent(event: any) {
                 completedAt: new Date(),
                 updatedAt: new Date()
             }).where(eq(qaRuns.id, activeRun.id));
-            console.log(`[Webhook] Closed Run #${activeRun.runNumber} for Issue #${issue.iid} as ${newStatus}`);
+            logger.info(`Webhook: Closed Run #${activeRun.runNumber} for Issue #${issue.iid} as ${newStatus}`);
         }
     } else {
-        console.log(`[Webhook] No run action needed for Issue #${issue.iid} (status: ${oldStatus || 'new'} -> ${newStatus})`);
+        logger.info(`Webhook: No run action needed for Issue #${issue.iid} (status: ${oldStatus || 'new'} -> ${newStatus})`);
     }
 }
 

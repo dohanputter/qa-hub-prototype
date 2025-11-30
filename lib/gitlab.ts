@@ -3,6 +3,7 @@ import 'server-only';
 import { Gitlab } from '@gitbeaker/rest';
 import { env } from '@/lib/env';
 import { isMockMode } from '@/lib/mode';
+import { logger } from '@/lib/logger';
 
 // Import mock data from modular structure
 import {
@@ -34,7 +35,7 @@ export {
 
 // Global type declarations for mock data
 declare global {
-  var mockIssuesStore: Record<number, any[]> | undefined;
+    var mockIssuesStore: Record<number, any[]> | undefined;
 }
 
 // Mutable store for mock issues (so we can update labels in mock mode)
@@ -164,12 +165,12 @@ export const getIssues = async (projectId: number, token: string, params?: { sta
             const { qaIssues, projects } = await import('@/db/schema');
             const { sql, eq } = await import('drizzle-orm');
 
-            console.log(`[MOCK getIssues] Querying DB using SQL raw query for Project: ${projectId}`);
+            logger.mock(`getIssues: Querying DB for Project ${projectId}`);
 
             // Fetch ALL issues from database for this project (DB is our "GitLab")
             const dbIssues = await db.select().from(qaIssues).where(sql`gitlab_project_id = ${projectId}`);
 
-            console.log(`[MOCK getIssues] Found ${dbIssues.length} issues in database for project ${projectId}`);
+            logger.mock(`getIssues: Found ${dbIssues.length} issues in database for project ${projectId}`);
 
             // Build GitLab-like issue objects directly from database
             const issues = dbIssues.map((dbIssue) => {
@@ -221,7 +222,7 @@ export const getIssues = async (projectId: number, token: string, params?: { sta
                 );
             }
 
-            console.log(`[MOCK getIssues] Returning ${filteredIssues.length} issues after filtering`);
+            logger.mock(`getIssues: Returning ${filteredIssues.length} issues after filtering`);
             return filteredIssues;
 
         } catch (error) {
@@ -251,23 +252,23 @@ export const getIssue = async (projectId: number, issueIid: number, token: strin
             const { qaIssues, projects } = await import('@/db/schema');
             const { eq, sql } = await import('drizzle-orm');
 
-            console.log(`[MOCK getIssue] Querying DB using SQL raw query for Project: ${projectId} (${typeof projectId}), Issue IID: ${issueIid} (${typeof issueIid})`);
+            logger.mock(`getIssue: Querying DB for Project ${projectId}, Issue IID ${issueIid}`);
 
             const dbIssues = await db.select()
                 .from(qaIssues)
                 .where(sql`gitlab_project_id = ${projectId} AND gitlab_issue_iid = ${issueIid}`)
                 .limit(1);
 
-            console.log(`[MOCK getIssue] Found ${dbIssues.length} issues`);
+            logger.mock(`getIssue: Found ${dbIssues.length} issues`);
 
             if (dbIssues.length === 0) {
-                console.log(`[MOCK getIssue] Issue #${issueIid} not found in database. Checking mock store...`);
+                logger.mock(`getIssue: Issue #${issueIid} not found in database, checking mock store`);
 
                 // Fallback: Check if issue exists in in-memory mock store but not yet in DB
                 const mockIssue = mockIssuesStore.find((i: any) => i.project_id === projectId && i.iid === issueIid);
 
                 if (mockIssue) {
-                    console.log(`[MOCK getIssue] Found issue #${issueIid} in mock store. Syncing to DB...`);
+                    logger.mock(`getIssue: Found issue #${issueIid} in mock store, syncing to DB`);
 
                     // Determine status from labels if possible
                     const projectResults = await db.select().from(projects).where(eq(projects.id, projectId)).limit(1);
@@ -292,7 +293,7 @@ export const getIssue = async (projectId: number, issueIid: number, token: strin
                         updatedAt: new Date(mockIssue.updated_at),
                     }).returning();
 
-                    console.log(`[MOCK getIssue] Synced issue #${issueIid} to DB`);
+                    logger.mock(`getIssue: Synced issue #${issueIid} to DB`);
 
                     // Return the mock issue structure directly
                     return {
@@ -311,7 +312,7 @@ export const getIssue = async (projectId: number, issueIid: number, token: strin
                     };
                 }
 
-                console.log(`[MOCK getIssue] Issue #${issueIid} not found in database or mock store`);
+                logger.mock(`getIssue: Issue #${issueIid} not found in database or mock store`);
                 return null;
             }
 
@@ -343,7 +344,7 @@ export const getIssue = async (projectId: number, issueIid: number, token: strin
                 web_url: dbIssue.issueUrl,
             };
 
-            console.log(`[MOCK getIssue] Returning issue #${issueIid} from database with labels: ${labels.join(', ')}`);
+            logger.mock(`getIssue: Returning issue #${issueIid} from database with labels: ${labels.join(', ')}`);
             return issue;
 
         } catch (error) {
@@ -382,7 +383,7 @@ export const updateIssueLabels = async (
         // Simulate data evolution over time
         updateDataTimestamps();
 
-        console.log(`[MOCK] Updating labels for issue ${issueIid} in project ${projectId}:`, options);
+        logger.mock(`Updating labels for issue ${issueIid} in project ${projectId}`, options);
 
         try {
             const { db } = await import('@/lib/db');
@@ -402,7 +403,7 @@ export const updateIssueLabels = async (
             let oldLabels: string[] = [];
 
             if (existingIssues.length === 0) {
-                console.log(`[MOCK] Issue ${issueIid} not found in database, fetching from GitLab and creating...`);
+                logger.mock(`updateIssueLabels: Issue ${issueIid} not found in database, fetching and creating`);
 
                 // Get issue details from GitLab/mock to create the record
                 const issue = await getIssue(projectId, issueIid, 'mock-token');
@@ -456,7 +457,7 @@ export const updateIssueLabels = async (
                 oldStatus = null; // New issue, no old status
                 currentLabels = issueLabels;
 
-                console.log(`[MOCK DB] Created new issue #${issueIid} with status: ${newStatus}, labels: ${issueLabels.join(', ')}`);
+                logger.mock(`updateIssueLabels: Created new issue #${issueIid} with status ${newStatus}, labels: ${issueLabels.join(', ')}`);
             } else {
                 existingIssue = existingIssues[0];
                 oldStatus = existingIssue.status;
@@ -466,7 +467,7 @@ export const updateIssueLabels = async (
                     currentLabels = [...existingIssue.jsonLabels] as string[];
                 }
 
-                console.log(`[MOCK DB] Current labels:`, currentLabels);
+                logger.mock(`updateIssueLabels: Current labels`, currentLabels);
 
                 // Store old labels for webhook simulation
                 const oldLabels = [...currentLabels];
@@ -479,7 +480,7 @@ export const updateIssueLabels = async (
                     currentLabels = [...currentLabels, ...options.addLabels.filter((l: string) => !currentLabels.includes(l))];
                 }
 
-                console.log(`[MOCK DB] Updated labels:`, currentLabels);
+                logger.mock(`updateIssueLabels: Updated labels`, currentLabels);
 
                 // Get project QA label mapping
                 const projectResults = await db.select().from(projects).where(eq(projects.id, projectId)).limit(1);
@@ -487,12 +488,13 @@ export const updateIssueLabels = async (
 
                 if (!project?.qaLabelMapping) {
                     console.error(`[MOCK] Project ${projectId} has no QA label mapping`);
+                    logger.error(`[MOCK] Project ${projectId} has no QA label mapping`);
                     return { success: false };
                 }
 
                 // Determine new status from labels (preserve old status if no QA label found)
                 const newStatus = mapLabelToStatus(currentLabels, project.qaLabelMapping) || oldStatus;
-                console.log(`[MOCK DB] Status change: ${oldStatus} -> ${newStatus}`);
+                logger.mock(`updateIssueLabels: Status change ${oldStatus} -> ${newStatus}`);
 
                 // Update the database with new labels and status
                 await db.update(qaIssues).set({
@@ -501,7 +503,7 @@ export const updateIssueLabels = async (
                     updatedAt: new Date(),
                 }).where(eq(qaIssues.id, existingIssue.id));
 
-                console.log(`[MOCK DB] Updated issue #${issueIid} in database - Labels: ${currentLabels.join(', ')}, Status: ${newStatus}`);
+                logger.mock(`updateIssueLabels: Updated issue #${issueIid} - Labels: ${currentLabels.join(', ')}, Status: ${newStatus}`);
             }
 
             // Recalculate status after all updates (preserve old status if no QA label)
@@ -511,17 +513,17 @@ export const updateIssueLabels = async (
 
             // Handle Run Logic - REMOVED to avoid double-handling and ensure single source of truth
             // QA Run logic is now handled explicitly in board actions or submitQARun
-            console.log(`[MOCK DB] Status updated to ${finalStatus}, run logic handled by caller`);
+            logger.mock(`updateIssueLabels: Status updated to ${finalStatus}, run logic handled by caller`);
 
             // Simulate webhook for issue update
             if (oldLabels.length !== currentLabels.length || !oldLabels.every((l, i) => l === currentLabels[i])) {
-              const webhookPayload = createIssueWebhookPayload(projectId, issueIid, {
-                labels: {
-                  previous: oldLabels,
-                  current: currentLabels,
-                },
-              });
-              await simulateWebhook('Issue Hook', webhookPayload);
+                const webhookPayload = createIssueWebhookPayload(projectId, issueIid, {
+                    labels: {
+                        previous: oldLabels,
+                        current: currentLabels,
+                    },
+                });
+                await simulateWebhook('Issue Hook', webhookPayload);
             }
 
             // Revalidate to refresh UI
@@ -550,7 +552,7 @@ export const updateIssueLabels = async (
 
 export const createIssueNote = async (projectId: number, issueIid: number, token: string, body: string) => {
     if (isMock()) {
-        console.log(`[MOCK] Creating note for issue ${issueIid} in project ${projectId}:`, body);
+        logger.mock(`Creating note for issue ${issueIid} in project ${projectId}`, body);
         return {
             id: Math.floor(Math.random() * 1000),
             body,
@@ -569,15 +571,15 @@ export const createIssueNote = async (projectId: number, issueIid: number, token
 
 export async function uploadAttachmentToGitLab(projectId: number, token: string, file: File) {
     if (isMock()) {
-        console.log(`[MOCK] Uploading file to project ${projectId}:`, file.name);
-        
+        logger.mock(`Uploading file to project ${projectId}: ${file.name}`);
+
         // For images, create a data URL to avoid CORS issues
         if (file.type.startsWith('image/')) {
             try {
                 const arrayBuffer = await file.arrayBuffer();
                 const base64 = Buffer.from(arrayBuffer).toString('base64');
                 const dataUrl = `data:${file.type};base64,${base64}`;
-                
+
                 // Return both data URL (for display) and a placeholder URL (for GitLab markdown)
                 const placeholderUrl = `https://via.placeholder.com/150?text=${encodeURIComponent(file.name.substring(0, 15))}`;
                 return {
@@ -594,7 +596,7 @@ export async function uploadAttachmentToGitLab(projectId: number, token: string,
                 };
             }
         }
-        
+
         // For non-images, use placeholder URL
         const placeholderUrl = `https://via.placeholder.com/150?text=${encodeURIComponent(file.name.substring(0, 15))}`;
         return {
@@ -620,7 +622,7 @@ export async function uploadAttachmentToGitLab(projectId: number, token: string,
 
 export async function createProjectWebhook(projectId: number, token: string) {
     if (isMock()) {
-        console.log(`[MOCK] Creating webhook for project ${projectId}`);
+        logger.mock(`Creating webhook for project ${projectId}`);
         return { id: 123, url: 'http://mock-webhook-url' };
     }
     try {
@@ -675,7 +677,7 @@ export const deleteMockIssue = (projectId: number, issueIid: number) => {
     );
     const deleted = mockIssuesStore.length < initialLength;
     if (deleted) {
-        console.log(`[MOCK] Deleted issue ${issueIid} from project ${projectId}`);
+        logger.mock(`Deleted issue ${issueIid} from project ${projectId}`);
     }
     return deleted;
 };

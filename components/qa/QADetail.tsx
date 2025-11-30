@@ -19,8 +19,9 @@ import { useAutoDeleteWithReset } from './hooks/useAutoDelete';
 import { QAHeader } from './QAHeader';
 import { QAHistory } from './QAHistory';
 import { QAAttachments } from './QAAttachments';
+import type { QADetailProps, Snippet } from '@/types/qa';
 
-export function QADetail({ issue, qaIssue, runs = [], allAttachments = [], members, projectId, issueIid, labels: projectLabels }: any) {
+export function QADetail({ issue, qaIssue, runs = [], allAttachments = [], members, projectId, issueIid, labels: projectLabels }: QADetailProps) {
     const router = useRouter();
     const activeRun = runs.find((r: any) => r.status === 'pending');
     const [viewMode, setViewMode] = useState(activeRun ? 'active' : 'history');
@@ -45,7 +46,7 @@ export function QADetail({ issue, qaIssue, runs = [], allAttachments = [], membe
 
     const [saving, setSaving] = useState(false);
     const [submitting, setSubmitting] = useState(false);
-    const [snippets, setSnippets] = useState<any[]>([]);
+    const [snippets, setSnippets] = useState<Snippet[]>([]);
 
     // Track run ID
     const [runId, setRunId] = useState(activeRun?.id || null);
@@ -92,8 +93,8 @@ export function QADetail({ issue, qaIssue, runs = [], allAttachments = [], membe
             const result = await getOrCreateQARun({
                 projectId,
                 issueIid: issue.iid,
-                testCasesContent: testCases,
-                issuesFoundContent: issuesFound
+                testCasesContent: testCases || undefined,
+                issuesFoundContent: issuesFound || undefined
             });
 
             setRunId(result.run.id);
@@ -120,8 +121,8 @@ export function QADetail({ issue, qaIssue, runs = [], allAttachments = [], membe
                 await getOrCreateQARun({
                     projectId,
                     issueIid: issue.iid,
-                    testCasesContent: testCases,
-                    issuesFoundContent: issuesFound
+                    testCasesContent: testCases || undefined,
+                    issuesFoundContent: issuesFound || undefined
                 });
             }
 
@@ -333,7 +334,7 @@ export function QADetail({ issue, qaIssue, runs = [], allAttachments = [], membe
                             <TiptapEditor
                                 content={testCases}
                                 onChange={setTestCases}
-                                members={members}
+                                members={members as any}
                                 placeholder="List test cases..."
                                 snippets={testCaseSnippets}
                                 onImagePaste={handleImagePaste}
@@ -348,7 +349,7 @@ export function QADetail({ issue, qaIssue, runs = [], allAttachments = [], membe
                             <TiptapEditor
                                 content={issuesFound}
                                 onChange={setIssuesFound}
-                                members={members}
+                                members={members as any}
                                 placeholder="Describe any issues found..."
                                 snippets={issueSnippets}
                                 onImagePaste={handleImagePaste}

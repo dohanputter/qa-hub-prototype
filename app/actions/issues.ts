@@ -8,6 +8,7 @@ import { isMockMode, getMockToken } from '@/lib/mode';
 import { SYSTEM_USERS, DEFAULT_QA_LABELS, MOCK_PROJECT_IDS } from '@/lib/constants';
 import { ensureMockUser, ensureMockGroup, ensureMockProject } from '@/lib/mock-user';
 import { createIssueSchema, safeParse } from '@/lib/validations';
+import { logger } from '@/lib/logger';
 
 export async function getAllIssues(params?: { state?: 'opened' | 'closed'; search?: string; projectId?: string; labels?: string }) {
     if (isMockMode()) {
@@ -133,7 +134,7 @@ export async function createIssue(projectId: number, data: unknown) {
             ? validatedData.labels.split(',').map((l: string) => l.trim()).filter((l: string) => l)
             : (validatedData.labelId ? [validatedData.labelId] : []);
 
-        console.log(`[MOCK] Creating issue with labels:`, issueLabels);
+        logger.mock(`Creating issue with labels`, issueLabels);
 
         // Ensure mock user exists in database (for foreign key constraint)
         await ensureMockUser();
@@ -183,7 +184,7 @@ export async function createIssue(projectId: number, data: unknown) {
 
         const assigneeId = validatedData.assigneeId ? Number(validatedData.assigneeId) : null;
 
-        console.log(`[MOCK] Writing issue to DB - IID: ${newIid}, Labels: ${issueLabels.join(', ')}, AssigneeId: ${assigneeId}, Status: ${status}`);
+        logger.mock(`Writing issue to DB - IID: ${newIid}, Labels: ${issueLabels.join(', ')}, AssigneeId: ${assigneeId}, Status: ${status}`);
 
         // Write directly to database
         try {
@@ -201,7 +202,7 @@ export async function createIssue(projectId: number, data: unknown) {
                 updatedAt: new Date(),
             });
 
-            console.log(`[MOCK] Created issue #${newIid} and persisted to database`);
+            logger.mock(`Created issue #${newIid} and persisted to database`);
 
             // Simulate webhook for new issue
             try {
@@ -274,7 +275,7 @@ export async function createIssue(projectId: number, data: unknown) {
                     updatedAt: new Date(),
                 });
 
-                console.log(`[MOCK] Created issue #${retryIid} on retry`);
+                logger.mock(`Created issue #${retryIid} on retry`);
 
                 // Simulate webhook for new issue (retry case)
                 try {
@@ -358,7 +359,7 @@ export async function deleteIssue(projectId: number, issueIid: number) {
             )
         );
 
-    console.log(`[MOCK] Deleted issue ${issueIid} from project ${projectId} - Memory: ${deletedFromMemory}`);
+    logger.mock(`Deleted issue ${issueIid} from project ${projectId} - Memory: ${deletedFromMemory}`);
 
     return { success: true, deletedFromMemory };
 }
