@@ -2,7 +2,7 @@
 import 'server-only';
 import { auth } from '@/auth';
 import { db } from '@/lib/db';
-import { qaIssues, qaRuns, attachments, notifications, projects, groups, users } from '@/db/schema';
+import { qaIssues, qaRuns, attachments, notifications, projects, groups, users, accounts } from '@/db/schema';
 import { eq, and, isNull, desc } from 'drizzle-orm';
 import {
     getIssue,
@@ -253,20 +253,48 @@ export async function submitQARun(projectId: number, runId: string, result: 'pas
 
     if (mentions.length > 0) {
         const members = await getProjectMembers(issue.gitlabProjectId, session.accessToken);
-        const memberMap = new Map(members.map((m) => [m.username, m.id.toString()]));
+        const memberMap = new Map(members.map((m) => [m.username, m.id]));
 
         for (const mention of mentions) {
-            const userId = memberMap.get(mention);
-            if (userId) {
-                await db.insert(notifications).values({
-                    userId,
-                    type: 'mention',
-                    title: `Mentioned in QA (Run #${run.runNumber})`,
-                    message: `You were mentioned in QA testing for issue #${issue.gitlabIssueIid}`,
-                    resourceType: 'qa_run',
-                    resourceId: runId,
-                    actionUrl: issue.issueUrl,
-                });
+            let gitlabUserId = memberMap.get(mention);
+
+            if (gitlabUserId) {
+                let targetUserId: string | null = null;
+
+                // In Mock Mode, we trust the ID directly (as mock users don't have accounts entries)
+                if (isMockMode) {
+                    targetUserId = gitlabUserId.toString();
+                } else {
+                    // In Production, map GitLab ID to local User UUID via accounts table
+                    const account = await db.select()
+                        .from(accounts)
+                        .where(and(
+                            eq(accounts.provider, 'gitlab'),
+                            eq(accounts.providerAccountId, gitlabUserId.toString())
+                        ))
+                        .limit(1);
+
+                    if (account.length > 0) {
+                        targetUserId = account[0].userId;
+                    }
+                }
+
+                if (targetUserId) {
+                    // Double check if user exists in users table to enforce FK constraint
+                    const userExists = await db.select().from(users).where(eq(users.id, targetUserId)).limit(1);
+
+                    if (userExists.length > 0) {
+                        await db.insert(notifications).values({
+                            userId: targetUserId,
+                            type: 'mention',
+                            title: `Mentioned in QA (Run #${run.runNumber})`,
+                            message: `You were mentioned in QA testing for issue #${issue.gitlabIssueIid}`,
+                            resourceType: 'qa_run',
+                            resourceId: runId,
+                            actionUrl: issue.issueUrl,
+                        });
+                    }
+                }
             }
         }
     }

@@ -53,12 +53,42 @@ export const authOptions = {
 
             // Check if token needs refresh (within 5 minutes of expiry)
             if (token.accessTokenExpires && Date.now() > token.accessTokenExpires - (5 * 60 * 1000)) {
-                console.log('Token expiring soon, would refresh in production');
                 // In production, this would refresh the token
                 // For mock mode, extend the token
                 if (process.env.NEXT_PUBLIC_MOCK_MODE === 'true') {
+                    console.log('[Mock Mode] Extending token expiration');
                     token.accessToken = 'mock-access-token-' + Date.now();
                     token.accessTokenExpires = Date.now() + (3600 * 1000);
+                } else if (token.refreshToken) {
+                    try {
+                        console.log('Refreshing GitLab access token...');
+                        const response = await fetch('https://gitlab.com/oauth/token', {
+                            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                            body: new URLSearchParams({
+                                client_id: env.GITLAB_CLIENT_ID || '',
+                                client_secret: env.GITLAB_CLIENT_SECRET || '',
+                                grant_type: 'refresh_token',
+                                refresh_token: token.refreshToken as string,
+                                redirect_uri: `${env.NEXT_PUBLIC_APP_URL}/api/auth/callback/gitlab`,
+                            }),
+                            method: 'POST',
+                        });
+
+                        const tokens = await response.json();
+
+                        if (!response.ok) throw tokens;
+
+                        return {
+                            ...token,
+                            accessToken: tokens.access_token,
+                            accessTokenExpires: Date.now() + tokens.expires_in * 1000,
+                            refreshToken: tokens.refresh_token ?? token.refreshToken, // Fallback to old refresh token
+                        };
+                    } catch (error) {
+                        console.error('Error refreshing access token', error);
+                        // The error property will be used in client-side to handle the error
+                        return { ...token, error: 'RefreshAccessTokenError' };
+                    }
                 }
             }
 
