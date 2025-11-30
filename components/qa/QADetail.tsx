@@ -603,6 +603,7 @@ export function QADetail({ issue, qaIssue, runs = [], allAttachments = [], membe
                                                 checked={issueLabels.includes(label.name)}
                                                 onCheckedChange={() => handleLabelToggle(label.name)}
                                                 disabled={isUpdatingLabels}
+                                                onSelect={(e) => e.preventDefault()}
                                             >
                                                 <div className="flex items-center gap-2">
                                                     <div

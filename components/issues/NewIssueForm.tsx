@@ -258,6 +258,7 @@ export function NewIssueForm() {
                                                 key={label.name}
                                                 checked={selectedLabels.includes(label.name)}
                                                 onCheckedChange={() => handleLabelToggle(label.name)}
+                                                onSelect={(e) => e.preventDefault()}
                                             >
                                                 <div className="flex items-center gap-2">
                                                     <div
