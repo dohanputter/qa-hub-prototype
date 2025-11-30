@@ -95,12 +95,17 @@ export function IssuesTable({ issues, projectId, labels = [] }: { issues: any[];
                 </TableHeader>
                 <TableBody>
                     {issues.map((issue) => (
-                        <TableRow key={`${issue.project.id}-${issue.iid}`} className="group hover:bg-muted/50 transition-colors h-16">
+                        <TableRow
+                            key={`${issue.project.id}-${issue.iid}`}
+                            className="group hover:bg-muted/50 transition-colors h-16 cursor-pointer"
+                            onClick={() => router.push(`/${issue.project.id}/qa/${issue.iid}`)}
+                        >
                             <TableCell className="font-medium text-muted-foreground/50 group-hover:text-muted-foreground transition-colors">#{issue.iid}</TableCell>
                             <TableCell>
                                 <Link
                                     href={`/${issue.project.id}/qa/${issue.iid}`}
                                     className="font-medium hover:text-primary hover:underline block"
+                                    onClick={(e) => e.stopPropagation()}
                                 >
                                     {issue.title}
                                 </Link>
@@ -153,7 +158,10 @@ export function IssuesTable({ issues, projectId, labels = [] }: { issues: any[];
                                         variant="ghost"
                                         size="icon"
                                         className="h-8 w-8 text-red-600 hover:text-red-700 hover:bg-destructive/10 opacity-0 group-hover:opacity-100"
-                                        onClick={() => handleDelete(issue.iid)}
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            handleDelete(issue.iid);
+                                        }}
                                         disabled={deletingIssueId === issue.iid}
                                     >
                                         <Trash2 className="h-4 w-4" />
