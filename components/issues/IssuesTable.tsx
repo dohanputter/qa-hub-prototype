@@ -35,24 +35,24 @@ export function IssuesTable({ issues, projectId, labels = [] }: { issues: any[];
     // Create a memoized label color lookup map
     const getLabelColor = useMemo(() => {
         const colorMap = new Map<string, { bg: string; text: string }>();
-        
+
         // Build map from provided labels
         labels.forEach(label => {
             colorMap.set(label.name, { bg: label.color, text: label.text_color });
         });
-        
+
         // Cache for generated colors
         const generatedCache = new Map<string, { bg: string; text: string }>();
-        
+
         return (labelName: string) => {
             // First check provided labels
             const mapped = colorMap.get(labelName);
             if (mapped) return mapped;
-            
+
             // Check generated cache
             const cached = generatedCache.get(labelName);
             if (cached) return cached;
-            
+
             // Generate and cache
             const generated = generateLabelColor(labelName);
             generatedCache.set(labelName, generated);
@@ -95,8 +95,8 @@ export function IssuesTable({ issues, projectId, labels = [] }: { issues: any[];
                 </TableHeader>
                 <TableBody>
                     {issues.map((issue) => (
-                        <TableRow key={`${issue.project.id}-${issue.iid}`}>
-                            <TableCell className="font-medium text-muted-foreground">#{issue.iid}</TableCell>
+                        <TableRow key={`${issue.project.id}-${issue.iid}`} className="group hover:bg-muted/50 transition-colors h-16">
+                            <TableCell className="font-medium text-muted-foreground/50 group-hover:text-muted-foreground transition-colors">#{issue.iid}</TableCell>
                             <TableCell>
                                 <Link
                                     href={`/${issue.project.id}/qa/${issue.iid}`}
@@ -141,7 +141,7 @@ export function IssuesTable({ issues, projectId, labels = [] }: { issues: any[];
                                         </span>
                                     </div>
                                 ) : (
-                                    <span className="text-sm text-muted-foreground italic">Unassigned</span>
+                                    <span className="text-sm text-muted-foreground italic opacity-50">Unassigned</span>
                                 )}
                             </TableCell>
                             <TableCell className="text-right text-muted-foreground whitespace-nowrap">
@@ -152,7 +152,7 @@ export function IssuesTable({ issues, projectId, labels = [] }: { issues: any[];
                                     <Button
                                         variant="ghost"
                                         size="icon"
-                                        className="h-8 w-8 text-red-600 hover:text-red-700 hover:bg-destructive/10"
+                                        className="h-8 w-8 text-red-600 hover:text-red-700 hover:bg-destructive/10 opacity-0 group-hover:opacity-100"
                                         onClick={() => handleDelete(issue.iid)}
                                         disabled={deletingIssueId === issue.iid}
                                     >

@@ -305,7 +305,7 @@ export function NewIssueForm() {
                         <Button variant="ghost" type="button" asChild>
                             <Link href="/issues">Cancel</Link>
                         </Button>
-                        <Button type="submit" disabled={isLoading} className="bg-primary hover:bg-primary/90 min-w-[120px]">
+                        <Button type="submit" disabled={isLoading} className="min-w-[120px]">
                             {isLoading ? 'Creating...' : 'Create Issue'}
                         </Button>
                     </div>

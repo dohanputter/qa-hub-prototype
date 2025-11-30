@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, useOptimistic, useTransition } from "react";
 import {
     DndContext,
     DragOverlay,
@@ -19,7 +19,7 @@ import { KanbanColumn } from "./KanbanColumn";
 import { KanbanCard, IssueCard, LabelColorsProvider } from "./KanbanCard";
 import { moveIssue } from "@/app/actions/board";
 import { toast } from "@/components/ui/use-toast";
-import { Search, X } from "lucide-react";
+import { Search, X, Loader2 } from "lucide-react";
 import type { KanbanIssue, GitLabLabel, QALabelMapping } from "@/types";
 
 // Debug logging - only logs in development
@@ -43,10 +43,12 @@ export function KanbanBoard({
     projectId
 }: KanbanBoardProps) {
     const [issues, setIssues] = useState<KanbanIssue[]>(initialIssues);
+    const [optimisticIssues, setOptimisticIssues] = useOptimistic(issues, (state, newIssues: KanbanIssue[]) => newIssues);
+    const [isPending, startTransition] = useTransition();
     const [activeId, setActiveId] = useState<string | null>(null);
     // Counter-based syncing to handle multiple concurrent operations
     const [syncCount, setSyncCount] = useState(0);
-    const isSyncing = syncCount > 0;
+    const isSyncing = syncCount > 0 || isPending;
 
     // Helper functions to manage sync state safely
     const startSync = useCallback(() => setSyncCount(c => c + 1), []);
@@ -79,11 +81,11 @@ export function KanbanBoard({
                 // Check if it's just a reorder (same IDs, different order) or actual data change
                 const currentIdsSet = new Set(initialIssues.map((i: any) => `${i.project_id || project.id}-${i.iid}`));
                 const localIdsSet = new Set(issues.map((i: any) => `${i.project_id || project.id}-${i.iid}`));
-                
+
                 // If the sets are the same, it's just a reorder - preserve local order
-                const setsAreEqual = currentIdsSet.size === localIdsSet.size && 
+                const setsAreEqual = currentIdsSet.size === localIdsSet.size &&
                     [...currentIdsSet].every(id => localIdsSet.has(id));
-                
+
                 if (!setsAreEqual) {
                     // Actual data change - update state
                     log('[KanbanBoard] Data changed, updating issues');
@@ -123,20 +125,20 @@ export function KanbanBoard({
         // First, check for sortable item collisions (cards)
         const pointerCollisions = pointerWithin(args);
         const rectCollisions = rectIntersection(args);
-        
+
         // Combine and prioritize collisions
         const allCollisions = [...pointerCollisions, ...rectCollisions];
-        
+
         // Prioritize cards (IDs with '-') over columns
         const cardCollisions = allCollisions.filter(
             (collision) => String(collision.id).includes('-')
         );
-        
+
         if (cardCollisions.length > 0) {
             // Return the closest card collision
             return [cardCollisions[0]];
         }
-        
+
         // Fall back to closest center for column detection
         return closestCenter(args);
     };
@@ -148,7 +150,7 @@ export function KanbanBoard({
     };
 
     // Filter Logic
-    const filteredIssues = issues.filter((issue: any) => {
+    const filteredIssues = optimisticIssues.filter((issue: any) => {
         const query = searchQuery.toLowerCase().trim();
         if (!query) return true;
 
@@ -223,30 +225,30 @@ export function KanbanBoard({
 
     const handleDragOver = (event: DragOverEvent) => {
         const { active, over } = event;
-        
+
         if (!over) return;
-        
+
         const activeIdStr = String(active.id);
         const overIdStr = String(over.id);
-        
+
         // Skip if same item or no valid over target
         if (activeIdStr === overIdStr) return;
-        
+
         // Only handle card-to-card dragging for same-column reordering
         if (!activeIdStr.includes('-') || !overIdStr.includes('-')) return;
-        
+
         const [activeProjectId, activeIssueIid] = activeIdStr.split('-').map(Number);
         const [overProjectId, overIssueIid] = overIdStr.split('-').map(Number);
-        
+
         const activeIssue = issues.find((i: any) =>
             (i.project_id || project.id) === activeProjectId && i.iid === activeIssueIid
         );
         const overIssue = issues.find((i: any) =>
             (i.project_id || project.id) === overProjectId && i.iid === overIssueIid
         );
-        
+
         if (!activeIssue || !overIssue) return;
-        
+
         // Determine if both items are in the same column
         const activeStatus = Object.keys(columns).find((key) =>
             activeIssue.labels.includes(columns[key as keyof typeof columns])
@@ -254,14 +256,14 @@ export function KanbanBoard({
         const overStatus = Object.keys(columns).find((key) =>
             overIssue.labels.includes(columns[key as keyof typeof columns])
         );
-        
+
         // Check if both in backlog (no status labels)
         const activeInBacklog = !activeStatus;
         const overInBacklog = !overStatus;
-        
+
         // Only reorder if in the same column (same status or both in backlog)
         const isSameColumn = (activeStatus === overStatus) || (activeInBacklog && overInBacklog);
-        
+
         if (isSameColumn) {
             setIssues((items: any) => {
                 const oldIndex = items.findIndex((item: any) =>
@@ -270,12 +272,12 @@ export function KanbanBoard({
                 const newIndex = items.findIndex((item: any) =>
                     `${item.project_id || project.id}-${item.iid}` === overIdStr
                 );
-                
+
                 if (oldIndex !== -1 && newIndex !== -1 && oldIndex !== newIndex) {
                     hasLocalChangesRef.current = true;
                     return arrayMove(items, oldIndex, newIndex);
                 }
-                
+
                 return items;
             });
         }
@@ -369,32 +371,33 @@ export function KanbanBoard({
             );
             let newIssues = [...issues];
             newIssues[activeIndex] = updatedIssue;
+
             setIssues(newIssues);
 
-            log('[Drag] Removing label for backlog', { oldLabel });
+            startTransition(async () => {
+                setOptimisticIssues(newIssues);
+                log('[Drag] Removing label for backlog', { oldLabel });
 
-            const result = await moveIssue(
-                projectId,
-                activeIssue.iid,
-                '', // New label is empty for backlog
-                oldLabel
-            );
+                const result = await moveIssue(
+                    projectId,
+                    activeIssue.iid,
+                    '', // New label is empty for backlog
+                    oldLabel
+                );
 
-            const elapsed = Date.now() - syncStartTime;
-            const remainingTime = Math.max(0, 2500 - elapsed);
-            setTimeout(() => endSync(), remainingTime);
-
-            if (!result.success) {
-                log('[Drag] Failed to move to backlog', result.error);
-                toast({
-                    title: "Error moving issue",
-                    description: result.error,
-                    variant: "destructive",
-                });
-                setIssues(issues);
-            } else {
-                log('[Drag] Successfully moved to backlog');
-            }
+                if (!result.success) {
+                    log('[Drag] Failed to move to backlog', result.error);
+                    toast({
+                        title: "Error moving issue",
+                        description: result.error,
+                        variant: "destructive",
+                    });
+                    setIssues(issues);
+                } else {
+                    log('[Drag] Successfully moved to backlog');
+                }
+                endSync();
+            });
             return;
         }
 
@@ -421,33 +424,33 @@ export function KanbanBoard({
             );
             let newIssues = [...issues];
             newIssues[activeIndex] = updatedIssue;
+
             setIssues(newIssues);
 
-            log('[Drag] Moving from backlog, adding label', { newLabel });
+            startTransition(async () => {
+                setOptimisticIssues(newIssues);
+                log('[Drag] Moving from backlog, adding label', { newLabel });
 
-            const result = await moveIssue(
-                projectId,
-                activeIssue.iid,
-                newLabel,
-                '' // Empty old label for backlog
-            );
+                const result = await moveIssue(
+                    projectId,
+                    activeIssue.iid,
+                    newLabel,
+                    '' // Empty old label for backlog
+                );
 
-            // Keep syncing badge visible for minimum 2.5 seconds
-            const elapsed = Date.now() - syncStartTime;
-            const remainingTime = Math.max(0, 2500 - elapsed);
-            setTimeout(() => endSync(), remainingTime);
-
-            if (!result.success) {
-                log('[Drag] Failed to move from backlog', result.error);
-                toast({
-                    title: "Error moving issue",
-                    description: result.error,
-                    variant: "destructive",
-                });
-                setIssues(issues);
-            } else {
-                log('[Drag] Successfully moved from backlog');
-            }
+                if (!result.success) {
+                    log('[Drag] Failed to move from backlog', result.error);
+                    toast({
+                        title: "Error moving issue",
+                        description: result.error,
+                        variant: "destructive",
+                    });
+                    setIssues(issues);
+                } else {
+                    log('[Drag] Successfully moved from backlog');
+                }
+                endSync();
+            });
             return;
         }
 
@@ -463,15 +466,15 @@ export function KanbanBoard({
             overIssue.labels.includes(columns[key as keyof typeof columns])
         ) as keyof typeof columns | undefined : undefined;
         const overInBacklog = overIssue && !overIssueStatus;
-        
-        const isSameColumn = (sourceStatus === destStatus && sourceStatus !== undefined) || 
-                            (isFromBacklog && (overIdStr === 'backlog' || overInBacklog));
+
+        const isSameColumn = (sourceStatus === destStatus && sourceStatus !== undefined) ||
+            (isFromBacklog && (overIdStr === 'backlog' || overInBacklog));
 
         if (isSameColumn && activeIdStr !== overIdStr) {
-            log('[Drag] Same column reorder completed (handled in dragOver)', { 
-                activeId: activeIdStr, 
-                overId: overIdStr, 
-                sourceStatus, 
+            log('[Drag] Same column reorder completed (handled in dragOver)', {
+                activeId: activeIdStr,
+                overId: overIdStr,
+                sourceStatus,
                 destStatus,
                 isFromBacklog,
                 isSameColumn
@@ -514,31 +517,32 @@ export function KanbanBoard({
             insertIndex = 0;
         }
         newIssues.splice(insertIndex, 0, updatedIssue);
+
         setIssues(newIssues);
 
-        const result = await moveIssue(
-            projectId,
-            activeIssue.iid,
-            newLabel,
-            oldLabel
-        );
+        startTransition(async () => {
+            setOptimisticIssues(newIssues);
 
-        // Keep syncing badge visible for minimum 2.5 seconds
-        const elapsed = Date.now() - syncStartTime;
-        const remainingTime = Math.max(0, 2500 - elapsed);
-        setTimeout(() => endSync(), remainingTime);
+            const result = await moveIssue(
+                projectId,
+                activeIssue.iid,
+                newLabel,
+                oldLabel
+            );
 
-        if (!result.success) {
-            log('[Drag] Failed to move between columns', result.error);
-            toast({
-                title: "Error moving issue",
-                description: result.error,
-                variant: "destructive",
-            });
-            setIssues(issues);
-        } else {
-            log('[Drag] Successfully moved between columns');
-        }
+            if (!result.success) {
+                log('[Drag] Failed to move between columns', result.error);
+                toast({
+                    title: "Error moving issue",
+                    description: result.error,
+                    variant: "destructive",
+                });
+                setIssues(issues);
+            } else {
+                log('[Drag] Successfully moved between columns');
+            }
+            endSync();
+        });
     };
 
     const activeIssue = activeId
@@ -552,115 +556,111 @@ export function KanbanBoard({
 
     return (
         <LabelColorsProvider labels={labels}>
-        <div className="flex flex-col h-full">
-            {/* Sticky Header */}
-            <div className="flex justify-between items-center mb-6 sticky top-0 z-10 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 py-2">
-                {/* Search Input Container */}
-                <div className="relative w-80" ref={searchContainerRef}>
-                    <div className="relative">
-                        <Search className="absolute left-3 top-2.5 text-muted-foreground" size={16} />
-                        <input
-                            ref={searchInputRef}
-                            type="text"
-                            placeholder="Search or type @label..."
-                            value={searchQuery}
-                            onChange={handleSearchInput}
-                            onKeyDown={handleKeyDown}
-                            className="w-full pl-10 pr-8 py-2 border border-input rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary bg-background shadow-sm text-foreground"
-                        />
-                        {searchQuery && (
-                            <button
-                                onClick={() => { setSearchQuery(''); setShowLabelSuggestions(false); }}
-                                className="absolute right-2 top-2.5 text-muted-foreground hover:text-foreground"
-                            >
-                                <X size={16} />
-                            </button>
+            <div className="flex flex-col h-full">
+                {/* Sticky Header */}
+                <div className="flex justify-between items-center mb-6 sticky top-0 z-10 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 py-2">
+                    {/* Search Input Container */}
+                    <div className="relative w-80" ref={searchContainerRef}>
+                        <div className="relative">
+                            <Search className="absolute left-3 top-2.5 text-muted-foreground" size={16} />
+                            <input
+                                ref={searchInputRef}
+                                type="text"
+                                placeholder="Search or type @label..."
+                                value={searchQuery}
+                                onChange={handleSearchInput}
+                                onKeyDown={handleKeyDown}
+                                className="w-full pl-10 pr-8 py-2 border border-input rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary bg-background shadow-sm text-foreground"
+                            />
+                            {searchQuery && (
+                                <button
+                                    onClick={() => { setSearchQuery(''); setShowLabelSuggestions(false); }}
+                                    className="absolute right-2 top-2.5 text-muted-foreground hover:text-foreground"
+                                >
+                                    <X size={16} />
+                                </button>
+                            )}
+                        </div>
+
+                        {/* Autocomplete Dropdown */}
+                        {showLabelSuggestions && filteredLabels.length > 0 && (
+                            <div className="absolute top-full left-0 right-0 mt-2 bg-popover border border-border rounded-lg shadow-lg z-50 overflow-hidden">
+                                <div className="px-3 py-2 bg-muted/50 border-b border-border text-xs font-semibold text-muted-foreground uppercase">
+                                    Select Label
+                                </div>
+                                <ul className="max-h-48 overflow-y-auto">
+                                    {filteredLabels.map((label: any, index: number) => (
+                                        <li
+                                            key={label.id}
+                                            onClick={() => selectLabel(label.name)}
+                                            className={`px-3 py-2 flex items-center gap-2 cursor-pointer text-sm ${index === activeSuggestionIndex ? 'bg-primary/10 text-primary' : 'hover:bg-muted/50 text-foreground'
+                                                }`}
+                                        >
+                                            <span
+                                                className="w-3 h-3 rounded-full border border-foreground/10"
+                                                style={{ backgroundColor: label.color }}
+                                            ></span>
+                                            <span className="font-medium">{label.name}</span>
+                                        </li>
+                                    ))}
+                                </ul>
+                            </div>
                         )}
                     </div>
 
-                    {/* Autocomplete Dropdown */}
-                    {showLabelSuggestions && filteredLabels.length > 0 && (
-                        <div className="absolute top-full left-0 right-0 mt-2 bg-popover border border-border rounded-lg shadow-lg z-50 overflow-hidden">
-                            <div className="px-3 py-2 bg-muted/50 border-b border-border text-xs font-semibold text-muted-foreground uppercase">
-                                Select Label
-                            </div>
-                            <ul className="max-h-48 overflow-y-auto">
-                                {filteredLabels.map((label: any, index: number) => (
-                                    <li
-                                        key={label.id}
-                                        onClick={() => selectLabel(label.name)}
-                                        className={`px-3 py-2 flex items-center gap-2 cursor-pointer text-sm ${index === activeSuggestionIndex ? 'bg-primary/10 text-primary' : 'hover:bg-muted/50 text-foreground'
-                                            }`}
-                                    >
-                                        <span
-                                            className="w-3 h-3 rounded-full border border-foreground/10"
-                                            style={{ backgroundColor: label.color }}
-                                        ></span>
-                                        <span className="font-medium">{label.name}</span>
-                                    </li>
-                                ))}
-                            </ul>
+                    {/* Syncing Badge */}
+                    {isSyncing && (
+                        <div className="flex items-center justify-center w-8 h-8 rounded-full bg-primary/10 animate-in fade-in duration-300">
+                            <Loader2 className="h-4 w-4 text-primary animate-spin" />
                         </div>
                     )}
                 </div>
 
-                {/* Syncing Badge */}
-                {isSyncing && (
-                    <div className="flex items-center gap-2 px-3 py-1.5 bg-primary/10 border border-primary/20 rounded-lg">
-                        <svg className="animate-spin h-4 w-4 text-primary" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                        </svg>
-                        <span className="text-sm font-medium text-primary">Syncing...</span>
+                <DndContext
+                    id="kanban-board-dnd-context"
+                    sensors={sensors}
+                    collisionDetection={collisionDetectionStrategy}
+                    onDragStart={handleDragStart}
+                    onDragOver={handleDragOver}
+                    onDragEnd={handleDragEnd}
+                >
+                    <div className="flex h-full gap-6 overflow-x-auto pb-4 items-start px-6">
+                        <KanbanColumn
+                            id="backlog"
+                            title="Backlog"
+                            issues={getBacklogIssues()}
+                            projectId={project.id}
+                        />
+
+                        <KanbanColumn
+                            id="pending"
+                            title="Ready for QA"
+                            issues={getIssuesByStatus("pending")}
+                            projectId={project.id}
+                        />
+
+                        <KanbanColumn
+                            id="passed"
+                            title="Passed"
+                            issues={getIssuesByStatus("passed")}
+                            projectId={project.id}
+                        />
+
+                        <KanbanColumn
+                            id="failed"
+                            title="Failed"
+                            issues={getIssuesByStatus("failed")}
+                            projectId={project.id}
+                        />
                     </div>
-                )}
+
+                    <DragOverlay>
+                        {activeIssue ? (
+                            <IssueCard issue={activeIssue} projectId={project.id} isOverlay />
+                        ) : null}
+                    </DragOverlay>
+                </DndContext>
             </div>
-
-            <DndContext
-                id="kanban-board-dnd-context"
-                sensors={sensors}
-                collisionDetection={collisionDetectionStrategy}
-                onDragStart={handleDragStart}
-                onDragOver={handleDragOver}
-                onDragEnd={handleDragEnd}
-            >
-                <div className="flex h-full gap-6 overflow-x-auto pb-4 items-start">
-                    <KanbanColumn
-                        id="backlog"
-                        title="Backlog"
-                        issues={getBacklogIssues()}
-                        projectId={project.id}
-                    />
-
-                    <KanbanColumn
-                        id="pending"
-                        title="Ready for QA"
-                        issues={getIssuesByStatus("pending")}
-                        projectId={project.id}
-                    />
-
-                    <KanbanColumn
-                        id="passed"
-                        title="Passed"
-                        issues={getIssuesByStatus("passed")}
-                        projectId={project.id}
-                    />
-
-                    <KanbanColumn
-                        id="failed"
-                        title="Failed"
-                        issues={getIssuesByStatus("failed")}
-                        projectId={project.id}
-                    />
-                </div>
-
-                <DragOverlay>
-                    {activeIssue ? (
-                        <IssueCard issue={activeIssue} projectId={project.id} isOverlay />
-                    ) : null}
-                </DragOverlay>
-            </DndContext>
-        </div>
         </LabelColorsProvider>
     );
 }

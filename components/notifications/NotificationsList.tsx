@@ -93,7 +93,7 @@ export function NotificationsList() {
                     <CheckCheck className="mr-2 h-4 w-4" /> Mark all as read
                 </Button>
             </div>
-            <ScrollArea className="h-[600px] w-full rounded-md border p-4">
+            <ScrollArea className="h-[calc(100vh-12rem)] w-full rounded-md border p-4">
                 <div className="space-y-2">
                     {notifications?.map((n) => (
                         <Card key={n.id} className={`transition-opacity ${n.isRead ? 'opacity-60 bg-muted/50' : 'bg-card border-l-4 border-l-blue-500'}`}>

@@ -1,7 +1,7 @@
 'use client';
 
 // Refined Issue Detail Page
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { TiptapEditor } from './TiptapEditor';
 import { Button } from '@/components/ui/button';
@@ -45,7 +45,7 @@ export function QADetail({ issue, qaIssue, runs = [], allAttachments = [], membe
     const [attachments, setAttachments] = useState(allAttachments.filter((a: any) => a.qaRunId === activeRun?.id) || []);
 
     const [saving, setSaving] = useState(false);
-    const [submitting, setSubmitting] = useState(false);
+    const [isPending, startTransition] = useTransition();
     const [snippets, setSnippets] = useState<Snippet[]>([]);
 
     // Track run ID
@@ -107,39 +107,38 @@ export function QADetail({ issue, qaIssue, runs = [], allAttachments = [], membe
         }
     };
 
-    const handleSubmit = async (result: 'passed' | 'failed') => {
-        setSubmitting(true);
-        try {
-            // Save first
-            let currentRunId = runId;
-            if (!currentRunId) {
-                const run = await handleSave(true);
-                if (!run) return;
-                currentRunId = run.id;
-            } else {
-                // Ensure content is saved
-                await getOrCreateQARun({
-                    projectId,
-                    issueIid: issue.iid,
-                    testCasesContent: testCases || undefined,
-                    issuesFoundContent: issuesFound || undefined
-                });
-            }
+    const handleSubmit = (result: 'passed' | 'failed') => {
+        startTransition(async () => {
+            try {
+                // Save first
+                let currentRunId = runId;
+                if (!currentRunId) {
+                    const run = await handleSave(true);
+                    if (!run) return;
+                    currentRunId = run.id;
+                } else {
+                    // Ensure content is saved
+                    await getOrCreateQARun({
+                        projectId,
+                        issueIid: issue.iid,
+                        testCasesContent: testCases || undefined,
+                        issuesFoundContent: issuesFound || undefined
+                    });
+                }
 
-            const res = await submitQARun(projectId, currentRunId, result);
-            if (res.success) {
-                toast({
-                    title: result === 'passed' ? "QA Passed" : "QA Failed",
-                    description: "Result submitted to GitLab",
-                });
-                // Refresh to show updated state
-                router.refresh();
+                const res = await submitQARun(projectId, currentRunId, result);
+                if (res.success) {
+                    toast({
+                        title: result === 'passed' ? "QA Passed" : "QA Failed",
+                        description: "Result submitted to GitLab",
+                    });
+                    // Refresh to show updated state
+                    router.refresh();
+                }
+            } catch (error: any) {
+                toast({ title: "Error submitting", description: error.message, variant: "destructive" });
             }
-        } catch (error: any) {
-            toast({ title: "Error submitting", description: error.message, variant: "destructive" });
-        } finally {
-            setSubmitting(false);
-        }
+        });
     };
 
     const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -292,10 +291,12 @@ export function QADetail({ issue, qaIssue, runs = [], allAttachments = [], membe
                                     Save Draft
                                 </Button>
                                 <div className="h-6 w-px bg-border/60 mx-1" />
-                                <Button variant="destructive" size="sm" onClick={() => handleSubmit('failed')} disabled={submitting} className="shadow-none">
+                                <Button variant="destructive" size="sm" onClick={() => handleSubmit('failed')} disabled={isPending} className="shadow-none">
+                                    {isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
                                     Fail
                                 </Button>
-                                <Button size="sm" className="bg-emerald-600 hover:bg-emerald-700 text-white shadow-none" onClick={() => handleSubmit('passed')} disabled={submitting}>
+                                <Button size="sm" className="bg-emerald-600 hover:bg-emerald-700 text-white shadow-none" onClick={() => handleSubmit('passed')} disabled={isPending}>
+                                    {isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
                                     Pass
                                 </Button>
                             </>
@@ -326,7 +327,7 @@ export function QADetail({ issue, qaIssue, runs = [], allAttachments = [], membe
                         </TabsList>
                     </div>
 
-                    <TabsContent value="active" className="flex-1 overflow-y-auto p-8 space-y-10 outline-none">
+                    <TabsContent value="active" className="flex-1 overflow-y-auto p-8 space-y-8 outline-none">
                         <div className="space-y-4">
                             <div className="flex items-center justify-between">
                                 <Label className="text-base font-medium">Test Cases</Label>
@@ -338,13 +339,13 @@ export function QADetail({ issue, qaIssue, runs = [], allAttachments = [], membe
                                 placeholder="List test cases..."
                                 snippets={testCaseSnippets}
                                 onImagePaste={handleImagePaste}
-                                className="border-border/40 shadow-none bg-background focus-within:ring-1 focus-within:ring-primary/20"
+                                className="border-border/40 shadow-none bg-muted/20 focus-within:ring-1 focus-within:ring-primary/20 font-mono text-sm"
                             />
                         </div>
 
                         <div className="space-y-4">
                             <div className="flex items-center justify-between">
-                                <Label className="text-base font-medium text-red-600/90">Issues Found</Label>
+                                <Label className="text-base font-medium">Issues Found</Label>
                             </div>
                             <TiptapEditor
                                 content={issuesFound}
@@ -353,7 +354,7 @@ export function QADetail({ issue, qaIssue, runs = [], allAttachments = [], membe
                                 placeholder="Describe any issues found..."
                                 snippets={issueSnippets}
                                 onImagePaste={handleImagePaste}
-                                className="border-red-100 dark:border-red-900/30 shadow-none bg-red-50/10 focus-within:ring-1 focus-within:ring-red-500/20"
+                                className="border-border/40 shadow-none bg-muted/20 focus-within:ring-1 focus-within:ring-primary/20 font-mono text-sm"
                             />
                         </div>
 

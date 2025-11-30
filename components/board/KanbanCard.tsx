@@ -35,11 +35,11 @@ interface LabelColorsContextType {
 
 const LabelColorsContext = createContext<LabelColorsContextType | null>(null);
 
-export function LabelColorsProvider({ 
-    labels, 
-    children 
-}: { 
-    labels: GitLabLabel[]; 
+export function LabelColorsProvider({
+    labels,
+    children
+}: {
+    labels: GitLabLabel[];
     children: React.ReactNode;
 }) {
     // Memoize the label color map to prevent recreation on every render
@@ -83,14 +83,14 @@ export function LabelColorsProvider({
 // Hook to use label colors
 function useLabelColors() {
     const context = useContext(LabelColorsContext);
-    
+
     // Fallback when used outside provider (shouldn't happen but safety first)
     if (!context) {
         return {
             getLabelColor: generateLabelColor
         };
     }
-    
+
     return context;
 }
 
@@ -123,7 +123,7 @@ export function IssueCard({ issue, projectId, isOverlay = false }: { issue: Kanb
     const assignee = issue.assignee || (issue.assignees && issue.assignees[0]) || null;
 
     return (
-        <Card className={`cursor-grab active:cursor-grabbing hover:-translate-y-1 hover:shadow-md transition-all duration-200 bg-card border-border/50 ${isOverlay ? 'shadow-xl cursor-grabbing scale-105 rotate-2' : ''}`}>
+        <Card className={`group relative cursor-grab active:cursor-grabbing hover:-translate-y-1 hover:shadow-md transition-all duration-200 bg-card border-border/50 ${isOverlay ? 'shadow-2xl cursor-grabbing scale-105 rotate-2 ring-1 ring-primary/20 z-50' : ''}`}>
             <CardContent className="p-3 space-y-3">
                 <div className="flex justify-between items-start gap-2">
                     <Link
@@ -133,13 +133,13 @@ export function IssueCard({ issue, projectId, isOverlay = false }: { issue: Kanb
                     >
                         {issue.title}
                     </Link>
-                    <div className="flex items-center gap-1">
-                        <span className="text-xs text-muted-foreground whitespace-nowrap font-mono">#{issue.iid}</span>
+                    <div className="flex items-center gap-1 shrink-0">
+                        <span className="text-xs text-muted-foreground/50 group-hover:text-muted-foreground transition-colors font-mono">#{issue.iid}</span>
                         {isMockMode && !isOverlay && (
                             <Button
                                 variant="ghost"
                                 size="icon"
-                                className="h-5 w-5 text-destructive hover:text-destructive hover:bg-destructive/10 -mr-1"
+                                className="h-5 w-5 text-destructive hover:text-destructive hover:bg-destructive/10 -mr-1 opacity-0 group-hover:opacity-100"
                                 onClick={handleDelete}
                                 onPointerDown={(e) => e.stopPropagation()} // Prevent drag when clicking delete
                                 disabled={isDeleting}
@@ -175,18 +175,18 @@ export function IssueCard({ issue, projectId, isOverlay = false }: { issue: Kanb
                 <div className="flex justify-between items-center pt-1">
                     <div className="flex items-center gap-1.5">
                         {assignee ? (
-                            <Avatar className="h-5 w-5">
+                            <Avatar className="h-5 w-5 ring-1 ring-background">
                                 <AvatarImage src={assignee.avatar_url} />
                                 <AvatarFallback className="text-[9px]">{assignee.name[0]}</AvatarFallback>
                             </Avatar>
                         ) : (
-                            <div className="h-5 w-5 rounded-full bg-muted flex items-center justify-center border border-border">
+                            <div className="h-5 w-5 rounded-full bg-muted/50 flex items-center justify-center border border-border/50 opacity-50 group-hover:opacity-100 transition-opacity">
                                 <span className="text-[9px] text-muted-foreground">?</span>
                             </div>
                         )}
                         {assignee && <span className="text-[10px] text-muted-foreground truncate max-w-[80px]">{assignee.name}</span>}
                     </div>
-                    <span className="text-[10px] text-muted-foreground">
+                    <span className="text-[10px] text-muted-foreground opacity-60 group-hover:opacity-100 transition-opacity">
                         {formatDistanceToNow(new Date(issue.updated_at), { addSuffix: true })}
                     </span>
                 </div>
