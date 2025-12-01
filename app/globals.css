@@ -441,4 +441,36 @@
   .resize-handle:active {
     transform: scale(1.1);
   }
+
+  /* Tiptap Task List Styles */
+  ul[data-type="taskList"] {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+  }
+
+  .task-item {
+    display: flex !important;
+    flex-direction: row !important;
+    align-items: flex-start !important;
+    margin-bottom: 0.25rem !important;
+  }
+
+  .task-item > label {
+    margin-right: 0.5rem !important;
+    user-select: none;
+    margin-top: 0.25rem !important; /* Align with text baseline */
+    flex-shrink: 0 !important;
+    cursor: pointer;
+  }
+
+  .task-item > div {
+    flex: 1 !important;
+    margin: 0 !important;
+    min-width: 0 !important; /* Allow flex item to shrink properly */
+  }
+
+  .task-item > div > p {
+    margin: 0 !important;
+  }
 }

@@ -90,6 +90,9 @@ export function TiptapEditor({
             }),
             TaskItem.configure({
                 nested: true,
+                HTMLAttributes: {
+                    class: 'task-item',
+                },
             }),
             Table.configure({
                 resizable: true,
