@@ -76,7 +76,7 @@ export function DashboardView({ stats, projectId }: DashboardViewProps) {
                     </CardHeader>
                     <CardContent>
                         <div className="text-2xl font-bold tracking-tight">{stats.kpi?.activeTests || 0}</div>
-                        <p className="text-xs text-muted-foreground mt-1">Currently in progress</p>
+                        <p className="text-xs text-muted-foreground mt-1">Issues pending QA</p>
                     </CardContent>
                 </Card>
             </div>

@@ -10,9 +10,12 @@ import { TableCell } from '@tiptap/extension-table-cell';
 import Emoji from '@tiptap/extension-emoji';
 import { TableHeader } from '@tiptap/extension-table-header';
 import { TableRow } from '@tiptap/extension-table-row';
+import TaskList from '@tiptap/extension-task-list';
+import TaskItem from '@tiptap/extension-task-item';
 import { Button } from '@/components/ui/button';
-import { Bold, Italic, List, ListOrdered, Code, ScrollText, Table as TableIcon, Type } from 'lucide-react';
+import { Bold, Italic, List, ListOrdered, Code, ScrollText, Table as TableIcon, Type, CheckSquare } from 'lucide-react';
 import tippy from 'tippy.js';
+import { marked } from 'marked';
 import { MentionList } from './MentionList';
 import { EmojiList } from './EmojiList';
 import { TableBubbleMenu } from './TableBubbleMenu';
@@ -49,7 +52,6 @@ export function TiptapEditor({
     const [isTablePopoverOpen, setIsTablePopoverOpen] = useState(false);
 
     // Normalize content to handle both JSONContent and string types
-    // Normalize content to handle both JSONContent and string types
     const normalizedContent = typeof content === 'string'
         ? (() => {
             try {
@@ -58,10 +60,15 @@ export function TiptapEditor({
                 if (parsed && typeof parsed === 'object' && parsed.type === 'doc') {
                     return parsed;
                 }
-                // If it's a string but not a doc JSON, treat as text
-                return content ? { type: 'doc', content: [{ type: 'paragraph', content: [{ type: 'text', text: content }] }] } : null;
             } catch (e) {
-                // Not a JSON string, treat as plain text
+                // Not a JSON string
+            }
+
+            // Treat as Markdown -> HTML
+            try {
+                return marked.parse(content);
+            } catch (e) {
+                // Fallback to plain text wrapped in paragraph
                 return content ? { type: 'doc', content: [{ type: 'paragraph', content: [{ type: 'text', text: content }] }] } : null;
             }
         })()
@@ -76,6 +83,14 @@ export function TiptapEditor({
             TextStyle,
             FontSize,
             ResizableImage,
+            TaskList.configure({
+                HTMLAttributes: {
+                    class: 'not-prose pl-2',
+                },
+            }),
+            TaskItem.configure({
+                nested: true,
+            }),
             Table.configure({
                 resizable: true,
             }),
@@ -338,6 +353,9 @@ export function TiptapEditor({
                     </Button>
                     <Button variant="ghost" size="sm" onClick={() => editor.chain().focus().toggleOrderedList().run()} className={editor.isActive('orderedList') ? 'bg-muted' : ''}>
                         <ListOrdered className="h-4 w-4" />
+                    </Button>
+                    <Button variant="ghost" size="sm" onClick={() => editor.chain().focus().toggleTaskList().run()} className={editor.isActive('taskList') ? 'bg-muted' : ''}>
+                        <CheckSquare className="h-4 w-4" />
                     </Button>
                     <Button variant="ghost" size="sm" onClick={() => editor.chain().focus().toggleCodeBlock().run()} className={editor.isActive('codeBlock') ? 'bg-muted' : ''}>
                         <Code className="h-4 w-4" />

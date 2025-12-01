@@ -14,7 +14,7 @@ import { createIssue } from '@/app/actions/issues';
 import { uploadAttachment } from '@/app/actions/uploadAttachment';
 import Image from 'next/image';
 import { TiptapEditor } from '@/components/qa/TiptapEditor';
-import { cn } from '@/lib/utils';
+import { cn, tiptapToMarkdown } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 
@@ -136,7 +136,7 @@ export const CreateIssueWizard: React.FC<CreateIssueWizardProps> = ({ onClose, o
         const issueData = {
             projectId: selectedProject.id,
             title,
-            description: description ? JSON.stringify(description) : '',
+            description: description ? tiptapToMarkdown(description) : '',
             assigneeId: assignee?.id,
             labels: selectedLabels.map(l => l.title).join(','),
         };
@@ -314,16 +314,14 @@ export const CreateIssueWizard: React.FC<CreateIssueWizardProps> = ({ onClose, o
 
                         {/* Description Editor */}
                         <div className="space-y-2">
-                            <div className="min-h-[400px] rounded-xl border border-border/40 bg-card/50 shadow-sm overflow-hidden focus-within:ring-1 focus-within:ring-primary/20 transition-all">
-                                <TiptapEditor
-                                    content={description}
-                                    onChange={(content) => setDescription(content)}
-                                    members={users.map(u => ({ ...u, avatar_url: u.avatarUrl }))}
-                                    placeholder="Describe the issue..."
-                                    onImagePaste={handleImagePaste}
-                                    className="min-h-[400px] p-6"
-                                />
-                            </div>
+                            <TiptapEditor
+                                content={description}
+                                onChange={(content) => setDescription(content)}
+                                members={users.map(u => ({ ...u, avatar_url: u.avatarUrl }))}
+                                placeholder="Describe the issue..."
+                                onImagePaste={handleImagePaste}
+                                className="min-h-[400px] border-border/40 bg-card/50 shadow-sm focus-within:ring-1 focus-within:ring-primary/20"
+                            />
                             <p className="text-xs text-muted-foreground text-right px-2">Markdown supported</p>
                         </div>
                     </div>

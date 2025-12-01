@@ -602,8 +602,8 @@ export async function getDashboardStats(groupId?: number) {
     ];
 
     // 4. KPI Metrics
-    // Active Tests (Pending Runs)
-    const activeTests = allRuns.filter(r => r.status === 'pending').length;
+    // Active Tests (Pending Issues)
+    const activeTests = allIssues.filter(i => i.status === 'pending').length;
 
     // Issues Found (Total Issues)
     const issuesFound = allIssues.length;
