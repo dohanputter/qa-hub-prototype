@@ -21,6 +21,7 @@ import { moveIssue } from "@/app/actions/board";
 import { toast } from "@/components/ui/use-toast";
 import { Search, X, Loader2 } from "lucide-react";
 import type { KanbanIssue, GitLabLabel, QALabelMapping } from "@/types";
+import { DEFAULT_QA_LABELS } from "@/lib/constants";
 
 // Debug logging - only logs in development
 const DEBUG = process.env.NODE_ENV === 'development';
@@ -29,7 +30,7 @@ const log = (...args: unknown[]) => DEBUG && console.log(...args);
 interface KanbanBoardProps {
     project: {
         id: number;
-        qaLabelMapping: QALabelMapping;
+        qaLabelMapping?: QALabelMapping;
     };
     issues: KanbanIssue[];
     labels: GitLabLabel[];
@@ -144,9 +145,9 @@ export function KanbanBoard({
     };
 
     const columns = {
-        pending: project.qaLabelMapping.pending,
-        passed: project.qaLabelMapping.passed,
-        failed: project.qaLabelMapping.failed,
+        pending: project.qaLabelMapping?.pending || DEFAULT_QA_LABELS.pending,
+        passed: project.qaLabelMapping?.passed || DEFAULT_QA_LABELS.passed,
+        failed: project.qaLabelMapping?.failed || DEFAULT_QA_LABELS.failed,
     };
 
     // Filter Logic
@@ -379,7 +380,7 @@ export function KanbanBoard({
                 log('[Drag] Removing label for backlog', { oldLabel });
 
                 const result = await moveIssue(
-                    projectId,
+                    activeProjectId,
                     activeIssue.iid,
                     '', // New label is empty for backlog
                     oldLabel
@@ -432,7 +433,7 @@ export function KanbanBoard({
                 log('[Drag] Moving from backlog, adding label', { newLabel });
 
                 const result = await moveIssue(
-                    projectId,
+                    activeProjectId,
                     activeIssue.iid,
                     newLabel,
                     '' // Empty old label for backlog
@@ -524,7 +525,7 @@ export function KanbanBoard({
             setOptimisticIssues(newIssues);
 
             const result = await moveIssue(
-                projectId,
+                activeProjectId,
                 activeIssue.iid,
                 newLabel,
                 oldLabel

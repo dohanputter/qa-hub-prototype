@@ -8,7 +8,9 @@ export default async function Dashboard({ params }: { params: Promise<{ projectI
     if (!session?.accessToken) redirect('/auth/signin');
 
     const { projectId } = await params;
-    const stats = await getDashboardStats(Number(projectId));
+    // Note: URL param is named 'projectId' but it's actually a groupId
+    const groupId = Number(projectId);
+    const stats = await getDashboardStats(groupId);
 
-    return <DashboardView stats={stats} projectId={Number(projectId)} />;
+    return <DashboardView stats={stats} projectId={groupId} />;
 }

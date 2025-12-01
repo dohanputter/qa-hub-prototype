@@ -5,7 +5,7 @@
 @layer base {
   :root {
     /* Light Mode - Zinc & Teal */
-    --background: 240 10% 98%;
+    --background: 240 10% 96%; /* Slightly darker to reduce glare */
     --foreground: 240 10% 3.9%;
 
     --card: 0 0% 100%;
@@ -22,7 +22,7 @@
     --secondary-foreground: 240 5.9% 10%;
 
     --muted: 240 4.8% 95.9%;
-    --muted-foreground: 240 3.8% 46.1%;
+    --muted-foreground: 240 3.8% 40%; /* Darker for better readability */
 
     --accent: 240 4.8% 95.9%;
     --accent-foreground: 240 5.9% 10%;
@@ -77,6 +77,11 @@
 
   body {
     @apply bg-background text-foreground antialiased;
+    /* Subtle gradient to enhance glassmorphism */
+    background-image: 
+      radial-gradient(circle at top left, hsl(var(--primary) / 0.03), transparent 40%),
+      radial-gradient(circle at bottom right, hsl(var(--primary) / 0.03), transparent 40%);
+    background-attachment: fixed;
   }
 }
 

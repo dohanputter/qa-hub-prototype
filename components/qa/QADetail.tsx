@@ -339,7 +339,7 @@ export function QADetail({ issue, qaIssue, runs = [], allAttachments = [], membe
                                 placeholder="List test cases..."
                                 snippets={testCaseSnippets}
                                 onImagePaste={handleImagePaste}
-                                className="border-border/40 shadow-none bg-muted/20 focus-within:ring-1 focus-within:ring-primary/20 font-mono text-sm"
+                                className="border-border/40 shadow-none bg-muted/20 focus-within:ring-1 focus-within:ring-primary/20 text-sm"
                             />
                         </div>
 
@@ -354,7 +354,7 @@ export function QADetail({ issue, qaIssue, runs = [], allAttachments = [], membe
                                 placeholder="Describe any issues found..."
                                 snippets={issueSnippets}
                                 onImagePaste={handleImagePaste}
-                                className="border-border/40 shadow-none bg-muted/20 focus-within:ring-1 focus-within:ring-primary/20 font-mono text-sm"
+                                className="border-border/40 shadow-none bg-muted/20 focus-within:ring-1 focus-within:ring-primary/20 text-sm"
                             />
                         </div>
 

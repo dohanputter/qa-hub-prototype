@@ -49,8 +49,22 @@ export function TiptapEditor({
     const [isTablePopoverOpen, setIsTablePopoverOpen] = useState(false);
 
     // Normalize content to handle both JSONContent and string types
+    // Normalize content to handle both JSONContent and string types
     const normalizedContent = typeof content === 'string'
-        ? (content ? { type: 'doc', content: [{ type: 'paragraph', content: [{ type: 'text', text: content }] }] } : null)
+        ? (() => {
+            try {
+                // Try to parse as JSON first
+                const parsed = JSON.parse(content);
+                if (parsed && typeof parsed === 'object' && parsed.type === 'doc') {
+                    return parsed;
+                }
+                // If it's a string but not a doc JSON, treat as text
+                return content ? { type: 'doc', content: [{ type: 'paragraph', content: [{ type: 'text', text: content }] }] } : null;
+            } catch (e) {
+                // Not a JSON string, treat as plain text
+                return content ? { type: 'doc', content: [{ type: 'paragraph', content: [{ type: 'text', text: content }] }] } : null;
+            }
+        })()
         : content;
 
     const editor = useEditor({

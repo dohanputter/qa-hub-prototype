@@ -13,26 +13,47 @@ export default async function QAPage({ params }: { params: Promise<{ projectId: 
     if (!session?.accessToken && !isMockMode) return <div>Unauthorized</div>;
 
     const { projectId: projectIdStr, issueIid: issueIidStr } = await params;
-    const projectId = parseInt(projectIdStr);
+    const groupId = parseInt(projectIdStr); // URL param is actually groupId
     const issueIid = parseInt(issueIidStr);
 
     try {
-        const gitlabIssue = await getIssue(projectId, issueIid, session?.accessToken || 'mock-token');
+        // Get all projects in the group
+        const { getGroupProjects } = await import('@/lib/gitlab');
+        const token = session?.accessToken || 'mock-token';
+        const groupProjects = await getGroupProjects(groupId, token);
 
-        if (!gitlabIssue) {
+        // Search for the issue across all projects in the group
+        let gitlabIssue = null;
+        let actualProjectId = null;
+
+        for (const project of groupProjects) {
+            try {
+                const issue = await getIssue(project.id, issueIid, token);
+                if (issue) {
+                    gitlabIssue = issue;
+                    actualProjectId = project.id;
+                    break;
+                }
+            } catch (e) {
+                // Issue not found in this project, continue searching
+                continue;
+            }
+        }
+
+        if (!gitlabIssue || !actualProjectId) {
             return (
                 <div className="flex items-center justify-center h-screen">
                     <div className="text-center">
                         <h2 className="text-lg font-semibold">Issue not found</h2>
-                        <p className="text-muted-foreground">Issue #{issueIid} does not exist in this project.</p>
+                        <p className="text-muted-foreground">Issue #{issueIid} does not exist in this group.</p>
                     </div>
                 </div>
             );
         }
 
-        // Fetch QA Issue "Folder"
+        // Fetch QA Issue "Folder" using the actual project ID
         const existingIssues = await db.select().from(qaIssues).where(and(
-            eq(qaIssues.gitlabProjectId, projectId),
+            eq(qaIssues.gitlabProjectId, actualProjectId),
             eq(qaIssues.gitlabIssueIid, issueIid)
         )).limit(1);
 
@@ -64,10 +85,10 @@ export default async function QAPage({ params }: { params: Promise<{ projectId: 
         }
 
         // Fetch project members for @ mentions
-        const members = await getProjectUsers(projectId);
+        const members = await getProjectUsers(actualProjectId);
 
         // Fetch project labels for label management
-        const labels = await getProjectLabels(projectId, session?.accessToken || 'mock-token');
+        const labels = await getProjectLabels(actualProjectId, session?.accessToken || 'mock-token');
 
         return (
             <QADetail
@@ -76,7 +97,7 @@ export default async function QAPage({ params }: { params: Promise<{ projectId: 
                 runs={runs}
                 allAttachments={attachmentsList}
                 members={members}
-                projectId={projectId}
+                projectId={actualProjectId}
                 issueIid={issueIid}
                 labels={labels}
             />

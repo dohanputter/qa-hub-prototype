@@ -23,7 +23,7 @@ export function DashboardView({ stats, projectId }: DashboardViewProps) {
                     </p>
                 </div>
                 {projectId && (
-                    <Link href="/" className="text-sm text-primary hover:underline">
+                    <Link href="/global" className="text-sm text-primary hover:underline">
                         View Global Dashboard
                     </Link>
                 )}
@@ -31,44 +31,52 @@ export function DashboardView({ stats, projectId }: DashboardViewProps) {
 
             {/* KPI Cards */}
             <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-                <Card>
+                <Card className="bg-card/50 backdrop-blur-sm border-primary/10 hover:bg-card/80 transition-all duration-300 hover:shadow-lg hover:-translate-y-1 group">
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">Avg. Time to Test</CardTitle>
-                        <Clock className="h-4 w-4 text-muted-foreground" />
+                        <CardTitle className="text-sm font-medium text-muted-foreground group-hover:text-foreground transition-colors">Avg. Time to Test</CardTitle>
+                        <div className="p-2 bg-primary/10 rounded-full group-hover:bg-primary/20 transition-colors">
+                            <Clock className="h-4 w-4 text-primary" />
+                        </div>
                     </CardHeader>
                     <CardContent>
-                        <div className="text-2xl font-bold">{stats.kpi?.avgTimeToTest || '0'}m</div>
-                        <p className="text-xs text-muted-foreground">Average minutes per run</p>
+                        <div className="text-2xl font-bold tracking-tight">{stats.kpi?.avgTimeToTest || '0'}m</div>
+                        <p className="text-xs text-muted-foreground mt-1">Average minutes per run</p>
                     </CardContent>
                 </Card>
-                <Card>
+                <Card className="bg-card/50 backdrop-blur-sm border-green-500/20 hover:bg-card/80 transition-all duration-300 hover:shadow-lg hover:-translate-y-1 group">
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">First Time Pass</CardTitle>
-                        <CheckCircle className="h-4 w-4 text-green-500" />
+                        <CardTitle className="text-sm font-medium text-muted-foreground group-hover:text-foreground transition-colors">First Time Pass</CardTitle>
+                        <div className="p-2 bg-green-500/10 rounded-full group-hover:bg-green-500/20 transition-colors">
+                            <CheckCircle className="h-4 w-4 text-green-500" />
+                        </div>
                     </CardHeader>
                     <CardContent>
-                        <div className="text-2xl font-bold">{stats.kpi?.firstTimePassRate || 0}%</div>
-                        <p className="text-xs text-muted-foreground">Pass rate on first run</p>
+                        <div className="text-2xl font-bold tracking-tight">{stats.kpi?.firstTimePassRate || 0}%</div>
+                        <p className="text-xs text-muted-foreground mt-1">Pass rate on first run</p>
                     </CardContent>
                 </Card>
-                <Card>
+                <Card className="bg-card/50 backdrop-blur-sm border-red-500/20 hover:bg-card/80 transition-all duration-300 hover:shadow-lg hover:-translate-y-1 group">
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">Issues Found</CardTitle>
-                        <AlertCircle className="h-4 w-4 text-red-500" />
+                        <CardTitle className="text-sm font-medium text-muted-foreground group-hover:text-foreground transition-colors">Issues Found</CardTitle>
+                        <div className="p-2 bg-red-500/10 rounded-full group-hover:bg-red-500/20 transition-colors">
+                            <AlertCircle className="h-4 w-4 text-red-500" />
+                        </div>
                     </CardHeader>
                     <CardContent>
-                        <div className="text-2xl font-bold">{stats.kpi?.issuesFound || 0}</div>
-                        <p className="text-xs text-muted-foreground">Total issues tracked</p>
+                        <div className="text-2xl font-bold tracking-tight">{stats.kpi?.issuesFound || 0}</div>
+                        <p className="text-xs text-muted-foreground mt-1">Total issues tracked</p>
                     </CardContent>
                 </Card>
-                <Card>
+                <Card className="bg-card/50 backdrop-blur-sm border-blue-500/20 hover:bg-card/80 transition-all duration-300 hover:shadow-lg hover:-translate-y-1 group">
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">Active Tests</CardTitle>
-                        <Activity className="h-4 w-4 text-blue-500" />
+                        <CardTitle className="text-sm font-medium text-muted-foreground group-hover:text-foreground transition-colors">Active Tests</CardTitle>
+                        <div className="p-2 bg-blue-500/10 rounded-full group-hover:bg-blue-500/20 transition-colors">
+                            <Activity className="h-4 w-4 text-blue-500" />
+                        </div>
                     </CardHeader>
                     <CardContent>
-                        <div className="text-2xl font-bold">{stats.kpi?.activeTests || 0}</div>
-                        <p className="text-xs text-muted-foreground">Currently in progress</p>
+                        <div className="text-2xl font-bold tracking-tight">{stats.kpi?.activeTests || 0}</div>
+                        <p className="text-xs text-muted-foreground mt-1">Currently in progress</p>
                     </CardContent>
                 </Card>
             </div>

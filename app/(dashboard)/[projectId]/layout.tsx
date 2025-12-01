@@ -1,7 +1,7 @@
 import { redirect } from 'next/navigation';
-import { getAccessibleProjects } from '@/lib/gitlab';
+import { getUserGroups } from '@/lib/gitlab';
 import { auth } from '@/auth';
-import ProjectSelector from '@/components/ProjectSelector';
+import GroupSelector from '@/components/GroupSelector';
 
 export default async function ProjectLayout({
     children,
@@ -14,21 +14,26 @@ export default async function ProjectLayout({
     if (!session?.accessToken) redirect('/auth/signin');
 
     const { projectId } = await params;
+    const groupId = projectId; // Alias for clarity
 
-    // Fetch user's accessible projects (GitLab handles permissions)
-    const projects = await getAccessibleProjects(session.accessToken, session.user?.email || undefined);
+    // Fetch user's accessible groups
+    const groups = await getUserGroups(session.accessToken);
 
-    // Validate projectId and user access
-    const project = projects.find(p => p.id === Number(projectId));
-    if (!project) redirect('/'); // Redirect to project picker if invalid
+    // Validate groupId and user access
+    const group = groups.find((g: any) => g.id === Number(groupId));
+    if (!group) {
+        // If no group found, maybe redirect to a group picker or root
+        // But for now, let's just redirect to root
+        redirect('/');
+    }
 
     return (
         <div className="flex h-screen flex-col">
-            {/* Project selection bar */}
+            {/* Group selection bar */}
             <div className="border-b bg-background px-4 py-3">
-                <ProjectSelector
-                    projects={projects}
-                    currentProjectId={projectId}
+                <GroupSelector
+                    groups={groups}
+                    currentGroupId={groupId}
                 />
             </div>
             {/* Page content */}

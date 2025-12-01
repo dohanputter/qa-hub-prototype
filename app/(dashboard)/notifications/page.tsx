@@ -1,4 +1,4 @@
-import { getAccessibleProjects } from '@/lib/gitlab';
+import { getUserGroups } from '@/lib/gitlab';
 import { auth } from '@/auth';
 import { redirect } from 'next/navigation';
 
@@ -6,14 +6,14 @@ export default async function NotificationsRedirect() {
     const session = await auth();
     if (!session?.accessToken) redirect('/auth/signin');
 
-    // Get user's accessible projects
-    const projects = await getAccessibleProjects(session.accessToken, session.user?.email || undefined);
+    // Get user's accessible groups
+    const groups = await getUserGroups(session.accessToken);
 
-    // Redirect to first project's notifications page
-    if (projects.length > 0) {
-        redirect(`/${projects[0].id}/notifications`);
+    // Redirect to first group's notifications page
+    if (groups && groups.length > 0) {
+        redirect(`/${groups[0].id}/notifications`);
     }
 
-    // No projects available
+    // No groups available
     redirect('/projects');
 }

@@ -113,6 +113,7 @@ export const qaIssues = sqliteTable('qa_issues', {
     status: text('status').$type<'pending' | 'passed' | 'failed'>().default('pending').notNull(),
     jsonLabels: text('json_labels', { mode: 'json' }),
     assigneeId: integer('assignee_id'),
+    authorId: integer('author_id'),
     createdAt: integer('created_at', { mode: 'timestamp_ms' }).$defaultFn(() => new Date()),
     updatedAt: integer('updated_at', { mode: 'timestamp_ms' }).$defaultFn(() => new Date()),
 }, (table) => ({

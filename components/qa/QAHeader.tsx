@@ -31,7 +31,7 @@ export function QAHeader({
     const filteredProjectLabels = projectLabels?.filter((l: any) => !l.name.startsWith('qa::')) || [];
 
     return (
-        <div className="w-[400px] border-r border-border/40 flex flex-col overflow-y-auto bg-slate-50/50 dark:bg-zinc-900/30">
+        <div className="w-[400px] border-r border-border/40 flex flex-col overflow-y-auto bg-background/60 backdrop-blur-md">
             <div className="p-8 space-y-8">
                 {/* Header */}
                 <div className="space-y-4">
@@ -59,7 +59,7 @@ export function QAHeader({
                 {/* Description */}
                 <div className="space-y-2">
                     <h3 className="text-sm font-semibold text-foreground">Description</h3>
-                    <div className="overflow-y-auto overflow-x-auto max-h-[60vh] border border-border/40 rounded-lg p-4 bg-card/50 scrollbar-thin scrollbar-thumb-primary/20 scrollbar-track-transparent">
+                    <div className="overflow-y-auto overflow-x-auto max-h-[60vh] border border-border/40 rounded-lg p-4 bg-card/40 backdrop-blur-sm scrollbar-thin scrollbar-thumb-primary/20 scrollbar-track-transparent">
                         {processedDescription ? (
                             <div
                                 className="prose prose-sm max-w-none text-foreground/90 dark:prose-invert gitlab-content min-w-full"

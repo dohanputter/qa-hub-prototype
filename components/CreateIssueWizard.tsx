@@ -3,15 +3,20 @@
 import React, { useState, useEffect, useRef } from 'react';
 import {
     X, ChevronDown, Calendar, Flag, User as UserIcon,
-    Tag, Folder, ArrowLeft, ChevronRight
+    Tag, Folder, ArrowLeft, ChevronRight, Search, Layers
 } from 'lucide-react';
 import { Project, User, Label, QAStatus } from '@/types';
 import { useToast } from '@/components/ui/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
-import { useRouter } from 'next/navigation';
+import { useRouter, useParams } from 'next/navigation';
 import { getUserProjects, getProjectUsers, getProjectLabelsAction } from '@/app/actions/project';
 import { createIssue } from '@/app/actions/issues';
+import { uploadAttachment } from '@/app/actions/uploadAttachment';
 import Image from 'next/image';
+import { TiptapEditor } from '@/components/qa/TiptapEditor';
+import { cn } from '@/lib/utils';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 
 interface CreateIssueWizardProps {
     onClose?: () => void;
@@ -27,11 +32,13 @@ export const CreateIssueWizard: React.FC<CreateIssueWizardProps> = ({ onClose, o
     const [selectedProject, setSelectedProject] = useState<Project | null>(null);
     const [isLoadingProjects, setIsLoadingProjects] = useState(true);
     const [projects, setProjects] = useState<Project[]>([]);
+    const [projectSearch, setProjectSearch] = useState('');
 
     // Form State
     const [title, setTitle] = useState('');
-    const [description, setDescription] = useState('');
+    const [description, setDescription] = useState<any>(null);
     const [titleError, setTitleError] = useState('');
+    const [issueType, setIssueType] = useState('issue');
 
     // Sidebar State
     const [assignee, setAssignee] = useState<User | undefined>(undefined);
@@ -62,11 +69,14 @@ export const CreateIssueWizard: React.FC<CreateIssueWizardProps> = ({ onClose, o
         return () => document.removeEventListener('mousedown', handleClickOutside);
     }, []);
 
+    const params = useParams();
+    const groupId = params?.projectId ? Number(params.projectId) : undefined;
+
     // Load projects
     useEffect(() => {
         if (step === 'project') {
             setIsLoadingProjects(true);
-            getUserProjects().then((data) => {
+            getUserProjects(groupId).then((data) => {
                 setProjects(data);
                 setIsLoadingProjects(false);
             }).catch(err => {
@@ -74,7 +84,7 @@ export const CreateIssueWizard: React.FC<CreateIssueWizardProps> = ({ onClose, o
                 setIsLoadingProjects(false);
             });
         }
-    }, [step]);
+    }, [step, groupId]);
 
     // Load project data (users, labels) when project is selected
     useEffect(() => {
@@ -102,9 +112,22 @@ export const CreateIssueWizard: React.FC<CreateIssueWizardProps> = ({ onClose, o
         }
     };
 
+    const handleImagePaste = async (file: File) => {
+        if (!selectedProject) {
+            throw new Error('Please select a project first');
+        }
+
+        const formData = new FormData();
+        formData.append('file', file);
+        formData.append('projectId', selectedProject.id.toString());
+
+        const result = await uploadAttachment(formData);
+        return result;
+    };
+
     const handleSubmit = async () => {
         if (!title.trim()) {
-            setTitleError('This field is required.');
+            setTitleError('Title is required');
             return;
         }
 
@@ -113,9 +136,9 @@ export const CreateIssueWizard: React.FC<CreateIssueWizardProps> = ({ onClose, o
         const issueData = {
             projectId: selectedProject.id,
             title,
-            description,
+            description: description ? JSON.stringify(description) : '',
             assigneeId: assignee?.id,
-            labels: selectedLabels.map(l => l.title).join(','), // Send comma separated string as expected by action
+            labels: selectedLabels.map(l => l.title).join(','),
         };
 
         if (onCreate) {
@@ -123,13 +146,19 @@ export const CreateIssueWizard: React.FC<CreateIssueWizardProps> = ({ onClose, o
             handleClose();
         } else {
             try {
-                await createIssue(selectedProject.id, issueData);
+                const result: any = await createIssue(selectedProject.id, issueData);
                 toast({
                     title: "Issue created",
                     description: "The issue has been created successfully.",
                 });
-                // Navigate to the project board
-                router.push(`/${selectedProject.id}`);
+
+                const groupId = typeof window !== 'undefined' ? sessionStorage.getItem('lastSelectedGroup') : null;
+
+                if (groupId && result?.iid) {
+                    router.push(`/${groupId}/qa/${result.iid}`);
+                } else {
+                    router.push(groupId ? `/${groupId}` : '/projects');
+                }
             } catch (error) {
                 console.error(error);
                 toast({
@@ -141,52 +170,77 @@ export const CreateIssueWizard: React.FC<CreateIssueWizardProps> = ({ onClose, o
         }
     };
 
+    const filteredProjects = projects.filter(p =>
+        p.name.toLowerCase().includes(projectSearch.toLowerCase()) ||
+        p.description?.toLowerCase().includes(projectSearch.toLowerCase())
+    );
+
     // --- RENDER: Project Selection Step ---
     if (step === 'project') {
         return (
-            <div className="fixed inset-0 bg-gray-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-                <div className="bg-card rounded-xl shadow-2xl w-full max-w-2xl overflow-hidden animate-in zoom-in-95 duration-200">
-                    <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center bg-gray-50">
-                        <h2 className="text-lg font-bold text-gray-800">Select Project</h2>
-                        <button onClick={handleClose} className="text-gray-400 hover:text-gray-600">
+            <div className="fixed inset-0 bg-background/80 backdrop-blur-md z-50 flex items-center justify-center p-4 animate-in fade-in duration-200">
+                <div className="bg-card/50 border border-border/50 rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden backdrop-blur-xl flex flex-col max-h-[80vh]">
+                    <div className="px-6 py-5 border-b border-border/50 flex justify-between items-center bg-muted/20">
+                        <div>
+                            <h2 className="text-xl font-bold text-foreground tracking-tight">Select Project</h2>
+                            <p className="text-sm text-muted-foreground">Choose where to create this issue</p>
+                        </div>
+                        <Button variant="ghost" size="icon" onClick={handleClose} className="rounded-full hover:bg-muted/50">
                             <X size={20} />
-                        </button>
+                        </Button>
                     </div>
 
-                    <div className="p-6">
-                        <p className="text-gray-500 mb-4 text-sm">Choose the project where you want to create the issue.</p>
-                        <div className="grid grid-cols-1 gap-3">
-                            {isLoadingProjects ? (
-                                [1, 2, 3].map(i => (
-                                    <div key={i} className="p-4 border border-gray-200 rounded-lg flex items-center gap-4">
-                                        <Skeleton className="w-10 h-10 rounded" />
-                                        <div className="flex-1">
-                                            <Skeleton className="w-[40%] h-5 mb-2" />
-                                            <Skeleton className="w-[70%] h-3.5" />
+                    <div className="p-4 border-b border-border/50 bg-background/50">
+                        <div className="relative">
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground h-4 w-4" />
+                            <input
+                                type="text"
+                                placeholder="Search projects..."
+                                value={projectSearch}
+                                onChange={(e) => setProjectSearch(e.target.value)}
+                                className="w-full pl-9 pr-4 py-2 bg-muted/30 border border-border/50 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all"
+                                autoFocus
+                            />
+                        </div>
+                    </div>
+
+                    <div className="p-4 overflow-y-auto flex-1 space-y-2">
+                        {isLoadingProjects ? (
+                            [1, 2, 3].map(i => (
+                                <div key={i} className="p-4 border border-border/40 rounded-xl flex items-center gap-4 bg-card/30">
+                                    <Skeleton className="w-10 h-10 rounded-lg" />
+                                    <div className="flex-1 space-y-2">
+                                        <Skeleton className="w-[40%] h-5" />
+                                        <Skeleton className="w-[70%] h-3.5" />
+                                    </div>
+                                </div>
+                            ))
+                        ) : (
+                            filteredProjects.map(proj => (
+                                <button
+                                    key={proj.id}
+                                    onClick={() => handleProjectSelect(proj)}
+                                    className="w-full flex items-center justify-between p-4 border border-border/40 rounded-xl hover:border-primary/30 hover:bg-primary/5 hover:shadow-md transition-all text-left group bg-card/30"
+                                >
+                                    <div className="flex items-center gap-4">
+                                        <div className="w-10 h-10 bg-gradient-to-br from-blue-500/10 to-indigo-500/10 rounded-lg flex items-center justify-center text-blue-500 group-hover:scale-110 transition-transform duration-300">
+                                            <Folder size={20} />
+                                        </div>
+                                        <div>
+                                            <h3 className="font-semibold text-foreground group-hover:text-primary transition-colors">{proj.name}</h3>
+                                            <p className="text-sm text-muted-foreground line-clamp-1">{proj.description || 'No description'}</p>
                                         </div>
                                     </div>
-                                ))
-                            ) : (
-                                projects.map(proj => (
-                                    <button
-                                        key={proj.id}
-                                        onClick={() => handleProjectSelect(proj)}
-                                        className="flex items-center justify-between p-4 border border-border rounded-lg hover:border-primary/50 hover:bg-muted hover:shadow-sm transition-all text-left group"
-                                    >
-                                        <div className="flex items-center gap-4">
-                                            <div className="w-10 h-10 bg-muted rounded flex items-center justify-center text-muted-foreground group-hover:bg-primary/10 group-hover:text-primary">
-                                                <Folder size={20} />
-                                            </div>
-                                            <div>
-                                                <h3 className="font-semibold text-foreground group-hover:text-primary">{proj.name}</h3>
-                                                <p className="text-sm text-muted-foreground">{proj.description}</p>
-                                            </div>
-                                        </div>
-                                        <ChevronRight className="text-muted-foreground group-hover:text-primary/50" size={20} />
-                                    </button>
-                                ))
-                            )}
-                        </div>
+                                    <ChevronRight className="text-muted-foreground/50 group-hover:text-primary/50 group-hover:translate-x-1 transition-all" size={18} />
+                                </button>
+                            ))
+                        )}
+                        {!isLoadingProjects && filteredProjects.length === 0 && (
+                            <div className="text-center py-12 text-muted-foreground">
+                                <Folder className="mx-auto h-12 w-12 opacity-20 mb-3" />
+                                <p>No projects found</p>
+                            </div>
+                        )}
                     </div>
                 </div>
             </div>
@@ -195,232 +249,241 @@ export const CreateIssueWizard: React.FC<CreateIssueWizardProps> = ({ onClose, o
 
     // --- RENDER: Issue Form Step ---
     return (
-        <div className="fixed inset-0 bg-background z-50 flex flex-col overflow-hidden animate-in slide-in-from-bottom-10 duration-200">
+        <div className="fixed inset-0 bg-background z-50 flex flex-col overflow-hidden animate-in slide-in-from-bottom-4 duration-300">
 
             {/* Header */}
-            <header className="px-6 py-4 border-b border-border flex items-center justify-between bg-card shrink-0">
+            <header className="px-6 py-4 border-b border-border/40 flex items-center justify-between bg-background/80 backdrop-blur-xl sticky top-0 z-10">
                 <div className="flex items-center gap-4">
-                    <button
+                    <Button
+                        variant="ghost"
+                        size="icon"
                         onClick={() => setStep('project')}
-                        className="p-2 -ml-2 hover:bg-gray-100 rounded-full text-gray-500 transition-colors"
-                        title="Back to Project Selection"
+                        className="rounded-full hover:bg-muted/50 text-muted-foreground hover:text-foreground transition-colors"
+                        title="Change Project"
                     >
                         <ArrowLeft size={20} />
-                    </button>
-                    <div>
-                        <h1 className="text-xl font-bold text-gray-900 leading-tight">New Issue</h1>
-                        <div className="text-sm text-gray-500 flex items-center gap-1.5 leading-tight">
-                            <span className="font-medium text-gray-700">{selectedProject?.name}</span>
+                    </Button>
+                    <div className="flex flex-col">
+                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                            <span className="font-medium text-foreground">{selectedProject?.name}</span>
+                            <span>/</span>
+                            <span>New Issue</span>
                         </div>
                     </div>
                 </div>
                 <div className="flex items-center gap-3">
-                    <button onClick={handleClose} className="px-4 py-2 text-gray-600 font-medium hover:bg-gray-100 rounded-lg transition-colors">
+                    <Button variant="ghost" onClick={handleClose} className="text-muted-foreground hover:text-foreground">
                         Cancel
-                    </button>
-                    <button
+                    </Button>
+                    <Button
                         onClick={handleSubmit}
-                        className="px-6 py-2 bg-primary text-primary-foreground font-medium rounded-lg hover:bg-primary/90 shadow-sm transition-colors"
+                        className="bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg shadow-primary/20 transition-all hover:scale-105"
                     >
-                        Create issue
-                    </button>
+                        Create Issue
+                    </Button>
                 </div>
             </header>
 
-            <div className="flex-1 overflow-y-auto">
-                <div className="max-w-7xl mx-auto px-6 py-8 grid grid-cols-1 lg:grid-cols-12 gap-8">
+            <div className="flex-1 overflow-y-auto bg-gradient-to-b from-background to-muted/10">
+                <div className="w-full max-w-[95%] mx-auto px-6 py-10 grid grid-cols-1 lg:grid-cols-[1fr_400px] gap-10">
 
                     {/* Left Column: Form Inputs */}
-                    <div className="lg:col-span-8 space-y-6">
+                    <div className="space-y-8">
 
-                        {/* Type Selector (Mock) */}
-                        <div className="w-48">
-                            <label className="block text-sm font-bold text-gray-700 mb-2">Type</label>
-                            <div className="relative">
-                                <select className="w-full appearance-none bg-card border border-input text-foreground py-2 px-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary">
-                                    <option>Issue</option>
-                                    <option>Incident</option>
-                                </select>
-                                <ChevronDown className="absolute right-3 top-3 text-muted-foreground pointer-events-none" size={16} />
-                            </div>
-                        </div>
-
-                        {/* Title */}
-                        <div>
-                            <label className="block text-sm font-bold text-gray-700 mb-2">Title (required)</label>
-                            <input
-                                type="text"
+                        {/* Title Input */}
+                        <div className="space-y-2">
+                            <textarea
                                 value={title}
-                                onChange={(e) => { setTitle(e.target.value); setTitleError(''); }}
-                                placeholder="Add a title"
+                                onChange={(e) => {
+                                    setTitle(e.target.value);
+                                    setTitleError('');
+                                    e.target.style.height = 'auto';
+                                    e.target.style.height = e.target.scrollHeight + 'px';
+                                }}
+                                rows={1}
+                                placeholder="Issue Title"
                                 autoFocus
-                                className={`w-full px-4 py-2.5 bg-card border rounded-lg text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary text-base ${titleError ? 'border-destructive' : 'border-input'}`}
+                                className={cn(
+                                    "w-full px-0 py-2 bg-transparent border-0 border-b-2 border-transparent focus:border-primary/20 text-4xl font-bold tracking-tight placeholder:text-muted-foreground/30 focus:ring-0 outline-none transition-all resize-none overflow-hidden min-h-[60px]",
+                                    titleError && "border-destructive/50 placeholder:text-destructive/40"
+                                )}
+                                style={{ outline: 'none', boxShadow: 'none' }}
                             />
-                            {titleError && <p className="mt-1 text-sm text-destructive">{titleError}</p>}
+                            {titleError && <p className="text-sm text-destructive font-medium animate-in slide-in-from-left-2">{titleError}</p>}
                         </div>
 
-                        {/* Description */}
-                        <div>
-                            <div className="flex justify-between items-center mb-2">
-                                <label className="block text-sm font-bold text-foreground">Description</label>
-                                <div className="relative group">
-                                    <button className="text-sm text-muted-foreground hover:text-primary flex items-center gap-1">
-                                        Choose a template <ChevronDown size={14} />
-                                    </button>
-                                </div>
-                            </div>
-
-                            <div className="border border-input rounded-lg overflow-hidden bg-card focus-within:ring-2 focus-within:ring-primary/20 focus-within:border-primary transition-shadow">
-                                {/* Mock Toolbar */}
-                                <div className="bg-gray-50 border-b border-gray-200 px-3 py-2 flex items-center gap-2 text-gray-600">
-                                    <span className="text-xs font-semibold px-2 py-1 rounded hover:bg-gray-200 cursor-pointer">Normal text</span>
-                                    <div className="w-px h-4 bg-gray-300 mx-1"></div>
-                                    <button className="p-1 hover:bg-gray-200 rounded font-bold text-xs serif">B</button>
-                                    <button className="p-1 hover:bg-gray-200 rounded italic text-xs serif">I</button>
-                                    <button className="p-1 hover:bg-gray-200 rounded line-through text-xs serif">S</button>
-                                </div>
-                                <textarea
-                                    value={description}
-                                    onChange={(e) => setDescription(e.target.value)}
-                                    className="w-full h-80 p-4 resize-none focus:outline-none text-sm leading-relaxed text-foreground bg-card"
+                        {/* Description Editor */}
+                        <div className="space-y-2">
+                            <div className="min-h-[400px] rounded-xl border border-border/40 bg-card/50 shadow-sm overflow-hidden focus-within:ring-1 focus-within:ring-primary/20 transition-all">
+                                <TiptapEditor
+                                    content={description}
+                                    onChange={(content) => setDescription(content)}
+                                    members={users.map(u => ({ ...u, avatar_url: u.avatarUrl }))}
+                                    placeholder="Describe the issue..."
+                                    onImagePaste={handleImagePaste}
+                                    className="min-h-[400px] p-6"
                                 />
-                                <div className="px-3 py-1.5 bg-gray-50 border-t border-gray-200 text-xs text-gray-500 flex justify-between">
-                                    <span>Markdown supported</span>
-                                    <button className="hover:text-gray-800">Switch to plain text editing</button>
-                                </div>
                             </div>
+                            <p className="text-xs text-muted-foreground text-right px-2">Markdown supported</p>
                         </div>
-
                     </div>
 
                     {/* Right Column: Sidebar Metadata */}
-                    <div className="lg:col-span-4 space-y-6">
+                    <div className="space-y-6">
+                        <div className="bg-card/50 backdrop-blur-sm border border-border/40 rounded-xl p-5 shadow-sm space-y-6 sticky top-6">
 
-                        {/* Assignee */}
-                        <div className="pb-4 border-b border-gray-200 relative" ref={assigneeRef}>
-                            <div className="flex justify-between items-center mb-1">
-                                <span className="text-sm font-bold text-foreground">Assignee</span>
-                                <button
-                                    onClick={() => setShowAssigneeDropdown(!showAssigneeDropdown)}
-                                    className="text-sm text-primary hover:underline"
-                                >
-                                    Edit
-                                </button>
-                            </div>
-
-                            {assignee ? (
-                                <div className="flex items-center gap-2 mt-2">
-                                    <Image
-                                        src={assignee.avatarUrl}
-                                        alt={`${assignee.name} avatar`}
-                                        width={24}
-                                        height={24}
-                                        className="h-6 w-6 rounded-full object-cover"
-                                        unoptimized
-                                    />
-                                    <span className="text-sm text-foreground font-medium">{assignee.name}</span>
-                                    <button onClick={() => setAssignee(undefined)} className="ml-auto text-muted-foreground hover:text-destructive"><X size={14} /></button>
-                                </div>
-                            ) : (
-                                <div className="text-sm text-muted-foreground mt-1">None - <span className="cursor-pointer hover:text-primary" onClick={() => setAssignee(users[0])}>assign yourself</span></div>
-                            )}
-
-                            {showAssigneeDropdown && (
-                                <div className="absolute top-8 right-0 w-64 bg-popover border border-border shadow-xl rounded-lg z-10 py-1">
-                                    <div className="px-3 py-2 border-b border-gray-100 text-xs font-bold text-gray-500">Assign to</div>
-                                    {users.map(u => (
+                            {/* Type Selector */}
+                            <div className="space-y-3">
+                                <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Type</label>
+                                <div className="flex bg-muted/50 p-1 rounded-lg">
+                                    {['issue', 'incident'].map((t) => (
                                         <button
-                                            key={u.id}
-                                            onClick={() => { setAssignee(u); setShowAssigneeDropdown(false); }}
-                                            className="w-full text-left px-3 py-2 hover:bg-gray-50 flex items-center gap-2"
+                                            key={t}
+                                            onClick={() => setIssueType(t)}
+                                            className={cn(
+                                                "flex-1 py-1.5 text-sm font-medium rounded-md transition-all capitalize",
+                                                issueType === t
+                                                    ? "bg-background text-foreground shadow-sm"
+                                                    : "text-muted-foreground hover:text-foreground"
+                                            )}
                                         >
-                                            <Image
-                                                src={u.avatarUrl}
-                                                alt={`${u.name} avatar`}
-                                                width={20}
-                                                height={20}
-                                                className="h-5 w-5 rounded-full object-cover"
-                                                unoptimized
-                                            />
-                                            <span className="text-sm text-gray-700">{u.name}</span>
+                                            {t}
                                         </button>
                                     ))}
                                 </div>
-                            )}
-                        </div>
-
-                        {/* Labels */}
-                        <div className="pb-4 border-b border-border relative" ref={labelsRef}>
-                            <div className="flex justify-between items-center mb-1">
-                                <span className="text-sm font-bold text-foreground">Labels</span>
-                                <button
-                                    onClick={() => setShowLabelDropdown(!showLabelDropdown)}
-                                    className="text-sm text-primary hover:underline"
-                                >
-                                    Edit
-                                </button>
                             </div>
 
-                            {selectedLabels.length > 0 ? (
-                                <div className="flex flex-wrap gap-1.5 mt-2">
-                                    {selectedLabels.map(l => (
-                                        <span key={l.id} className="px-2 py-1 rounded text-xs font-medium border border-transparent flex items-center gap-1" style={{ backgroundColor: `${l.color}15`, color: l.color, borderColor: `${l.color}30` }}>
-                                            {l.title}
-                                            <button
-                                                onClick={() => toggleLabel(l)}
-                                                className="hover:bg-black/10 rounded p-0.5 transition-colors"
-                                            >
-                                                <X size={12} />
-                                            </button>
-                                        </span>
-                                    ))}
-                                </div>
-                            ) : (
-                                <div className="text-sm text-gray-500 mt-1">None</div>
-                            )}
+                            <div className="h-px bg-border/40" />
 
-                            {showLabelDropdown && (
-                                <div className="absolute top-8 right-0 w-64 bg-popover border border-border shadow-xl rounded-lg z-10 py-1">
-                                    <div className="px-3 py-2 border-b border-gray-100 text-xs font-bold text-gray-500">Add Labels</div>
-                                    {labels.map(l => {
-                                        const isSelected = !!selectedLabels.find(sl => sl.id === l.id);
-                                        return (
-                                            <button
+                            {/* Assignee */}
+                            <div className="space-y-3 relative" ref={assigneeRef}>
+                                <div className="flex justify-between items-center">
+                                    <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Assignee</label>
+                                    <button
+                                        onClick={() => setShowAssigneeDropdown(!showAssigneeDropdown)}
+                                        className="text-xs text-primary hover:underline font-medium"
+                                    >
+                                        Edit
+                                    </button>
+                                </div>
+
+                                {assignee ? (
+                                    <div className="flex items-center gap-3 p-2 rounded-lg bg-muted/30 border border-border/30">
+                                        <Image
+                                            src={assignee.avatarUrl}
+                                            alt={`${assignee.name} avatar`}
+                                            width={32}
+                                            height={32}
+                                            className="h-8 w-8 rounded-full object-cover ring-2 ring-background"
+                                            unoptimized
+                                        />
+                                        <div className="flex-1 min-w-0">
+                                            <p className="text-sm font-medium text-foreground truncate">{assignee.name}</p>
+                                            <p className="text-xs text-muted-foreground truncate">@{assignee.username}</p>
+                                        </div>
+                                        <button onClick={() => setAssignee(undefined)} className="text-muted-foreground hover:text-destructive p-1">
+                                            <X size={14} />
+                                        </button>
+                                    </div>
+                                ) : (
+                                    <div className="text-sm text-muted-foreground italic p-2">
+                                        No assignee
+                                        <span className="not-italic ml-1 cursor-pointer text-primary hover:underline" onClick={() => setAssignee(users[0])}>(assign me)</span>
+                                    </div>
+                                )}
+
+                                {showAssigneeDropdown && (
+                                    <div className="absolute top-full mt-2 right-0 w-full bg-popover border border-border shadow-xl rounded-xl z-20 overflow-hidden animate-in zoom-in-95 duration-100">
+                                        <div className="max-h-60 overflow-y-auto p-1">
+                                            {users.map(u => (
+                                                <button
+                                                    key={u.id}
+                                                    onClick={() => { setAssignee(u); setShowAssigneeDropdown(false); }}
+                                                    className="w-full text-left px-3 py-2 hover:bg-muted rounded-lg flex items-center gap-3 transition-colors"
+                                                >
+                                                    <Image
+                                                        src={u.avatarUrl}
+                                                        alt={`${u.name} avatar`}
+                                                        width={24}
+                                                        height={24}
+                                                        className="h-6 w-6 rounded-full object-cover"
+                                                        unoptimized
+                                                    />
+                                                    <span className="text-sm text-foreground">{u.name}</span>
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+
+                            <div className="h-px bg-border/40" />
+
+                            {/* Labels */}
+                            <div className="space-y-3 relative" ref={labelsRef}>
+                                <div className="flex justify-between items-center">
+                                    <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Labels</label>
+                                    <button
+                                        onClick={() => setShowLabelDropdown(!showLabelDropdown)}
+                                        className="text-xs text-primary hover:underline font-medium"
+                                    >
+                                        Edit
+                                    </button>
+                                </div>
+
+                                <div className="flex flex-wrap gap-2 min-h-[2rem]">
+                                    {selectedLabels.length > 0 ? (
+                                        selectedLabels.map(l => (
+                                            <Badge
                                                 key={l.id}
-                                                onClick={() => toggleLabel(l)}
-                                                className="w-full text-left px-3 py-2 hover:bg-muted flex items-center justify-between"
+                                                variant="secondary"
+                                                className="flex items-center gap-1 px-2.5 py-0.5 h-7 rounded-md border font-medium transition-colors hover:bg-opacity-20"
+                                                style={{
+                                                    backgroundColor: `${l.color}15`,
+                                                    color: l.color,
+                                                    borderColor: `${l.color}30`
+                                                }}
                                             >
-                                                <div className="flex items-center gap-2">
-                                                    <span className="w-3 h-3 rounded bg-muted-foreground/20" style={{ backgroundColor: l.color }}></span>
-                                                    <span className="text-sm text-foreground">{l.title}</span>
-                                                </div>
-                                                {isSelected && <div className="text-primary text-xs font-bold">✓</div>}
-                                            </button>
-                                        );
-                                    })}
+                                                {l.title}
+                                                <button
+                                                    onClick={() => toggleLabel(l)}
+                                                    className="hover:opacity-70 ml-1"
+                                                >
+                                                    <X size={12} />
+                                                </button>
+                                            </Badge>
+                                        ))
+                                    ) : (
+                                        <span className="text-sm text-muted-foreground italic">No labels</span>
+                                    )}
                                 </div>
-                            )}
-                        </div>
 
-                        {/* Milestone (Mock) */}
-                        <div className="pb-4 border-b border-border">
-                            <div className="flex justify-between items-center mb-1">
-                                <span className="text-sm font-bold text-foreground">Milestone</span>
-                                <button className="text-sm text-primary hover:underline">Edit</button>
+                                {showLabelDropdown && (
+                                    <div className="absolute top-full mt-2 right-0 w-full bg-popover border border-border shadow-xl rounded-xl z-20 overflow-hidden animate-in zoom-in-95 duration-100">
+                                        <div className="max-h-60 overflow-y-auto p-1">
+                                            {labels
+                                                .filter(l => !l.title.toLowerCase().startsWith('qa:'))
+                                                .map(l => {
+                                                    const isSelected = !!selectedLabels.find(sl => sl.id === l.id);
+                                                    return (
+                                                        <button
+                                                            key={l.id}
+                                                            onClick={() => toggleLabel(l)}
+                                                            className="w-full text-left px-3 py-2 hover:bg-muted rounded-lg flex items-center justify-between transition-colors"
+                                                        >
+                                                            <div className="flex items-center gap-2">
+                                                                <span className="w-3 h-3 rounded-full" style={{ backgroundColor: l.color }}></span>
+                                                                <span className="text-sm text-foreground">{l.title}</span>
+                                                            </div>
+                                                            {isSelected && <div className="text-primary text-xs font-bold">✓</div>}
+                                                        </button>
+                                                    );
+                                                })}
+                                        </div>
+                                    </div>
+                                )}
                             </div>
-                            <div className="text-sm text-muted-foreground mt-1">None</div>
                         </div>
-
-                        {/* Dates (Mock) */}
-                        <div className="pb-4 border-b border-border">
-                            <div className="flex justify-between items-center mb-1">
-                                <span className="text-sm font-bold text-foreground">Dates</span>
-                                <button className="text-sm text-primary hover:underline">Edit</button>
-                            </div>
-                            <div className="text-sm text-muted-foreground mt-1">Start: None</div>
-                            <div className="text-sm text-muted-foreground mt-1">Due: None</div>
-                        </div>
-
                     </div>
                 </div>
             </div>

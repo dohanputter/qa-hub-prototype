@@ -41,7 +41,7 @@ export interface GitLabMockGroup {
     full_path: string;
     description: string;
     web_url: string;
-    avatar_url: string;
+    avatar_url: string | null;
 }
 
 export interface GitLabMockLabel {

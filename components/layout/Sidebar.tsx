@@ -11,26 +11,56 @@ import { Button } from "@/components/ui/button";
 
 export function Sidebar() {
     const pathname = usePathname();
-    // Extract projectId from path: /123/issues -> 123
+
+
+    // Extract groupId from path: /123/issues -> 123
     const projectIdMatch = pathname.match(/^\/(\d+)/);
     const projectId = projectIdMatch ? projectIdMatch[1] : null;
 
-    const getHref = (path: string) => {
-        // All routes are project-scoped if we have a projectId
+    const [lastGroupId, setLastGroupId] = React.useState<string | null>(null);
+
+    // Load from storage on mount
+    React.useEffect(() => {
+        const stored = sessionStorage.getItem('lastSelectedGroup');
+        if (stored) setLastGroupId(stored);
+    }, []);
+
+    // Remember the last selected group in sessionStorage
+    React.useEffect(() => {
         if (projectId) {
-            // Dashboard is the project root
+            sessionStorage.setItem('lastSelectedGroup', projectId);
+            setLastGroupId(projectId);
+        }
+    }, [projectId]);
+
+    const getHref = (path: string) => {
+        // Special case: Groups always go to root /projects, never nested
+        if (path === '/projects') {
+            return '/projects';
+        }
+
+        // All other routes are group-scoped if we have a groupId
+        if (projectId) {
+            // Dashboard is the group root
             if (path === '/') return `/${projectId}`;
-            // Other routes are nested under project
+            // Other routes are nested under group
             return `/${projectId}${path}`;
         }
 
-        // If no projectId, redirect to projects selection
+        // If no current groupId but we have a last selected group, use that
+        // If no current groupId but we have a last selected group, use that
+        if (lastGroupId) {
+            if (path === '/') return `/${lastGroupId}`;
+            return `/${lastGroupId}${path}`;
+        }
+
+        // If no group context at all, go to group selection
         return '/projects';
     };
 
     const navItems = [
         { href: '/', icon: LayoutDashboard, label: 'Dashboard', exact: true },
-        { href: '/projects', icon: Folder, label: 'Projects' },
+        { href: '/projects', icon: Folder, label: 'Groups' },
         { href: '/issues', icon: ListTodo, label: 'Issues' },
         { href: '/board', icon: KanbanSquare, label: 'Issues Board' },
         { href: '/notifications', icon: Bell, label: 'Notifications' },

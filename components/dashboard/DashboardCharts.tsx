@@ -33,31 +33,33 @@ export function DashboardCharts({ projectStats, timeStats, passRates }: Dashboar
         <div className="space-y-8">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {/* Issues by Project */}
-                <Card className="shadow-sm hover:shadow-md transition-all duration-200">
+                <Card className="shadow-sm hover:shadow-md transition-all duration-200 col-span-1 md:col-span-2">
                     <CardHeader>
                         <CardTitle>Issues by Project</CardTitle>
                     </CardHeader>
-                    <CardContent className="h-[300px]">
-                        <ResponsiveContainer width="100%" height="100%">
-                            <BarChart data={projectStats}>
-                                <defs>
-                                    <linearGradient id="colorOpen" x1="0" y1="0" x2="0" y2="1">
-                                        <stop offset="5%" stopColor="#22c55e" stopOpacity={0.8} />
-                                        <stop offset="95%" stopColor="#22c55e" stopOpacity={0.3} />
-                                    </linearGradient>
-                                    <linearGradient id="colorClosed" x1="0" y1="0" x2="0" y2="1">
-                                        <stop offset="5%" stopColor="#94a3b8" stopOpacity={0.8} />
-                                        <stop offset="95%" stopColor="#94a3b8" stopOpacity={0.3} />
-                                    </linearGradient>
-                                </defs>
-                                <XAxis dataKey="name" fontSize={12} tickLine={false} axisLine={false} stroke="#888888" />
-                                <YAxis fontSize={12} tickLine={false} axisLine={false} stroke="#888888" />
-                                <Tooltip content={<CustomTooltip />} cursor={{ fill: 'transparent' }} />
-                                <Legend />
-                                <Bar dataKey="open" name="Open" fill="url(#colorOpen)" radius={[4, 4, 0, 0]} />
-                                <Bar dataKey="closed" name="Closed" fill="url(#colorClosed)" radius={[4, 4, 0, 0]} />
-                            </BarChart>
-                        </ResponsiveContainer>
+                    <CardContent>
+                        <div style={{ height: `${Math.max(250, projectStats.length * 80)}px` }} className="w-full">
+                            <ResponsiveContainer width="100%" height="100%">
+                                <BarChart data={projectStats} layout="vertical" margin={{ left: 20, right: 20, top: 20, bottom: 20 }} barCategoryGap="20%">
+                                    <defs>
+                                        <linearGradient id="colorOpen" x1="0" y1="0" x2="1" y2="0">
+                                            <stop offset="5%" stopColor="#22c55e" stopOpacity={0.8} />
+                                            <stop offset="95%" stopColor="#22c55e" stopOpacity={0.3} />
+                                        </linearGradient>
+                                        <linearGradient id="colorClosed" x1="0" y1="0" x2="1" y2="0">
+                                            <stop offset="5%" stopColor="#94a3b8" stopOpacity={0.8} />
+                                            <stop offset="95%" stopColor="#94a3b8" stopOpacity={0.3} />
+                                        </linearGradient>
+                                    </defs>
+                                    <XAxis type="number" fontSize={12} tickLine={false} axisLine={false} stroke="#888888" allowDecimals={false} />
+                                    <YAxis dataKey="name" type="category" width={150} fontSize={12} tickLine={false} axisLine={false} stroke="#888888" />
+                                    <Tooltip content={<CustomTooltip />} cursor={{ fill: 'transparent' }} />
+                                    <Legend />
+                                    <Bar dataKey="open" name="Open" fill="url(#colorOpen)" radius={[0, 4, 4, 0]} barSize={20} />
+                                    <Bar dataKey="closed" name="Closed" fill="url(#colorClosed)" radius={[0, 4, 4, 0]} barSize={20} />
+                                </BarChart>
+                            </ResponsiveContainer>
+                        </div>
                     </CardContent>
                 </Card>
 
@@ -89,32 +91,32 @@ export function DashboardCharts({ projectStats, timeStats, passRates }: Dashboar
                         </ResponsiveContainer>
                     </CardContent>
                 </Card>
-            </div>
 
-            {/* Time Spent in QA */}
-            <Card className="shadow-sm hover:shadow-md transition-all duration-200">
-                <CardHeader>
-                    <CardTitle>Avg. Time Spent in QA (Minutes)</CardTitle>
-                </CardHeader>
-                <CardContent className="h-[300px]">
-                    <ResponsiveContainer width="100%" height="100%">
-                        <AreaChart data={timeStats}>
-                            <defs>
-                                <linearGradient id="colorTime" x1="0" y1="0" x2="0" y2="1">
-                                    <stop offset="5%" stopColor="#8884d8" stopOpacity={0.8} />
-                                    <stop offset="95%" stopColor="#8884d8" stopOpacity={0} />
-                                </linearGradient>
-                            </defs>
-                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
-                            <XAxis dataKey="date" fontSize={12} tickLine={false} axisLine={false} stroke="#888888" />
-                            <YAxis fontSize={12} tickLine={false} axisLine={false} stroke="#888888" />
-                            <Tooltip content={<CustomTooltip />} />
-                            <Legend />
-                            <Area type="monotone" dataKey="minutes" stroke="#8884d8" fillOpacity={1} fill="url(#colorTime)" />
-                        </AreaChart>
-                    </ResponsiveContainer>
-                </CardContent>
-            </Card>
+                {/* Time Spent in QA */}
+                <Card className="shadow-sm hover:shadow-md transition-all duration-200">
+                    <CardHeader>
+                        <CardTitle>Avg. Time Spent in QA (Minutes)</CardTitle>
+                    </CardHeader>
+                    <CardContent className="h-[300px]">
+                        <ResponsiveContainer width="100%" height="100%">
+                            <AreaChart data={timeStats}>
+                                <defs>
+                                    <linearGradient id="colorTime" x1="0" y1="0" x2="0" y2="1">
+                                        <stop offset="5%" stopColor="#8884d8" stopOpacity={0.8} />
+                                        <stop offset="95%" stopColor="#8884d8" stopOpacity={0} />
+                                    </linearGradient>
+                                </defs>
+                                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
+                                <XAxis dataKey="date" fontSize={12} tickLine={false} axisLine={false} stroke="#888888" />
+                                <YAxis fontSize={12} tickLine={false} axisLine={false} stroke="#888888" />
+                                <Tooltip content={<CustomTooltip />} />
+                                <Legend />
+                                <Area type="monotone" dataKey="minutes" stroke="#8884d8" fillOpacity={1} fill="url(#colorTime)" />
+                            </AreaChart>
+                        </ResponsiveContainer>
+                    </CardContent>
+                </Card>
+            </div>
         </div>
     );
 }

@@ -3,6 +3,7 @@
 import { useInfiniteQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useRef } from 'react';
 import { getUserNotifications, markAllNotificationsAsRead } from '@/app/actions/notifications';
+import { useNotificationStream } from '@/hooks/use-notification-stream';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -37,8 +38,11 @@ export function NotificationsList() {
             return allPages.length * 20;
         },
         initialPageParam: 0,
-        refetchInterval: 5000,
+
     });
+
+    // Use SSE for real-time updates
+    useNotificationStream();
 
     const notifications = data?.pages.flat() || [];
 

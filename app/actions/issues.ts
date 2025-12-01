@@ -10,17 +10,39 @@ import { ensureMockUser, ensureMockGroup, ensureMockProject } from '@/lib/mock-u
 import { createIssueSchema, safeParse } from '@/lib/validations';
 import { logger } from '@/lib/logger';
 
-export async function getAllIssues(params?: { state?: 'opened' | 'closed'; search?: string; projectId?: string; labels?: string }) {
+export async function getAllIssues(params?: { state?: 'opened' | 'closed'; search?: string; projectId?: string; groupId?: string; labels?: string }) {
     if (isMockMode()) {
-        const { getIssues, getProject } = await import('@/lib/gitlab');
+        const { getIssues, getProject, getGroupProjects } = await import('@/lib/gitlab');
         const token = getMockToken();
 
-        // Use configured mock project IDs
-        const projectsToFetch = params?.projectId
-            ? [{ id: Number(params.projectId) }]
-            : MOCK_PROJECT_IDS.slice(0, 3).map(id => ({ id }));
+        // Determine projects to fetch
+        let projectsToFetch: { id: number }[] = [];
 
-        const issuesPromises = projectsToFetch.map(async (p: { id: number }) => {
+        if (params?.projectId) {
+            projectsToFetch = [{ id: Number(params.projectId) }];
+        } else if (params?.groupId) {
+            const groupProjects = await getGroupProjects(Number(params.groupId), token);
+            projectsToFetch = groupProjects.map((p: any) => ({ id: p.id }));
+        } else {
+            projectsToFetch = MOCK_PROJECT_IDS.slice(0, 3).map(id => ({ id }));
+        }
+
+        // --- BATCHING SYNC: Use same batching logic as production ---
+        // Helper function to execute promises in batches
+        async function executeBatched<T>(
+            tasks: (() => Promise<T>)[],
+            batchSize: number
+        ): Promise<T[]> {
+            const results: T[] = [];
+            for (let i = 0; i < tasks.length; i += batchSize) {
+                const batch = tasks.slice(i, i + batchSize);
+                const batchResults = await Promise.all(batch.map(task => task()));
+                results.push(...batchResults);
+            }
+            return results;
+        }
+
+        const issueTasks = projectsToFetch.map((p: { id: number }) => async () => {
             const issues = await getIssues(p.id, token, { ...params });
             const project = await getProject(p.id, token);
             return issues.map((i: any) => ({
@@ -38,7 +60,7 @@ export async function getAllIssues(params?: { state?: 'opened' | 'closed'; searc
             }));
         });
 
-        const results = await Promise.all(issuesPromises);
+        const results = await executeBatched(issueTasks, 3);
         return results.flat().sort((a: any, b: any) =>
             new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
         );
@@ -53,6 +75,14 @@ export async function getAllIssues(params?: { state?: 'opened' | 'closed'; searc
         try {
             const project = await getProject(Number(params.projectId), session.accessToken);
             projects = [project];
+        } catch (e) {
+            console.error(e);
+            return [];
+        }
+    } else if (params?.groupId) {
+        const { getGroupProjects } = await import('@/lib/gitlab');
+        try {
+            projects = await getGroupProjects(Number(params.groupId), session.accessToken);
         } catch (e) {
             console.error(e);
             return [];
@@ -170,8 +200,8 @@ export async function createIssue(projectId: number, data: unknown) {
             qaLabelMapping: projectLabelMapping,
         });
 
-        // Get next IID for this project
-        const existingIssues = await db.select().from(qaIssues).where(eq(qaIssues.gitlabProjectId, projectId));
+        // Get next IID globally across all projects (to ensure unique IDs on board)
+        const existingIssues = await db.select().from(qaIssues);
         const maxIid = existingIssues.reduce((max, issue) => Math.max(max, issue.gitlabIssueIid), 0);
         const newIid = maxIid + 1;
 
@@ -198,6 +228,7 @@ export async function createIssue(projectId: number, data: unknown) {
                 status,
                 jsonLabels: issueLabels,
                 assigneeId: assigneeId,
+                authorId: SYSTEM_USERS.MOCK ? 1 : null, // Default to mock user ID 1 if in mock mode
                 createdAt: new Date(),
                 updatedAt: new Date(),
             });
@@ -271,6 +302,7 @@ export async function createIssue(projectId: number, data: unknown) {
                     status,
                     jsonLabels: issueLabels,
                     assigneeId: assigneeId,
+                    authorId: SYSTEM_USERS.MOCK ? 1 : null,
                     createdAt: new Date(),
                     updatedAt: new Date(),
                 });
@@ -416,7 +448,7 @@ export async function getProjectStats(projectIds: number[]) {
     return stats;
 }
 
-export async function getDashboardStats(projectId?: number) {
+export async function getDashboardStats(groupId?: number) {
     const session = await auth();
 
     if (!isMockMode() && !session?.accessToken) {
@@ -426,36 +458,40 @@ export async function getDashboardStats(projectId?: number) {
     // Imports for DB access
     const { db } = await import('@/lib/db');
     const { qaIssues, qaRuns, projects } = await import('@/db/schema');
-    const { eq, desc, sql, and } = await import('drizzle-orm');
+    const { eq, desc, sql, and, inArray } = await import('drizzle-orm');
     const { subDays, format, differenceInHours, differenceInMinutes } = await import('date-fns');
 
     // Fetch issues and runs
-    // If projectId is provided, filter by it
+    // If groupId is provided, filter by all projects in that group
     let allIssues: typeof qaIssues.$inferSelect[] = [];
     let allRuns: typeof qaRuns.$inferSelect[] = [];
     let allProjects: typeof projects.$inferSelect[] = [];
 
-    if (projectId) {
-        allIssues = await db.select().from(qaIssues).where(eq(qaIssues.gitlabProjectId, projectId));
+    if (groupId) {
+        // Fetch all projects in the group
+        const { getGroupProjects } = await import('@/lib/gitlab');
+        const token = session?.accessToken || getMockToken();
+        const groupProjects = await getGroupProjects(groupId, token);
+        const projectIds = groupProjects.map((p: any) => p.id);
 
-        // For runs, we need to join with issues to filter by project, or filter in memory if we fetch all
-        // Let's fetch all runs for the filtered issues
-        // We can use a subquery or just filter in memory since it's a prototype
-        const issueIds = allIssues.map(i => i.id);
-        if (issueIds.length > 0) {
-            // Drizzle 'inArray' would be better but let's just fetch all and filter for now to keep it simple
-            // or use a join if we want to be efficient.
-            // Let's try a join approach for correctness
+        if (projectIds.length > 0) {
+            // Fetch issues from all projects in the group
+            allIssues = await db.select().from(qaIssues).where(inArray(qaIssues.gitlabProjectId, projectIds));
+
+            // Fetch runs for issues in this group
             const runsResult = await db.select({ run: qaRuns })
                 .from(qaRuns)
                 .innerJoin(qaIssues, eq(qaRuns.qaIssueId, qaIssues.id))
-                .where(eq(qaIssues.gitlabProjectId, projectId));
+                .where(inArray(qaIssues.gitlabProjectId, projectIds));
             allRuns = runsResult.map(r => r.run);
-        } else {
-            allRuns = [];
-        }
 
-        allProjects = await db.select().from(projects).where(eq(projects.id, projectId));
+            // Fetch project metadata
+            allProjects = await db.select().from(projects).where(inArray(projects.id, projectIds));
+        } else {
+            allIssues = [];
+            allRuns = [];
+            allProjects = [];
+        }
     } else {
         allIssues = await db.select().from(qaIssues);
         allRuns = await db.select().from(qaRuns);
@@ -466,13 +502,17 @@ export async function getDashboardStats(projectId?: number) {
     const projectStatsMap = new Map<number, { name: string; open: number; closed: number }>();
 
     // Initialize with known projects
-    // FIX: Use getUserProjects to get the correct source of truth for projects (Mock Data vs DB)
-    const availableProjects = await getUserProjects();
-
-    // Filter available projects if a specific projectId is requested
-    const targetProjects = projectId
-        ? availableProjects.filter((p: any) => p.id === projectId)
-        : availableProjects;
+    // Fetch projects based on groupId context
+    let targetProjects: any[];
+    if (groupId) {
+        // Fetch all projects in the group
+        const { getGroupProjects } = await import('@/lib/gitlab');
+        const token = session?.accessToken || getMockToken();
+        targetProjects = await getGroupProjects(groupId, token);
+    } else {
+        // Global stats - get all user projects
+        targetProjects = await getUserProjects();
+    }
 
     targetProjects.forEach((p: any) => {
         projectStatsMap.set(p.id, { name: p.name, open: 0, closed: 0 });

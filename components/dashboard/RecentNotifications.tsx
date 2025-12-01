@@ -1,13 +1,22 @@
 'use client';
 
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { getUserNotifications } from '@/app/actions/notifications';
+import { useNotificationStream } from '@/hooks/use-notification-stream';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { formatDistanceToNow } from 'date-fns';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useEffect, useState } from 'react';
 
 export function RecentNotifications() {
+    const [isMounted, setIsMounted] = useState(false);
+    const queryClient = useQueryClient();
+
+    useEffect(() => {
+        setIsMounted(true);
+    }, []);
+
     const { data: notifications, isLoading, isError } = useQuery({
         queryKey: ['recent-notifications'],
         queryFn: async () => {
@@ -15,8 +24,11 @@ export function RecentNotifications() {
             // Ensure we always return an array
             return Array.isArray(result) ? result : [];
         },
-        refetchInterval: 5000
+        enabled: isMounted && !!queryClient
     });
+
+    // Use SSE for real-time updates
+    useNotificationStream();
 
     // Safely ensure notifications is always an array
     const notificationsList = Array.isArray(notifications) ? notifications : [];

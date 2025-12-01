@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { marked } from 'marked';
+import { tiptapToMarkdown } from '@/lib/utils';
 
 export function useDescriptionProcessor(
     descriptionHtml: string | null | undefined,
@@ -20,9 +21,20 @@ export function useDescriptionProcessor(
         // If we don't have HTML but have description (e.g. mock mode), convert markdown to HTML
         if (!descriptionHtml && description) {
             try {
-                rawContent = marked.parse(description) as string;
+                // Check if description is a JSON string (Tiptap content)
+                if (description.trim().startsWith('{') && description.includes('"type":"doc"')) {
+                    const jsonContent = JSON.parse(description);
+                    const markdown = tiptapToMarkdown(jsonContent);
+                    rawContent = marked.parse(markdown) as string;
+                } else {
+                    rawContent = marked.parse(description) as string;
+                }
             } catch (e) {
-                console.error('Failed to parse markdown:', e);
+                console.error('Failed to parse content:', e);
+                // If JSON parse fails or markdown parse fails, fallback to raw description
+                // But if it was JSON that failed to parse, we might still want to try treating as markdown?
+                // For now, if it looked like JSON but failed, it's likely broken JSON, so raw is safest.
+                // If it wasn't JSON, it was markdown failure.
                 rawContent = description;
             }
         }

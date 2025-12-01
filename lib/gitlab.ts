@@ -87,7 +87,19 @@ export const getUserGroups = async (token: string) => {
         return await gitlab.Groups.all({ minAccessLevel: 10 } as any);
     } catch (error) {
         console.error('GitLab API Error (getUserGroups):', error);
-        throw new Error('Failed to fetch groups from GitLab');
+    }
+};
+
+export const getGroup = async (groupId: number, token: string) => {
+    if (isMock()) {
+        return MOCK_GROUPS.find(g => g.id === Number(groupId)) || MOCK_GROUPS[0];
+    }
+    try {
+        const gitlab = getGitlabClient(token);
+        return await gitlab.Groups.show(groupId);
+    } catch (error) {
+        console.error('GitLab API Error (getGroup):', error);
+        throw new Error('Failed to fetch group details');
     }
 };
 
@@ -193,7 +205,7 @@ export const getIssues = async (projectId: number, token: string, params?: { sta
                     state: 'opened', // Could be extended to track open/closed in DB
                     created_at: dbIssue.createdAt?.toISOString() || new Date().toISOString(),
                     updated_at: dbIssue.updatedAt?.toISOString() || new Date().toISOString(),
-                    author: MOCK_USERS[0], // Default author
+                    author: dbIssue.authorId ? (MOCK_USERS.find(u => u.id === dbIssue.authorId) || MOCK_USERS[0]) : MOCK_USERS[0],
                     assignees: assignees,
                     labels: labels,
                     web_url: dbIssue.issueUrl,
@@ -289,6 +301,7 @@ export const getIssue = async (projectId: number, issueIid: number, token: strin
                         status: status,
                         jsonLabels: mockIssue.labels,
                         assigneeId: mockIssue.assignees?.[0]?.id || null,
+                        authorId: mockIssue.author?.id || null,
                         createdAt: new Date(mockIssue.created_at),
                         updatedAt: new Date(mockIssue.updated_at),
                     }).returning();
@@ -338,7 +351,7 @@ export const getIssue = async (projectId: number, issueIid: number, token: strin
                 state: 'opened',
                 created_at: dbIssue.createdAt?.toISOString() || new Date().toISOString(),
                 updated_at: dbIssue.updatedAt?.toISOString() || new Date().toISOString(),
-                author: MOCK_USERS[0],
+                author: dbIssue.authorId ? (MOCK_USERS.find(u => u.id === dbIssue.authorId) || MOCK_USERS[0]) : MOCK_USERS[0],
                 assignees: assignees,
                 labels: labels,
                 web_url: dbIssue.issueUrl,
@@ -449,6 +462,7 @@ export const updateIssueLabels = async (
                     status: newStatus,
                     jsonLabels: issueLabels,
                     assigneeId: issue.assignees?.[0]?.id || null,
+                    authorId: issue.author?.id || null,
                     createdAt: new Date(issue.created_at),
                     updatedAt: new Date(),
                 }).returning();

@@ -1,5 +1,5 @@
 import { getAllIssues } from '@/app/actions/issues';
-import { getProject, getProjectLabels } from '@/lib/gitlab';
+import { getGroup, getGroupProjects } from '@/lib/gitlab';
 import { auth } from '@/auth';
 import { IssuesTable } from '@/components/issues/IssuesTable';
 import { IssueSearch } from '@/components/issues/IssueSearch';
@@ -20,27 +20,35 @@ export default async function IssuesPage({
 
     const { projectId } = await params;
     const { search, state, labels: labelParams } = await searchParams;
-    const projectIdNum = Number(projectId);
+    const groupId = Number(projectId); // URL param is still named projectId
 
     const issues = await getAllIssues({
-        projectId: projectId,
+        groupId: projectId, // Pass as groupId
         search: search,
         state: (state as 'opened' | 'closed') || 'opened',
         labels: labelParams,
     });
 
-    const project = await getProject(projectIdNum, session.accessToken);
-    const labels = await getProjectLabels(projectIdNum, session.accessToken);
+    // Fetch group details
+    const group = await getGroup(groupId, session.accessToken);
+
+    // We might want to fetch labels for all projects in the group or just use a set of common labels
+    // For now, let's try to get labels from the first project in the group as a heuristic
+    // or we could fetch group labels if GitLab supports it (it does)
+    // But our getProjectLabels fetches project labels.
+    // Let's fetch group projects and get labels from the first one for now
+    const projects = await getGroupProjects(groupId, session.accessToken);
+    const labels = projects.length > 0 ? (await import('@/lib/gitlab')).getProjectLabels(projects[0].id, session.accessToken) : [];
 
     return (
         <div className="flex-1 space-y-4 p-8 pt-6">
             <div className="flex items-center justify-between space-y-2">
                 <div>
-                    <h2 className="text-3xl font-bold tracking-tight">{project.name} Issues</h2>
-                    <p className="text-muted-foreground">Manage QA issues and test runs for {project.name}</p>
+                    <h2 className="text-3xl font-bold tracking-tight">{group.name} Issues</h2>
+                    <p className="text-muted-foreground">Manage QA issues and test runs for {group.name}</p>
                 </div>
                 <Button asChild className="bg-primary hover:bg-primary/90">
-                    <Link href={`/issues/new?projectId=${projectId}`}>
+                    <Link href={`/${groupId}/issues/new`}>
                         <Plus className="mr-2 h-4 w-4" />
                         Create Issue
                     </Link>
@@ -48,13 +56,13 @@ export default async function IssuesPage({
             </div>
 
             <div className="flex items-center gap-4">
-                <IssueSearch labels={labels} projectId={projectIdNum} />
+                <IssueSearch labels={await labels} projectId={groupId} />
             </div>
 
             <IssuesTable
                 issues={issues}
-                projectId={projectIdNum}
-                labels={labels as any}
+                projectId={groupId}
+                labels={await labels as any}
             />
         </div>
     );

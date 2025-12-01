@@ -123,11 +123,11 @@ export function IssueCard({ issue, projectId, isOverlay = false }: { issue: Kanb
     const assignee = issue.assignee || (issue.assignees && issue.assignees[0]) || null;
 
     return (
-        <Card className={`group relative cursor-grab active:cursor-grabbing hover:-translate-y-1 hover:shadow-md transition-all duration-200 bg-card border-border/50 ${isOverlay ? 'shadow-2xl cursor-grabbing scale-105 rotate-2 ring-1 ring-primary/20 z-50' : ''}`}>
+        <Card className={`group relative cursor-grab active:cursor-grabbing hover:-translate-y-1 transition-all duration-300 bg-card/60 backdrop-blur-sm border-border/40 hover:border-primary/20 hover:shadow-lg hover:shadow-primary/5 ${isOverlay ? 'shadow-2xl cursor-grabbing scale-105 rotate-2 ring-1 ring-primary/20 z-50 bg-card/90' : ''}`}>
             <CardContent className="p-3 space-y-3">
                 <div className="flex justify-between items-start gap-2">
                     <Link
-                        href={`/${issue.project_id || projectId}/qa/${issue.iid}`}
+                        href={`/${projectId}/qa/${issue.iid}`}
                         className="font-medium text-sm hover:text-primary hover:underline line-clamp-2 leading-tight flex-1"
                         onPointerDown={(e) => e.stopPropagation()} // Allow clicking link without dragging
                     >
