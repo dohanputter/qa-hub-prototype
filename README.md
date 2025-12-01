@@ -14,26 +14,28 @@ The application is now fully functional in **Mock Mode** for offline development
 - **API**: Server Actions + REST endpoints
 - **UI**: Shadcn UI + Tailwind CSS
 
-### Recent Updates (2025-11-24)
+### Recent Updates (2025-12-01)
 
-#### ✅ Mock Mode Implementation
-- Added `CredentialsProvider` for mock authentication
-- Mock user: "Mock Tester" (tester@example.com)
-- Mock GitLab data: Projects, Issues, Labels, Members
-- All GitLab API calls bypass to mock data when enabled
-- Sign-in works without GitLab credentials
+#### ✅ Real-time Notifications
+- Implemented polling mechanism for instant notification updates
+- Notifications refresh automatically without page reload
 
-#### ✅ Next.js 15 Compatibility Fixes
-- Removed conflicting `experimental.dynamicIO` setting
-- Fixed async `headers()` usage
-- Updated to NextAuth v5 API (`auth()` instead of `getServerSession`)
-- Added validation for dynamic route parameters
-- Fixed middleware matcher patterns
+#### ✅ Enhanced Tiptap Editor
+- **Image Resizing**: Drag-to-resize support for images in tables and content
+- **Table Improvements**: Fixed menu positioning, better border styling, and spacing
+- **Font Size Control**: Added dropdown for text size adjustment (Small to Huge)
+- **Snippets**: Quick insertion of reusable text snippets
 
-#### ✅ Error Handling
-- Added `isNaN` and `isFinite` validation for project IDs
-- Graceful error messages for invalid routes
-- Proper error boundaries in place
+#### ✅ UI/UX Refinements
+- **Premium Design**: Polished spacing, fonts, and dark mode consistency
+- **Clickable Rows**: Entire issue rows are now clickable for better usability
+- **Multi-label Selection**: Improved dropdowns to support selecting multiple labels without closing
+- **Search & Filter**: Fixed search bar alignment and label filtering consistency
+
+#### ✅ Code Quality & Stability
+- **Centralized Logger**: New `logger.ts` utility for consistent logging across environments
+- **Error Boundaries**: Added `ErrorBoundary` components for graceful failure handling
+- **Strict Types**: Eliminated `any` types and improved TypeScript coverage
 
 ### Implemented Components
 
@@ -63,6 +65,7 @@ The application is now fully functional in **Mock Mode** for offline development
 - ✅ `constants.ts` - Shared constants (system users, default labels, rate limits)
 - ✅ `mock-user.ts` - Mock user/project/group creation utilities
 - ✅ `validations.ts` - Zod validation schemas for server actions
+- ✅ `logger.ts` - Centralized logging utility
 
 #### 4. GitLab Integration (`/lib/gitlab/`)
 - ✅ `index.ts` - Module re-exports
@@ -122,8 +125,10 @@ The application is now fully functional in **Mock Mode** for offline development
    - File uploads to GitLab storage
 
 3. **QA Workflow**
-   - Test Cases editor (Tiptap JSON)
+   - Test Cases editor (Tiptap JSON) with tables & images
    - Issues Found editor (Tiptap JSON)
+   - **New**: Drag-to-resize images and advanced table controls
+   - **New**: Text snippets for quick insertion
    - @mentions extraction
    - Pass/Fail with GitLab comment posting
    - Shareable public links (UUID-based)
@@ -134,6 +139,10 @@ The application is now fully functional in **Mock Mode** for offline development
    - Drizzle ORM type inference
    - NextAuth type augmentation
    - Dedicated type files for dashboard and editor components
+
+5. **Built-in Tools**
+   - **Test Data Generator**: Generate mock identity, finance, and location data for testing
+   - **Snippets Manager**: Manage reusable text snippets for issue descriptions
 
 ## Installation
 
