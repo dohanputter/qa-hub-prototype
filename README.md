@@ -7,18 +7,20 @@ Internal QA management system with GitLab integration for a 4-person team.
 The application is now fully functional in **Mock Mode** for offline development and testing.
 
 ### Architecture
-- **Framework**: Next.js 15.5.6 (App Router)
+- **Framework**: Next.js 15 (App Router)
 - **Database**: SQLite with Drizzle ORM
 - **Auth**: NextAuth.js v5 (Beta) with GitLab OAuth + Mock Credentials Provider
 - **File Storage**: GitLab project uploads (with mock fallback)
 - **API**: Server Actions + REST endpoints
+- **Real-time Updates**: Server-Sent Events (SSE)
 - **UI**: Shadcn UI + Tailwind CSS
 
 ### Recent Updates (2025-12-01)
 
-#### ✅ Real-time Notifications
-- Implemented polling mechanism for instant notification updates
-- Notifications refresh automatically without page reload
+#### ✅ Real-time Notifications with SSE
+- Implemented Server-Sent Events for instant push-based notification updates
+- Notifications stream in real-time without polling overhead
+- Automatic reconnection and heartbeat mechanism for connection stability
 
 #### ✅ Enhanced Tiptap Editor
 - **Image Resizing**: Drag-to-resize support for images in tables and content
@@ -89,16 +91,22 @@ The application is now fully functional in **Mock Mode** for offline development
 - ✅ Type definitions (`/types/next-auth.d.ts`)
 
 #### 6. Server Actions (`/app/actions/`)
-- ✅ `dashboard.ts` - Dashboard statistics
-- ✅ `project.ts` - Add, configure, list projects
-- ✅ `qaRecords.ts` - Create, update, submit (pass/fail), delete QA records
-- ✅ `uploadAttachment.ts` - File upload with validation
+- ✅ `issues.ts` - Issue CRUD operations and dashboard statistics
+- ✅ `qa.ts` - QA record operations (create, update, submit, delete)
+- ✅ `board.ts` - Kanban board operations and column management
+- ✅ `project.ts` - Add, configure, and list projects
+- ✅ `labels.ts` - Label management and filtering
+- ✅ `snippets.ts` - Text snippets CRUD for reusable content
+- ✅ `uploadAttachment.ts` - File upload with validation and rate limiting
+- ✅ `removeAttachment.ts` - File attachment removal
 - ✅ `notifications.ts` - Get, mark read, mark all read
 
 #### 7. API Routes (`/app/api/`)
 - ✅ `/api/auth/[...nextauth]` - NextAuth handlers
 - ✅ `/api/webhooks/gitlab` - GitLab webhook processor
 - ✅ `/api/issues/update-labels` - Label update endpoint
+- ✅ `/api/sse/notifications` - Server-Sent Events for real-time notifications
+- ✅ `/api/images/[...path]` - Image proxy and handling
 
 #### 8. Pages & UI
 - ✅ `/auth/signin` - Sign-in page with mock mode indicator
@@ -142,7 +150,8 @@ The application is now fully functional in **Mock Mode** for offline development
 
 5. **Built-in Tools**
    - **Test Data Generator**: Generate mock identity, finance, and location data for testing
-   - **Snippets Manager**: Manage reusable text snippets for issue descriptions
+   - **Snippets Manager**: Create and manage reusable text snippets for test cases and issue descriptions
+   - **Real-time Notifications**: SSE-based instant updates without page refreshes
 
 ## Installation
 
@@ -160,6 +169,30 @@ npm run db:push
 
 # Start development server
 npm run dev
+# OR use Turbopack for faster development
+npm run dev:turbo
+```
+
+## Available Scripts
+
+```bash
+# Development
+npm run dev          # Start Next.js development server
+npm run dev:turbo    # Start dev server with Turbopack (faster HMR)
+
+# Production
+npm run build        # Build application for production
+npm run start        # Start production server
+
+# Database
+npm run db:push      # Push schema changes to database
+npm run db:studio    # Open Drizzle Studio GUI
+
+# Quality & Testing
+npm run lint         # Run ESLint with strict warnings
+
+# Development Tools
+npm run seed         # Seed database with mock data
 ```
 
 ## Environment Setup
@@ -264,7 +297,7 @@ If port 3000 is in use, Next.js will automatically use port 3001. Check the term
 
 ## Tech Stack
 
-- **Next.js 15.5.6** - React framework with App Router
+- **Next.js 15** - React framework with App Router
 - **React 19** - UI library
 - **TypeScript 5** - Type safety
 - **Tailwind CSS 3** - Styling
