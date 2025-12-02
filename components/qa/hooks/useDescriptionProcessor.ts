@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { marked } from 'marked';
-import { tiptapToMarkdown } from '@/lib/utils';
+import { tiptapToMarkdown } from '@/lib/tiptap-utils';
 
 export function useDescriptionProcessor(
     descriptionHtml: string | null | undefined,

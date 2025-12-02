@@ -11,7 +11,7 @@ import {
     getProjectMembers,
     getProject,
 } from '@/lib/gitlab';
-import { tiptapToMarkdown, extractMentions } from '@/lib/utils';
+import { tiptapToMarkdown, extractMentions } from '@/lib/tiptap-utils';
 import { revalidatePath, revalidateTag } from 'next/cache';
 import { env } from '@/lib/env';
 import { logger } from '@/lib/logger';

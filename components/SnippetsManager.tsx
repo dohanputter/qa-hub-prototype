@@ -7,9 +7,10 @@ import { getSnippetsAction, createSnippetAction, updateSnippetAction, deleteSnip
 import { useToast } from '@/components/ui/use-toast';
 import { useRouter } from 'next/navigation';
 import { TiptapEditor } from '@/components/qa/TiptapEditor';
-import { tiptapToMarkdown } from '@/lib/utils';
+import { tiptapToMarkdown } from '@/lib/tiptap-utils';
 import { uploadAttachment } from '@/app/actions/uploadAttachment';
 import { getUserProjects, getProjectUsers } from '@/app/actions/project';
+import { logger } from '@/lib/logger';
 
 export const SnippetsManager: React.FC = () => {
     const { toast } = useToast();
@@ -41,7 +42,7 @@ export const SnippetsManager: React.FC = () => {
                 setMembers(projectMembers);
             }
         } catch (error) {
-            console.error("Failed to load context for editor", error);
+            logger.error("Failed to load context for editor", error);
         }
     }, []);
 
@@ -50,7 +51,7 @@ export const SnippetsManager: React.FC = () => {
             const data = await getSnippetsAction();
             setSnippets(data);
         } catch (error) {
-            console.error("Failed to load snippets", error);
+            logger.error("Failed to load snippets", error);
             toast({
                 title: "Error",
                 description: "Failed to load snippets",

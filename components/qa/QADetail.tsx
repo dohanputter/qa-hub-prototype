@@ -13,6 +13,7 @@ import { getSnippetsAction } from '@/app/actions/snippets';
 import { toast } from '@/components/ui/use-toast';
 import { Loader2, Save, PlayCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { logger } from '@/lib/logger';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useDescriptionProcessor } from './hooks/useDescriptionProcessor';
 import { useAutoDeleteWithReset } from './hooks/useAutoDelete';
@@ -52,7 +53,7 @@ export function QADetail({ issue, qaIssue, runs = [], allAttachments = [], membe
     const [runId, setRunId] = useState(activeRun?.id || null);
 
     useEffect(() => {
-        getSnippetsAction().then(setSnippets).catch(err => console.error("Failed to load snippets", err));
+        getSnippetsAction().then(setSnippets).catch(err => logger.error("Failed to load snippets", err));
     }, []);
 
     // Use Auto Delete Hook with Reset Logic

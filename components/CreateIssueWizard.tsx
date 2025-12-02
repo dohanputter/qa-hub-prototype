@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
+import { useOnClickOutside } from '@/hooks/use-on-click-outside';
 import {
     X, ChevronDown, Calendar, Flag, User as UserIcon,
     Tag, Folder, ArrowLeft, ChevronRight, Search, Layers
@@ -12,9 +13,11 @@ import { useRouter, useParams } from 'next/navigation';
 import { getUserProjects, getProjectUsers, getProjectLabelsAction } from '@/app/actions/project';
 import { createIssue } from '@/app/actions/issues';
 import { uploadAttachment } from '@/app/actions/uploadAttachment';
+import { logger } from '@/lib/logger';
 import Image from 'next/image';
 import { TiptapEditor } from '@/components/qa/TiptapEditor';
-import { cn, tiptapToMarkdown } from '@/lib/utils';
+import { cn } from '@/lib/utils';
+import { tiptapToMarkdown } from '@/lib/tiptap-utils';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 
@@ -56,18 +59,8 @@ export const CreateIssueWizard: React.FC<CreateIssueWizardProps> = ({ onClose, o
     const assigneeRef = useRef<HTMLDivElement>(null);
     const labelsRef = useRef<HTMLDivElement>(null);
 
-    useEffect(() => {
-        const handleClickOutside = (event: MouseEvent) => {
-            if (assigneeRef.current && !assigneeRef.current.contains(event.target as Node)) {
-                setShowAssigneeDropdown(false);
-            }
-            if (labelsRef.current && !labelsRef.current.contains(event.target as Node)) {
-                setShowLabelDropdown(false);
-            }
-        };
-        document.addEventListener('mousedown', handleClickOutside);
-        return () => document.removeEventListener('mousedown', handleClickOutside);
-    }, []);
+    useOnClickOutside(assigneeRef, () => setShowAssigneeDropdown(false));
+    useOnClickOutside(labelsRef, () => setShowLabelDropdown(false));
 
     const params = useParams();
     const groupId = params?.projectId ? Number(params.projectId) : undefined;
@@ -80,7 +73,7 @@ export const CreateIssueWizard: React.FC<CreateIssueWizardProps> = ({ onClose, o
                 setProjects(data);
                 setIsLoadingProjects(false);
             }).catch(err => {
-                console.error("Failed to load projects", err);
+                logger.error("Failed to load projects", err);
                 setIsLoadingProjects(false);
             });
         }
@@ -160,7 +153,7 @@ export const CreateIssueWizard: React.FC<CreateIssueWizardProps> = ({ onClose, o
                     router.push(groupId ? `/${groupId}` : '/projects');
                 }
             } catch (error) {
-                console.error(error);
+                logger.error('Failed to create issue', error);
                 toast({
                     title: "Error",
                     description: "Failed to create issue.",

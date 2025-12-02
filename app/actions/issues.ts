@@ -14,6 +14,7 @@ import { logger } from '@/lib/logger';
 export async function getAllIssues(params?: { state?: 'opened' | 'closed'; search?: string; projectId?: string; groupId?: string; labels?: string }) {
     if (isMockMode()) {
         const { getIssues, getProject, getGroupProjects } = await import('@/lib/gitlab');
+        const { executeBatched } = await import('@/lib/utils');
         const token = getMockToken();
 
         // Determine projects to fetch
@@ -28,22 +29,7 @@ export async function getAllIssues(params?: { state?: 'opened' | 'closed'; searc
             projectsToFetch = MOCK_PROJECT_IDS.slice(0, 3).map(id => ({ id }));
         }
 
-        // --- BATCHING SYNC: Use same batching logic as production ---
-        // Helper function to execute promises in batches
-        async function executeBatched<T>(
-            tasks: (() => Promise<T>)[],
-            batchSize: number
-        ): Promise<T[]> {
-            const results: T[] = [];
-            for (let i = 0; i < tasks.length; i += batchSize) {
-                const batch = tasks.slice(i, i + batchSize);
-                const batchResults = await Promise.all(batch.map(task => task()));
-                results.push(...batchResults);
-            }
-            return results;
-        }
-
-        const issueTasks = projectsToFetch.map((p: { id: number }) => async () => {
+        const results = await executeBatched(projectsToFetch, 3, async (p: { id: number }) => {
             const issues = await getIssues(p.id, token, { ...params });
             const project = await getProject(p.id, token);
             return issues.map((i: any) => ({
@@ -60,8 +46,6 @@ export async function getAllIssues(params?: { state?: 'opened' | 'closed'; searc
                 project
             }));
         });
-
-        const results = await executeBatched(issueTasks, 3);
         return results.flat().sort((a: any, b: any) =>
             new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
         );
@@ -77,7 +61,7 @@ export async function getAllIssues(params?: { state?: 'opened' | 'closed'; searc
             const project = await getProject(Number(params.projectId), session.accessToken);
             projects = [project];
         } catch (e) {
-            console.error(e);
+            logger.error('Error fetching project', e);
             return [];
         }
     } else if (params?.groupId) {
@@ -85,7 +69,7 @@ export async function getAllIssues(params?: { state?: 'opened' | 'closed'; searc
         try {
             projects = await getGroupProjects(Number(params.groupId), session.accessToken);
         } catch (e) {
-            console.error(e);
+            logger.error('Error fetching group projects', e);
             return [];
         }
     } else {
@@ -95,22 +79,10 @@ export async function getAllIssues(params?: { state?: 'opened' | 'closed'; searc
     if (projects.length === 0) return [];
 
     // --- TASK 3 FIX: Batch API calls to prevent thundering herd ---
-    // Helper function to execute promises in batches
-    async function executeBatched<T>(
-        tasks: (() => Promise<T>)[],
-        batchSize: number
-    ): Promise<T[]> {
-        const results: T[] = [];
-        for (let i = 0; i < tasks.length; i += batchSize) {
-            const batch = tasks.slice(i, i + batchSize);
-            const batchResults = await Promise.all(batch.map(task => task()));
-            results.push(...batchResults);
-        }
-        return results;
-    }
+    const { executeBatched } = await import('@/lib/utils');
 
-    // Create task functions for fetching issues (not executing yet)
-    const issueTasks = projects.map((p: any) => () =>
+    // Execute in batches of 3 to prevent rate limiting
+    const results = await executeBatched(projects, 3, (p: any) =>
         getIssues(p.id, session.accessToken!, { ...params })
             .then(issues => issues.map((i: any) => ({
                 ...i,
@@ -122,16 +94,14 @@ export async function getAllIssues(params?: { state?: 'opened' | 'closed'; searc
                     ...i.author,
                     avatarUrl: i.author?.avatar_url
                 },
+                assignee: i.assignees?.[0] || null,
                 project: p
             })))
             .catch(e => {
-                console.error(`Failed to fetch issues for project ${p.id}`, e);
+                logger.error(`Failed to fetch issues for project ${p.id}`, e);
                 return [];
             })
     );
-
-    // Execute in batches of 3 to prevent rate limiting
-    const results = await executeBatched(issueTasks, 3);
 
     return results.flat().sort((a: any, b: any) =>
         new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
@@ -156,7 +126,7 @@ export async function createIssue(projectId: number, data: unknown) {
         simulateRealisticError('write');
         const { db } = await import('@/lib/db');
         const { qaIssues, projects } = await import('@/db/schema');
-        const { mapLabelToStatus } = await import('@/lib/utils');
+        const { mapLabelToStatus, executeBatched } = await import('@/lib/utils');
         const { eq } = await import('drizzle-orm');
         const token = getMockToken();
 
@@ -287,7 +257,7 @@ export async function createIssue(projectId: number, data: unknown) {
         } catch (error: any) {
             // Handle unique constraint violation
             if (error.message && error.message.includes('UNIQUE constraint failed')) {
-                console.error(`[MOCK] Issue #${newIid} already exists in project ${projectId}, retrying with next IID...`);
+                logger.error(`[MOCK] Issue #${newIid} already exists in project ${projectId}, retrying with next IID...`);
                 // Recursively try with next IID
                 const existingIssues2 = await db.select().from(qaIssues).where(eq(qaIssues.gitlabProjectId, projectId));
                 const maxIid2 = existingIssues2.reduce((max, issue) => Math.max(max, issue.gitlabIssueIid), 0);
@@ -363,7 +333,7 @@ export async function createIssue(projectId: number, data: unknown) {
             labels: validatedData.labels,
         });
     } catch (error) {
-        console.error('Failed to create issue', error);
+        logger.error('Failed to create issue', error);
         throw new Error('Failed to create issue. Please try again.');
     }
 }
@@ -440,7 +410,7 @@ export async function getProjectStats(projectIds: number[]) {
                     stats[pid] = { open: 0, closed: 0, total: 0 };
                 }
             } catch (e) {
-                console.error(`Failed to fetch stats for project ${pid}`, e);
+                logger.error(`Failed to fetch stats for project ${pid}`, e);
                 stats[pid] = { open: 0, closed: 0, total: 0 };
             }
         }));
