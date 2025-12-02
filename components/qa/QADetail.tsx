@@ -17,14 +17,15 @@ import { logger } from '@/lib/logger';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useDescriptionProcessor } from './hooks/useDescriptionProcessor';
 import { useAutoDeleteWithReset } from './hooks/useAutoDelete';
+import { useImageUpload } from '@/hooks/use-image-upload';
 import { QAHeader } from './QAHeader';
 import { QAHistory } from './QAHistory';
 import { QAAttachments } from './QAAttachments';
-import type { QADetailProps, Snippet } from '@/types/qa';
+import type { QADetailProps, Snippet, Attachment } from '@/types/qa';
 
 export function QADetail({ issue, qaIssue, runs = [], allAttachments = [], members, projectId, issueIid, labels: projectLabels }: QADetailProps) {
     const router = useRouter();
-    const activeRun = runs.find((r: any) => r.status === 'pending');
+    const activeRun = runs.find(r => r.status === 'pending');
     const [viewMode, setViewMode] = useState(activeRun ? 'active' : 'history');
 
     // Use Custom Hook for Description
@@ -43,7 +44,7 @@ export function QADetail({ issue, qaIssue, runs = [], allAttachments = [], membe
     const [issuesFound, setIssuesFound] = useState(activeRun?.issuesFoundContent || null);
 
     // Attachments state
-    const [attachments, setAttachments] = useState(allAttachments.filter((a: any) => a.qaRunId === activeRun?.id) || []);
+    const [attachments, setAttachments] = useState<Attachment[]>(allAttachments.filter(a => a.qaRunId === activeRun?.id) || []);
 
     const [saving, setSaving] = useState(false);
     const [isPending, startTransition] = useTransition();
@@ -64,7 +65,7 @@ export function QADetail({ issue, qaIssue, runs = [], allAttachments = [], membe
     const handleRemoveAttachment = useCallback(async (attachmentId: string, filename: string) => {
         try {
             await removeAttachment(attachmentId);
-            setAttachments((prev: any[]) => prev.filter((a: any) => a.id !== attachmentId));
+            setAttachments(prev => prev.filter(a => a.id !== attachmentId));
             toast({ title: "Attachment removed", description: filename });
         } catch (error: any) {
             toast({ title: "Failed to remove attachment", description: error.message, variant: "destructive" });
@@ -77,7 +78,7 @@ export function QADetail({ issue, qaIssue, runs = [], allAttachments = [], membe
             setTestCases(activeRun.testCasesContent || null);
             setIssuesFound(activeRun.issuesFoundContent || null);
             setRunId(activeRun.id);
-            setAttachments(allAttachments.filter((a: any) => a.qaRunId === activeRun.id));
+            setAttachments(allAttachments.filter(a => a.qaRunId === activeRun.id));
             setViewMode('active');
         } else {
             setRunId(null);
@@ -167,6 +168,8 @@ export function QADetail({ issue, qaIssue, runs = [], allAttachments = [], membe
         }
     };
 
+    const { handleImagePaste: uploadImage } = useImageUpload(projectId);
+
     const handleImagePaste = async (file: File) => {
         let targetRunId = runId;
         if (!targetRunId) {
@@ -175,14 +178,14 @@ export function QADetail({ issue, qaIssue, runs = [], allAttachments = [], membe
             else throw new Error('Failed to create QA run');
         }
 
-        const formData = new FormData();
-        formData.append('file', file);
-        formData.append('projectId', projectId.toString());
-        formData.append('qaRecordId', targetRunId);
-
-        const result = await uploadAttachment(formData);
-        setAttachments([...attachments, result]);
-        return result;
+        try {
+            const result = await uploadImage(file);
+            setAttachments([...attachments, result]);
+            return result;
+        } catch (error: any) {
+            toast({ title: "Upload failed", description: error.message, variant: "destructive" });
+            throw error;
+        }
     };
 
     const handleStartNewRun = async () => {
@@ -270,7 +273,7 @@ export function QADetail({ issue, qaIssue, runs = [], allAttachments = [], membe
                         <h2 className="font-semibold text-xl tracking-tight">QA Testing</h2>
                         {runs.length > 0 && (
                             <div className="flex -space-x-1 ml-2">
-                                {runs.slice(0, 5).map((r: any) => (
+                                {runs.slice(0, 5).map(r => (
                                     <div key={r.id}
                                         className={cn(
                                             "w-2.5 h-2.5 rounded-full ring-2 ring-background",
@@ -336,7 +339,7 @@ export function QADetail({ issue, qaIssue, runs = [], allAttachments = [], membe
                             <TiptapEditor
                                 content={testCases}
                                 onChange={setTestCases}
-                                members={members as any}
+                                members={members.map(m => ({ ...m, avatar_url: m.avatar_url || '' }))}
                                 placeholder="List test cases..."
                                 snippets={testCaseSnippets}
                                 onImagePaste={handleImagePaste}
@@ -351,7 +354,7 @@ export function QADetail({ issue, qaIssue, runs = [], allAttachments = [], membe
                             <TiptapEditor
                                 content={issuesFound}
                                 onChange={setIssuesFound}
-                                members={members as any}
+                                members={members.map(m => ({ ...m, avatar_url: m.avatar_url || '' }))}
                                 placeholder="Describe any issues found..."
                                 snippets={issueSnippets}
                                 onImagePaste={handleImagePaste}

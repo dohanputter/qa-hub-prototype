@@ -10,6 +10,7 @@ import { SYSTEM_USERS, DEFAULT_QA_LABELS, MOCK_PROJECT_IDS } from '@/lib/constan
 import { ensureMockUser, ensureMockGroup, ensureMockProject } from '@/lib/mock-user';
 import { createIssueSchema, safeParse } from '@/lib/validations';
 import { logger } from '@/lib/logger';
+import type { GitLabIssue, GitLabProject, Project } from '@/types';
 
 export async function getAllIssues(params?: { state?: 'opened' | 'closed'; search?: string; projectId?: string; groupId?: string; labels?: string }) {
     if (isMockMode()) {
@@ -24,7 +25,7 @@ export async function getAllIssues(params?: { state?: 'opened' | 'closed'; searc
             projectsToFetch = [{ id: Number(params.projectId) }];
         } else if (params?.groupId) {
             const groupProjects = await getGroupProjects(Number(params.groupId), token);
-            projectsToFetch = groupProjects.map((p: any) => ({ id: p.id }));
+            projectsToFetch = groupProjects.map((p: GitLabProject) => ({ id: p.id }));
         } else {
             projectsToFetch = MOCK_PROJECT_IDS.slice(0, 3).map(id => ({ id }));
         }
@@ -32,7 +33,7 @@ export async function getAllIssues(params?: { state?: 'opened' | 'closed'; searc
         const results = await executeBatched(projectsToFetch, 3, async (p: { id: number }) => {
             const issues = await getIssues(p.id, token, { ...params });
             const project = await getProject(p.id, token);
-            return issues.map((i: any) => ({
+            return issues.map((i: GitLabIssue) => ({
                 ...i,
                 projectId: i.project_id,
                 createdAt: i.created_at,
@@ -82,9 +83,10 @@ export async function getAllIssues(params?: { state?: 'opened' | 'closed'; searc
     const { executeBatched } = await import('@/lib/utils');
 
     // Execute in batches of 3 to prevent rate limiting
-    const results = await executeBatched(projects, 3, (p: any) =>
+    // Execute in batches of 3 to prevent rate limiting
+    const results = await executeBatched(projects, 3, (p: Project) =>
         getIssues(p.id, session.accessToken!, { ...params })
-            .then(issues => issues.map((i: any) => ({
+            .then(issues => issues.map((i: GitLabIssue) => ({
                 ...i,
                 projectId: i.project_id,
                 createdAt: i.created_at,

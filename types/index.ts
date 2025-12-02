@@ -12,6 +12,8 @@ export enum QAStatus {
     FAILED = 'QA Failed'
 }
 
+import { GitLabUser } from './qa';
+
 export interface User {
     id: number;
     name: string;
@@ -89,14 +91,8 @@ export type ViewState =
 // Kanban Board Types (GitLab API-compatible)
 // ============================================
 
-export interface GitLabUser {
-    id: number;
-    name: string;
-    username: string;
-    state: string;
-    avatar_url: string;
-    web_url: string;
-}
+// Kanban Board Types (GitLab API-compatible)
+// ============================================
 
 export interface GitLabLabel {
     id: number;
@@ -135,7 +131,7 @@ export interface KanbanIssue {
     project_id: number;
     title: string;
     description?: string;
-    state: 'opened' | 'closed';
+    state: 'opened' | 'closed' | string;
     created_at: string;
     updated_at: string;
     author?: GitLabUser;
@@ -148,18 +144,26 @@ export interface KanbanIssue {
 export type KanbanColumnId = 'backlog' | 'pending' | 'passed' | 'failed';
 
 // Re-export dashboard and editor types
-export type { 
-    DashboardStats, 
-    DashboardKPI, 
-    ProjectStat, 
-    TimeStat, 
-    PassRateStat 
+export type {
+    DashboardStats,
+    DashboardKPI,
+    ProjectStat,
+    TimeStat,
+    PassRateStat
 } from './dashboard';
 
-export type { 
-    TiptapEditorProps, 
-    EditorMember, 
-    EditorSnippet, 
+export type {
+    TiptapEditorProps,
+    EditorMember,
+    EditorSnippet,
     ImageUploadResult,
-    ProjectLabel 
+    ProjectLabel
 } from './editor';
+
+export type {
+    GitLabIssue,
+    GitLabProject,
+    QARun,
+    Attachment,
+    QAIssue
+} from './qa';

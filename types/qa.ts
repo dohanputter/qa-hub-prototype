@@ -14,6 +14,18 @@ export interface GitLabUser {
 }
 
 /**
+ * GitLab Project structure
+ */
+export interface GitLabProject {
+    id: number;
+    name: string;
+    description: string;
+    web_url: string;
+    avatar_url: string | null;
+    path_with_namespace: string;
+}
+
+/**
  * GitLab Issue structure
  */
 export interface GitLabIssue {
@@ -77,6 +89,18 @@ export interface QARun {
 }
 
 /**
+ * QA Issue structure (Database)
+ */
+export interface QAIssue {
+    id: number | string;
+    gitlabProjectId: number;
+    gitlabIssueIid: number;
+    status: string;
+    createdAt: Date | string | null;
+    updatedAt: Date | string | null;
+}
+
+/**
  * Snippet structure
  */
 export interface Snippet {
@@ -92,7 +116,7 @@ export interface Snippet {
  */
 export interface QADetailProps {
     issue: GitLabIssue;
-    qaIssue?: any; // TODO: Define QAIssue type from database
+    qaIssue?: QAIssue;
     runs: QARun[];
     allAttachments: Attachment[];
     members: GitLabUser[];

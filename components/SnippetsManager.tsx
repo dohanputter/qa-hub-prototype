@@ -11,6 +11,7 @@ import { tiptapToMarkdown } from '@/lib/tiptap-utils';
 import { uploadAttachment } from '@/app/actions/uploadAttachment';
 import { getUserProjects, getProjectUsers } from '@/app/actions/project';
 import { logger } from '@/lib/logger';
+import { useImageUpload } from '@/hooks/use-image-upload';
 
 export const SnippetsManager: React.FC = () => {
     const { toast } = useToast();
@@ -23,7 +24,7 @@ export const SnippetsManager: React.FC = () => {
 
     // Editor context state
     const [defaultProjectId, setDefaultProjectId] = useState<number | null>(null);
-    const [members, setMembers] = useState<any[]>([]);
+    const [members, setMembers] = useState<any[]>([]); // TODO: Use GitLabUser[] when available
 
     // Validation State
     const [titleError, setTitleError] = useState('');
@@ -120,29 +121,13 @@ export const SnippetsManager: React.FC = () => {
         }
     };
 
-    const handleEditorChange = (jsonContent: any) => {
+    const handleEditorChange = (jsonContent: any) => { // Tiptap JSONContent
         const markdown = tiptapToMarkdown(jsonContent);
         setCurrentSnippet(prev => ({ ...prev, content: markdown }));
         setContentError('');
     };
 
-    const handleImagePaste = async (file: File) => {
-        if (!defaultProjectId) {
-            toast({
-                title: "Upload failed",
-                description: "No project context available for uploads",
-                variant: "destructive"
-            });
-            throw new Error("No project context available");
-        }
-
-        const formData = new FormData();
-        formData.append('file', file);
-        formData.append('projectId', defaultProjectId.toString());
-
-        const result = await uploadAttachment(formData);
-        return result;
-    };
+    const { handleImagePaste } = useImageUpload(defaultProjectId || undefined);
 
     const handleSave = async () => {
         let isValid = true;
@@ -241,7 +226,7 @@ export const SnippetsManager: React.FC = () => {
                             {['all', 'test_case', 'issue'].map((f) => (
                                 <button
                                     key={f}
-                                    onClick={() => setFilter(f as any)}
+                                    onClick={() => setFilter(f as 'all' | 'test_case' | 'issue')}
                                     className={`flex-1 py-1 text-xs font-medium rounded-md capitalize transition-all ${filter === f ? 'bg-background text-primary shadow-sm' : 'text-muted-foreground hover:text-foreground'
                                         }`}
                                 >
@@ -423,3 +408,4 @@ export const SnippetsManager: React.FC = () => {
         </div>
     );
 };
+

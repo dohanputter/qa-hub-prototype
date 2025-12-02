@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { useOnClickOutside } from '@/hooks/use-on-click-outside';
+import { useImageUpload } from '@/hooks/use-image-upload';
 import {
     X, ChevronDown, Calendar, Flag, User as UserIcon,
     Tag, Folder, ArrowLeft, ChevronRight, Search, Layers
@@ -23,7 +24,13 @@ import { Badge } from '@/components/ui/badge';
 
 interface CreateIssueWizardProps {
     onClose?: () => void;
-    onCreate?: (data: any) => void;
+    onCreate?: (data: {
+        projectId: number;
+        title: string;
+        description: string;
+        assigneeId?: number;
+        labels: string;
+    }) => Promise<void>;
 }
 
 export const CreateIssueWizard: React.FC<CreateIssueWizardProps> = ({ onClose, onCreate }) => {
@@ -39,7 +46,7 @@ export const CreateIssueWizard: React.FC<CreateIssueWizardProps> = ({ onClose, o
 
     // Form State
     const [title, setTitle] = useState('');
-    const [description, setDescription] = useState<any>(null);
+    const [description, setDescription] = useState<any>(null); // Tiptap JSON content
     const [titleError, setTitleError] = useState('');
     const [issueType, setIssueType] = useState('issue');
 
@@ -105,18 +112,7 @@ export const CreateIssueWizard: React.FC<CreateIssueWizardProps> = ({ onClose, o
         }
     };
 
-    const handleImagePaste = async (file: File) => {
-        if (!selectedProject) {
-            throw new Error('Please select a project first');
-        }
-
-        const formData = new FormData();
-        formData.append('file', file);
-        formData.append('projectId', selectedProject.id.toString());
-
-        const result = await uploadAttachment(formData);
-        return result;
-    };
+    const { handleImagePaste } = useImageUpload(selectedProject?.id);
 
     const handleSubmit = async () => {
         if (!title.trim()) {
@@ -139,7 +135,7 @@ export const CreateIssueWizard: React.FC<CreateIssueWizardProps> = ({ onClose, o
             handleClose();
         } else {
             try {
-                const result: any = await createIssue(selectedProject.id, issueData);
+                const result = await createIssue(selectedProject.id, issueData);
                 toast({
                     title: "Issue created",
                     description: "The issue has been created successfully.",

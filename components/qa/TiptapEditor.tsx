@@ -36,7 +36,7 @@ import {
     PopoverContent,
     PopoverTrigger,
 } from "@/components/ui/popover";
-import type { TiptapEditorProps, EditorMember, EditorSnippet } from '@/types/editor';
+import type { TiptapEditorProps, EditorMember, EditorSnippet, ImageUploadResult } from '@/types/editor';
 
 export function TiptapEditor({
     content,
@@ -103,7 +103,7 @@ export function TiptapEditor({
             Emoji.configure({
                 enableEmoticons: true,
                 suggestion: {
-                    items: ({ query }: any) => {
+                    items: ({ query }: { query: string }) => {
                         return emojis
                             .filter((e) => e.name.toLowerCase().startsWith(query.toLowerCase()) || e.shortcodes.some((s) => s.toLowerCase().startsWith(query.toLowerCase())))
                             .slice(0, 5);
@@ -262,7 +262,7 @@ export function TiptapEditor({
                         // Call the onImagePaste handler if provided
                         if (onImagePaste) {
                             onImagePaste(file)
-                                .then((result: any) => {
+                                .then((result: ImageUploadResult) => {
                                     if (result?.url) {
                                         // Store the ORIGINAL URL (not proxied) so GitLab can view it
                                         // The ResizableImage extension will handle proxying for display
@@ -302,7 +302,7 @@ export function TiptapEditor({
                                         });
                                     }
                                 })
-                                .catch((error: any) => {
+                                .catch((error: Error) => {
                                     toast({
                                         title: "Upload failed",
                                         description: error.message || "Failed to upload image",
