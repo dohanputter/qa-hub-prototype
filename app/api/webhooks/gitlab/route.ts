@@ -8,6 +8,7 @@ import { env } from '@/lib/env';
 import { ensureWebhookUser } from '@/lib/mock-user';
 import { SYSTEM_USERS } from '@/lib/constants';
 import { logger } from '@/lib/logger';
+import { createNotification } from '@/app/actions/notifications';
 
 export async function POST(req: Request) {
     const headersList = await headers();
@@ -186,7 +187,7 @@ async function handleNoteEvent(event: any) {
     const targetUserId = latestRun?.createdBy || qaIssue.id; // Fallback?
 
     if (latestRun) {
-        await db.insert(notifications).values({
+        await createNotification({
             userId: latestRun.createdBy,
             type: 'comment',
             title: `New comment on QA: ${qaIssue.issueTitle}`,

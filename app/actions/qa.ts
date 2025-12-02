@@ -15,6 +15,7 @@ import { tiptapToMarkdown, extractMentions } from '@/lib/utils';
 import { revalidatePath, revalidateTag } from 'next/cache';
 import { env } from '@/lib/env';
 import { logger } from '@/lib/logger';
+import { createNotification } from './notifications';
 import type { JSONContent } from '@tiptap/core';
 
 export async function getOrCreateQARun(data: {
@@ -285,7 +286,7 @@ export async function submitQARun(projectId: number, runId: string, result: 'pas
                     const userExists = await db.select().from(users).where(eq(users.id, targetUserId)).limit(1);
 
                     if (userExists.length > 0) {
-                        await db.insert(notifications).values({
+                        await createNotification({
                             userId: targetUserId,
                             type: 'mention',
                             title: `Mentioned in QA (Run #${run.runNumber})`,
@@ -303,7 +304,7 @@ export async function submitQARun(projectId: number, runId: string, result: 'pas
     // Create notification for status change
     // Notify the user who created the run (if different from current user) or just log it for the project
     // For now, let's notify the current user to verify it works in the UI
-    await db.insert(notifications).values({
+    await createNotification({
         userId: session.user.id,
         type: 'status_change',
         title: `QA Run #${run.runNumber} ${result === 'passed' ? 'Passed' : 'Failed'}`,

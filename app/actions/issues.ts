@@ -2,6 +2,7 @@
 
 import { auth } from '@/auth';
 import { getUserProjects } from './project';
+import { createNotification } from './notifications';
 import { getIssues } from '@/lib/gitlab';
 import { revalidatePath } from 'next/cache';
 import { isMockMode, getMockToken } from '@/lib/mode';
@@ -255,7 +256,7 @@ export async function createIssue(projectId: number, data: unknown) {
             const userIdToNotify = session?.user?.id || SYSTEM_USERS.MOCK;
 
             if (assigneeId) {
-                await db.insert(notifications).values({
+                await createNotification({
                     userId: userIdToNotify,
                     type: 'assignment',
                     title: 'New Issue Assigned',
@@ -265,7 +266,7 @@ export async function createIssue(projectId: number, data: unknown) {
                     actionUrl: `/${projectId}/issues/${newIid}`,
                 });
             } else {
-                await db.insert(notifications).values({
+                await createNotification({
                     userId: userIdToNotify,
                     type: 'status_change',
                     title: 'Issue Created',
@@ -328,7 +329,7 @@ export async function createIssue(projectId: number, data: unknown) {
                 const session = await auth();
                 const userIdToNotify = session?.user?.id || SYSTEM_USERS.MOCK;
 
-                await db.insert(notifications).values({
+                await createNotification({
                     userId: userIdToNotify,
                     type: 'status_change',
                     title: 'Issue Created',

@@ -38,3 +38,30 @@ export async function markAllNotificationsAsRead() {
     revalidatePath('/notifications');
     return { success: true };
 }
+
+export async function createNotification(data: {
+    userId: string;
+    type: 'mention' | 'assignment' | 'status_change' | 'comment';
+    title: string;
+    message: string;
+    resourceType?: 'issue' | 'qa_record' | 'qa_run';
+    resourceId?: string;
+    actionUrl?: string;
+}) {
+    const { notificationEmitter, EVENTS } = await import('@/lib/events');
+
+    const [newNotification] = await db.insert(notifications).values({
+        userId: data.userId,
+        type: data.type,
+        title: data.title,
+        message: data.message,
+        resourceType: data.resourceType,
+        resourceId: data.resourceId,
+        actionUrl: data.actionUrl,
+    }).returning();
+
+    // Emit event for real-time updates
+    notificationEmitter.emit(EVENTS.NEW_NOTIFICATION, newNotification);
+
+    return newNotification;
+}
