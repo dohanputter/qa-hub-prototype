@@ -288,6 +288,24 @@ export function QADetail({ issue, qaIssue, runs = [], allAttachments = [], membe
                     </div>
 
                     <div className="flex items-center gap-3">
+                        <Button variant="outline" onClick={async () => {
+                            const { startExploratorySession } = await import('@/app/actions/exploratory-sessions');
+                            try {
+                                const result = await startExploratorySession({
+                                    projectId,
+                                    charter: `Testing Issue #${issue.iid}: ${issue.title}`,
+                                    environment: { url: issue.web_url }
+                                });
+                                if (result.success && result.sessionId) {
+                                    router.push(`/sessions/${result.sessionId}/workspace`);
+                                }
+                            } catch (e) {
+                                toast({ title: "Failed to start session", variant: "destructive" });
+                            }
+                        }}>
+                            <PlayCircle className="h-4 w-4 mr-2" /> Start Session
+                        </Button>
+
                         {activeRun ? (
                             <>
                                 <Button variant="ghost" onClick={() => handleSave(false)} disabled={saving} className="text-muted-foreground hover:text-foreground">

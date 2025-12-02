@@ -127,7 +127,7 @@ export async function createIssue(projectId: number, data: unknown) {
         const { simulateRealisticError, getProject } = await import('@/lib/gitlab');
         simulateRealisticError('write');
         const { db } = await import('@/lib/db');
-        const { qaIssues, projects } = await import('@/db/schema');
+        const { qaIssues, projects, qaBlockers } = await import('@/db/schema');
         const { mapLabelToStatus, executeBatched } = await import('@/lib/utils');
         const { eq } = await import('drizzle-orm');
         const token = getMockToken();
@@ -191,7 +191,7 @@ export async function createIssue(projectId: number, data: unknown) {
 
         // Write directly to database
         try {
-            await db.insert(qaIssues).values({
+            const [insertedIssue] = await db.insert(qaIssues).values({
                 gitlabIssueId: newId,
                 gitlabIssueIid: newIid,
                 gitlabProjectId: projectId,
@@ -204,7 +204,27 @@ export async function createIssue(projectId: number, data: unknown) {
                 authorId: SYSTEM_USERS.MOCK ? 1 : null, // Default to mock user ID 1 if in mock mode
                 createdAt: new Date(),
                 updatedAt: new Date(),
-            });
+            }).returning();
+
+            // Check for blocker label and create blocker if needed
+            if (issueLabels.some((l: string) => l.toLowerCase().includes('blocker'))) {
+                await db.insert(qaBlockers).values({
+                    projectId: projectId,
+                    title: validatedData.title,
+                    description: {
+                        type: 'doc',
+                        content: [{
+                            type: 'paragraph',
+                            content: [{ type: 'text', text: validatedData.description || '' }]
+                        }]
+                    },
+                    severity: 'medium',
+                    blockingWhat: 'testing',
+                    status: 'active',
+                    relatedIssueId: insertedIssue.id,
+                });
+                logger.mock(`Created blocker for issue #${newIid}`);
+            }
 
             logger.mock(`Created issue #${newIid} and persisted to database`);
 
@@ -265,7 +285,7 @@ export async function createIssue(projectId: number, data: unknown) {
                 const maxIid2 = existingIssues2.reduce((max, issue) => Math.max(max, issue.gitlabIssueIid), 0);
                 const retryIid = maxIid2 + 1;
 
-                await db.insert(qaIssues).values({
+                const [insertedRetryIssue] = await db.insert(qaIssues).values({
                     gitlabIssueId: newId,
                     gitlabIssueIid: retryIid,
                     gitlabProjectId: projectId,
@@ -278,7 +298,26 @@ export async function createIssue(projectId: number, data: unknown) {
                     authorId: SYSTEM_USERS.MOCK ? 1 : null,
                     createdAt: new Date(),
                     updatedAt: new Date(),
-                });
+                }).returning();
+
+                // Check for blocker label and create blocker if needed (retry)
+                if (issueLabels.some((l: string) => l.toLowerCase().includes('blocker'))) {
+                    await db.insert(qaBlockers).values({
+                        projectId: projectId,
+                        title: validatedData.title,
+                        description: {
+                            type: 'doc',
+                            content: [{
+                                type: 'paragraph',
+                                content: [{ type: 'text', text: validatedData.description || '' }]
+                            }]
+                        },
+                        severity: 'medium',
+                        blockingWhat: 'testing',
+                        status: 'active',
+                        relatedIssueId: insertedRetryIssue.id,
+                    });
+                }
 
                 logger.mock(`Created issue #${retryIid} on retry`);
 
@@ -329,11 +368,36 @@ export async function createIssue(projectId: number, data: unknown) {
     const gitlab = getGitlabClient(session.accessToken);
 
     try {
-        return await gitlab.Issues.create(projectId, validatedData.title, {
+        const issue = await gitlab.Issues.create(projectId, validatedData.title, {
             description: validatedData.description,
             assigneeIds: validatedData.assigneeId ? [Number(validatedData.assigneeId)] : [],
             labels: validatedData.labels,
         });
+
+        // Check for blocker label and create blocker if needed
+        const labelsList = validatedData.labels ? validatedData.labels.split(',') : [];
+        if (labelsList.some((l: string) => l.trim().toLowerCase().includes('blocker'))) {
+            const { db } = await import('@/lib/db');
+            const { qaBlockers } = await import('@/db/schema');
+
+            await db.insert(qaBlockers).values({
+                projectId: projectId,
+                title: validatedData.title,
+                description: {
+                    type: 'doc',
+                    content: [{
+                        type: 'paragraph',
+                        content: [{ type: 'text', text: validatedData.description || '' }]
+                    }]
+                },
+                severity: 'medium',
+                blockingWhat: 'testing',
+                status: 'active',
+                // We don't have the local qaIssue ID yet, so we can't link it immediately
+            });
+        }
+
+        return issue;
     } catch (error) {
         logger.error('Failed to create issue', error);
         throw new Error('Failed to create issue. Please try again.');

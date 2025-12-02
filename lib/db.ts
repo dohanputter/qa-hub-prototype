@@ -1,12 +1,12 @@
 import 'server-only';
-import { drizzle } from 'drizzle-orm/libsql';
+import { drizzle, LibSQLDatabase } from 'drizzle-orm/libsql';
 import { createClient } from '@libsql/client';
 import * as schema from '@/db/schema';
 import { env } from '@/lib/env';
 
 // Lazy initialization to avoid Edge runtime issues
 let _client: ReturnType<typeof createClient> | null = null;
-let _db: ReturnType<typeof drizzle> | null = null;
+let _db: LibSQLDatabase<typeof schema> | null = null;
 
 function getClient() {
     if (!_client) {
@@ -15,7 +15,7 @@ function getClient() {
     return _client;
 }
 
-export const db = new Proxy({} as ReturnType<typeof drizzle>, {
+export const db = new Proxy({} as LibSQLDatabase<typeof schema>, {
     get(target, prop) {
         if (!_db) {
             _db = drizzle(getClient(), { schema });

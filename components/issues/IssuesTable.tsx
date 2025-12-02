@@ -10,6 +10,8 @@ import { Trash2 } from "lucide-react";
 import { deleteIssue } from "@/app/actions/issues";
 import { useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
+import { BlockerFormModal } from "@/components/sessions/BlockerFormModal";
+import { ShieldAlert } from "lucide-react";
 
 const isMockMode = process.env.NEXT_PUBLIC_MOCK_MODE === 'true';
 
@@ -61,6 +63,8 @@ export function IssuesTable({ issues, projectId, labels = [] }: { issues: any[];
     }, [labels]);
     const router = useRouter();
     const [deletingIssueId, setDeletingIssueId] = useState<number | null>(null);
+    const [blockerModalOpen, setBlockerModalOpen] = useState(false);
+    const [selectedProjectForBlocker, setSelectedProjectForBlocker] = useState<number | null>(null);
 
     const handleDelete = async (issueIid: number) => {
         if (!confirm('Are you sure you want to delete this issue? This action cannot be undone.')) {
@@ -168,6 +172,21 @@ export function IssuesTable({ issues, projectId, labels = [] }: { issues: any[];
                                     </Button>
                                 </TableCell>
                             )}
+                            <TableCell className="w-[50px]">
+                                <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-8 w-8 text-orange-600 hover:text-orange-700 hover:bg-orange-100 opacity-0 group-hover:opacity-100"
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        setSelectedProjectForBlocker(issue.project.id);
+                                        setBlockerModalOpen(true);
+                                    }}
+                                    title="Log Blocker"
+                                >
+                                    <ShieldAlert className="h-4 w-4" />
+                                </Button>
+                            </TableCell>
                         </TableRow>
                     ))}
                     {issues.length === 0 && (
@@ -179,6 +198,20 @@ export function IssuesTable({ issues, projectId, labels = [] }: { issues: any[];
                     )}
                 </TableBody>
             </Table>
+
+            {selectedProjectForBlocker && (
+                <BlockerFormModal
+                    open={blockerModalOpen}
+                    onOpenChange={setBlockerModalOpen}
+                    // sessionId={0} - Removed to allow standalone blockers
+                    projectId={selectedProjectForBlocker}
+                    onSuccess={() => {
+                        router.refresh();
+                        setBlockerModalOpen(false);
+                        setSelectedProjectForBlocker(null);
+                    }}
+                />
+            )}
         </div>
     );
 }

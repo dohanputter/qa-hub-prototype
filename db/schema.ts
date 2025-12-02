@@ -225,3 +225,178 @@ export const snippets = sqliteTable('snippets', {
     type: text('type').$type<'test_case' | 'issue'>().notNull(),
     updatedAt: integer('updated_at', { mode: 'timestamp_ms' }).$defaultFn(() => new Date()),
 });
+
+// ===== EXPLORATORY SESSIONS TABLES =====
+export const exploratorySessions = sqliteTable("exploratory_sessions", {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    userId: text('user_id').notNull().references(() => users.id),
+
+    // Optional linkage
+    issueId: text('issue_id').references(() => qaIssues.id), // Changed to text to match qaIssues.id type
+    projectId: integer('project_id').notNull().references(() => projects.id),
+
+    // Core session data
+    charter: text('charter').notNull(),
+    testArea: text('test_area'),
+    environment: text('environment', { mode: 'json' }).$type<{ browser?: string; os?: string; device?: string; url?: string }>(),
+
+    // Status & timing
+    status: text('status').$type<'preparing' | 'active' | 'paused' | 'completed' | 'abandoned'>().default('preparing').notNull(),
+    startedAt: integer('started_at', { mode: 'timestamp_ms' }),
+    pausedAt: integer('paused_at', { mode: 'timestamp_ms' }),
+    completedAt: integer('completed_at', { mode: 'timestamp_ms' }),
+    totalDuration: integer('total_duration'), // in seconds
+
+    // Testing context
+    preTestNotes: text('pre_test_notes'),
+    postTestNotes: text('post_test_notes'),
+
+    // Outcomes with blocker counts
+    issuesFoundCount: integer('issues_found_count').default(0),
+    blockersLoggedCount: integer('blockers_logged_count').default(0),
+    blockersResolvedCount: integer('blockers_resolved_count').default(0),
+    questionsCount: integer('questions_count').default(0),
+    outOfScopeCount: integer('out_of_scope_count').default(0),
+
+    createdAt: integer('created_at', { mode: 'timestamp_ms' }).$defaultFn(() => new Date()).notNull(),
+    updatedAt: integer('updated_at', { mode: 'timestamp_ms' }).$defaultFn(() => new Date()).notNull(),
+});
+
+export const sessionNotes = sqliteTable("session_notes", {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    sessionId: integer('session_id').notNull().references(() => exploratorySessions.id),
+
+    // Capture moment
+    type: text('type').$type<'observation' | 'bug' | 'blocker' | 'hypothesis' | 'question' | 'out_of_scope' | 'pattern' | 'praise'>().notNull(),
+    content: text('content', { mode: 'json' }).notNull(), // Tiptap JSON
+
+    // Timeline context
+    sessionTime: integer('session_time'), // seconds from start
+    timestamp: integer('timestamp', { mode: 'timestamp_ms' }).$defaultFn(() => new Date()).notNull(),
+
+    // Testing context
+    url: text('url'),
+    testDataUsed: text('test_data_used'),
+    relatedCode: text('related_code'),
+
+    // Visual evidence
+    screenshotUrl: text('screenshot_url'),
+    consoleLogs: text('console_logs', { mode: 'json' }).$type<Array<{ level: string; message: string; timestamp: number }>>(),
+
+    // Blocker-specific fields
+    blockerSeverity: text('blocker_severity').$type<'low' | 'medium' | 'high' | 'critical'>(),
+    blockerReason: text('blocker_reason'),
+    blockerResolved: integer('blocker_resolved', { mode: 'boolean' }).default(false),
+    blockerResolution: text('blocker_resolution'),
+
+    // Issue linkage
+    convertedToGitLabIssue: integer('converted_to_gitlab_issue', { mode: 'boolean' }).default(false),
+    gitLabIssueId: integer('gitlab_issue_id'),
+
+    // Metadata
+    tags: text('tags', { mode: 'json' }).$type<string[]>(),
+    priority: text('priority').$type<'now' | 'later' | 'never'>().default('later'),
+    requiresFollowUp: integer('requires_follow_up', { mode: 'boolean' }).default(false),
+
+    createdAt: integer('created_at', { mode: 'timestamp_ms' }).$defaultFn(() => new Date()).notNull(),
+});
+
+export const qaBlockers = sqliteTable("qa_blockers", {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    sessionId: integer('session_id').references(() => exploratorySessions.id),
+    projectId: integer('project_id').notNull().references(() => projects.id),
+
+    // Core blocker info
+    title: text('title').notNull(),
+    description: text('description', { mode: 'json' }).notNull(), // Tiptap JSON
+    severity: text('severity').$type<'low' | 'medium' | 'high' | 'critical'>().notNull(),
+    status: text('status').$type<'active' | 'resolved' | 'escalated'>().default('active'),
+
+    // Blocking context
+    blockingWhat: text('blocking_what').$type<'testing' | 'development' | 'deployment'>().notNull(),
+    estimatedResolutionHours: integer('estimated_resolution_hours'),
+
+    // Resolution tracking
+    resolvedAt: integer('resolved_at', { mode: 'timestamp_ms' }),
+    resolutionTimeHours: integer('resolution_time_hours'),
+    resolutionNotes: text('resolution_notes'),
+
+    // Linkage
+    createdFromNoteId: integer('created_from_note_id').references(() => sessionNotes.id),
+    relatedIssueId: text('related_issue_id').references(() => qaIssues.id), // Changed to text to match qaIssues.id type
+
+    createdAt: integer('created_at', { mode: 'timestamp_ms' }).$defaultFn(() => new Date()).notNull(),
+});
+
+// ===== ANALYTICS TABLES =====
+export const metricSnapshots = sqliteTable("metric_snapshots", {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    projectId: integer('project_id').references(() => projects.id),
+    snapshotDate: integer('snapshot_date', { mode: 'timestamp_ms' }).notNull(),
+
+    // Time-based metrics
+    avgTimeToTest: integer('avg_time_to_test'),
+    avgTimeToClose: integer('avg_time_to_close'),
+    testingVelocity: integer('testing_velocity'), // issues per day
+
+    // Quality metrics
+    passRate: integer('pass_rate'),
+    reopenRate: integer('reopen_rate'),
+
+    // Blocker metrics (NEW)
+    activeBlockerCount: integer('active_blocker_count'),
+    blockerResolutionTime: integer('blocker_resolution_time'), // avg hours
+    criticalBlockerCount: integer('critical_blocker_count'),
+    blockersCreated: integer('blockers_created'),
+    blockersResolved: integer('blockers_resolved'),
+
+    // Workload metrics
+    totalIssues: integer('total_issues'),
+    readyForQaCount: integer('ready_for_qa_count'),
+    inTestingCount: integer('in_testing_count'),
+    completedCount: integer('completed_count'),
+});
+
+export const automatedInsights = sqliteTable("automated_insights", {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    projectId: integer('project_id').references(() => projects.id),
+    generatedAt: integer('generated_at', { mode: 'timestamp_ms' }).$defaultFn(() => new Date()).notNull(),
+
+    insightType: text('insight_type').$type<'warning' | 'critical' | 'info'>(),
+    title: text('title').notNull(),
+    description: text('description').notNull(),
+    action: text('action'),
+
+    // For blocker-specific insights
+    relatedBlockerId: integer('related_blocker_id').references(() => qaBlockers.id),
+
+    dismissed: integer('dismissed', { mode: 'boolean' }).default(false),
+});
+
+// ===== NEW RELATIONS =====
+export const exploratorySessionsRelations = relations(exploratorySessions, ({ one, many }) => ({
+    user: one(users, { fields: [exploratorySessions.userId], references: [users.id] }),
+    issue: one(qaIssues, { fields: [exploratorySessions.issueId], references: [qaIssues.id] }),
+    project: one(projects, { fields: [exploratorySessions.projectId], references: [projects.id] }),
+    notes: many(sessionNotes),
+    blockers: many(qaBlockers),
+}));
+
+export const sessionNotesRelations = relations(sessionNotes, ({ one }) => ({
+    session: one(exploratorySessions, { fields: [sessionNotes.sessionId], references: [exploratorySessions.id] }),
+}));
+
+export const qaBlockersRelations = relations(qaBlockers, ({ one }) => ({
+    session: one(exploratorySessions, { fields: [qaBlockers.sessionId], references: [exploratorySessions.id] }),
+    project: one(projects, { fields: [qaBlockers.projectId], references: [projects.id] }),
+    relatedIssue: one(qaIssues, { fields: [qaBlockers.relatedIssueId], references: [qaIssues.id] }),
+}));
+
+export const metricSnapshotsRelations = relations(metricSnapshots, ({ one }) => ({
+    project: one(projects, { fields: [metricSnapshots.projectId], references: [projects.id] }),
+}));
+
+export const automatedInsightsRelations = relations(automatedInsights, ({ one }) => ({
+    project: one(projects, { fields: [automatedInsights.projectId], references: [projects.id] }),
+    relatedBlocker: one(qaBlockers, { fields: [automatedInsights.relatedBlockerId], references: [qaBlockers.id] }),
+}));

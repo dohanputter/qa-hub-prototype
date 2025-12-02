@@ -3,7 +3,7 @@
 import React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { LayoutDashboard, ListTodo, KanbanSquare, Bell, Wrench, LogOut } from 'lucide-react';
+import { LayoutDashboard, ListTodo, KanbanSquare, Bell, Wrench, LogOut, BarChart3, ShieldAlert, PlayCircle } from 'lucide-react';
 import { signOut } from 'next-auth/react';
 import { cn } from '@/lib/utils';
 import { ThemeToggle } from "@/components/theme-toggle";
@@ -39,6 +39,11 @@ export function Sidebar() {
             return '/projects';
         }
 
+        // Global routes
+        if (path === '/analytics/enhanced') {
+            return '/analytics/enhanced';
+        }
+
         // All other routes are group-scoped if we have a groupId
         if (projectId) {
             // Dashboard is the group root
@@ -60,9 +65,11 @@ export function Sidebar() {
 
     const navItems = [
         { href: '/', icon: LayoutDashboard, label: 'Dashboard', exact: true },
-
+        { href: '/analytics/enhanced', icon: BarChart3, label: 'Analytics' },
         { href: '/issues', icon: ListTodo, label: 'Issues' },
         { href: '/board', icon: KanbanSquare, label: 'Issues Board' },
+        { href: '/blockers', icon: ShieldAlert, label: 'Blockers' },
+        { href: '/sessions', icon: PlayCircle, label: 'Sessions' },
         { href: '/notifications', icon: Bell, label: 'Notifications' },
     ];
 

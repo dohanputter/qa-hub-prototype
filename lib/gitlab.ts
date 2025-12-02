@@ -400,7 +400,7 @@ export const updateIssueLabels = async (
 
         try {
             const { db } = await import('@/lib/db');
-            const { qaIssues, qaRuns, projects } = await import('@/db/schema');
+            const { qaIssues, qaRuns, projects, qaBlockers } = await import('@/db/schema');
             const { eq, and, desc } = await import('drizzle-orm');
             const { mapLabelToStatus } = await import('@/lib/utils');
 
@@ -518,6 +518,32 @@ export const updateIssueLabels = async (
                 }).where(eq(qaIssues.id, existingIssue.id));
 
                 logger.mock(`updateIssueLabels: Updated issue #${issueIid} - Labels: ${currentLabels.join(', ')}, Status: ${newStatus}`);
+            }
+
+            // Check for blocker label and create/ensure blocker exists
+            if (currentLabels.some((l: string) => l.toLowerCase().includes('blocker'))) {
+                const existingBlocker = await db.query.qaBlockers.findFirst({
+                    where: eq(qaBlockers.relatedIssueId, existingIssue.id)
+                });
+
+                if (!existingBlocker) {
+                    await db.insert(qaBlockers).values({
+                        projectId: projectId,
+                        title: existingIssue.issueTitle,
+                        description: {
+                            type: 'doc',
+                            content: [{
+                                type: 'paragraph',
+                                content: [{ type: 'text', text: existingIssue.issueDescription || '' }]
+                            }]
+                        },
+                        severity: 'medium',
+                        blockingWhat: 'testing',
+                        status: 'active',
+                        relatedIssueId: existingIssue.id,
+                    });
+                    logger.mock(`updateIssueLabels: Created blocker for issue #${issueIid}`);
+                }
             }
 
             // Recalculate status after all updates (preserve old status if no QA label)
