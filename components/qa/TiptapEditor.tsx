@@ -339,7 +339,7 @@ export function TiptapEditor({
 
     return (
         <div className={cn(
-            "flex flex-col border rounded-xl bg-card focus-within:ring-2 focus-within:ring-primary/20 focus-within:border-primary/50 transition-all duration-200 overflow-hidden",
+            "flex flex-col border border-zinc-400 dark:border-border rounded-xl bg-card focus-within:ring-2 focus-within:ring-primary/20 focus-within:border-primary/50 transition-all duration-200 overflow-hidden",
             readOnly && "border-0 bg-transparent shadow-none focus-within:ring-0 rounded-none",
             className
         )}>

@@ -17,7 +17,7 @@ export default async function ProjectLayout({
     const groupId = projectId; // Alias for clarity
 
     // Fetch user's accessible groups
-    const groups = await getUserGroups(session.accessToken);
+    const groups = await getUserGroups(session.accessToken) || [];
 
     // Validate groupId and user access
     const group = groups.find((g: any) => g.id === Number(groupId));
