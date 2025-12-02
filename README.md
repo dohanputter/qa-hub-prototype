@@ -15,6 +15,13 @@ The application is now fully functional in **Mock Mode** for offline development
 - **Real-time Updates**: Server-Sent Events (SSE)
 - **UI**: Shadcn UI + Tailwind CSS
 
+### Recent Updates (2025-12-02)
+
+#### ✅ Refactoring & Type Safety
+- **Image Upload Hook**: Extracted `useImageUpload` hook to deduplicate logic across `CreateIssueWizard`, `SnippetsManager`, and `QADetail`.
+- **Type Definitions**: Added comprehensive types for `QAIssue`, `GitLabProject`, and consolidated `GitLabUser`.
+- **Strict Typing**: Replaced `any` usages with specific types in key components and server actions.
+
 ### Recent Updates (2025-12-01)
 
 #### ✅ Real-time Notifications with SSE
