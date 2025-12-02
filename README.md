@@ -17,10 +17,27 @@ The application is now fully functional in **Mock Mode** for offline development
 
 ### Recent Updates (2025-12-02)
 
+#### ✅ Exploratory Testing Sessions
+- **Session Workspace**: Interactive workspace for conducting exploratory testing sessions with real-time note capture
+- **Session Management**: Start, pause, complete, or abandon sessions with automatic duration tracking
+- **Quick Capture Bar**: Capture observations, bugs, blockers, questions, and patterns during testing
+- **Notes Timeline**: Visual timeline of all session notes with type filtering and editing capabilities
+- **Mind Map Canvas**: Visual representation of testing progress and findings (integrated)
+- **Session Summary**: Comprehensive report generation after completing sessions
+
+#### ✅ Blockers Management
+- **Blocker Tracking**: Log and track blockers that impede testing, development, or deployment
+- **Severity Levels**: Categorize blockers by severity (low, medium, high, critical)
+- **Resolution Tracking**: Track blocker resolution time and document resolution notes
+- **Project-wide View**: Dedicated blockers page showing all blockers across projects
+- **Session Integration**: Link blockers to specific exploratory sessions for context
+- **Status Management**: Track blockers through active, resolved, and escalated states
+
 #### ✅ Refactoring & Type Safety
 - **Image Upload Hook**: Extracted `useImageUpload` hook to deduplicate logic across `CreateIssueWizard`, `SnippetsManager`, and `QADetail`.
 - **Type Definitions**: Added comprehensive types for `QAIssue`, `GitLabProject`, and consolidated `GitLabUser`.
 - **Strict Typing**: Replaced `any` usages with specific types in key components and server actions.
+- **Code Cleanup**: Removed analytics-related code and unused components
 
 ### Recent Updates (2025-12-01)
 
@@ -58,11 +75,15 @@ The application is now fully functional in **Mock Mode** for offline development
 
 #### 2. Database Schema (`/db/schema.ts`)
 - ✅ Auth tables (users, accounts, sessions, verification tokens)
-- ✅ Projects table with GitLab sync
-- ✅ QA Records with Tiptap JSON content
+- ✅ Groups and Projects with GitLab sync
+- ✅ QA Issues and QA Runs with Tiptap JSON content
 - ✅ Attachments with GitLab URLs
-- ✅ Notifications system
-- ✅ User-Project many-to-many relationship
+- ✅ Notifications system with SSE support
+- ✅ Snippets for reusable content
+- ✅ **Exploratory Sessions** (charter, status, timing, outcomes)
+- ✅ **Session Notes** (observations, bugs, blockers, questions with Tiptap JSON)
+- ✅ **QA Blockers** (severity, status, resolution tracking)
+- ✅ User-Project and User-Group many-to-many relationships
 - ✅ Full relations and indexes
 
 #### 3. Environment & Utils (`/lib/`)
@@ -107,6 +128,7 @@ The application is now fully functional in **Mock Mode** for offline development
 - ✅ `uploadAttachment.ts` - File upload with validation and rate limiting
 - ✅ `removeAttachment.ts` - File attachment removal
 - ✅ `notifications.ts` - Get, mark read, mark all read
+- ✅ **`exploratory-sessions.ts`** - Session lifecycle, note capture, blocker management
 
 #### 7. API Routes (`/app/api/`)
 - ✅ `/api/auth/[...nextauth]` - NextAuth handlers
@@ -118,10 +140,13 @@ The application is now fully functional in **Mock Mode** for offline development
 #### 8. Pages & UI
 - ✅ `/auth/signin` - Sign-in page with mock mode indicator
 - ✅ `/` - Dashboard with statistics
-- ✅ `/issues` - Issues list
+- ✅ `/issues` - Issues list with blocker logging
 - ✅ `/board` - Kanban board redirect
 - ✅ `/[projectId]` - Project board with validation
-- ✅ Sidebar navigation
+- ✅ **`/sessions/[sessionId]/workspace`** - Interactive session workspace
+- ✅ **`/sessions/[sessionId]/summary`** - Session completion summary
+- ✅ **`/blockers`** - Project-wide blockers tracking and management
+- ✅ Sidebar navigation with sessions and blockers
 - ✅ Layout components
 
 ### Key Features
@@ -159,6 +184,21 @@ The application is now fully functional in **Mock Mode** for offline development
    - **Test Data Generator**: Generate mock identity, finance, and location data for testing
    - **Snippets Manager**: Create and manage reusable text snippets for test cases and issue descriptions
    - **Real-time Notifications**: SSE-based instant updates without page refreshes
+
+6. **Exploratory Testing**
+   - **Session Workspace**: Dedicated environment for exploratory testing with charter definition
+   - **Real-time Note Capture**: Quick capture bar for observations, bugs, blockers, questions, and patterns
+   - **Context Preservation**: Automatic URL, test data, and console log tracking
+   - **Session Analytics**: Track duration, issues found, blockers logged, and questions raised
+   - **Session Summary**: Auto-generated reports with timeline and outcomes
+
+7. **Blocker Management**
+   - **Centralized Tracking**: View all blockers across projects in one place
+   - **Severity Classification**: Low, medium, high, and critical severity levels
+   - **Impact Assessment**: Track what's being blocked (testing, development, deployment)
+   - **Resolution Metrics**: Automatic calculation of resolution time in hours
+   - **Status Workflow**: Active → Resolved/Escalated with resolution notes
+   - **Session Linkage**: Connect blockers to exploratory sessions for full context
 
 ## Installation
 
