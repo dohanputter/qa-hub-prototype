@@ -437,9 +437,9 @@ export const CreateIssueWizard: React.FC<CreateIssueWizardProps> = ({ onClose, o
                                                 variant="secondary"
                                                 className="flex items-center gap-1 px-2.5 py-0.5 h-7 rounded-md border font-medium transition-colors hover:bg-opacity-20"
                                                 style={{
-                                                    backgroundColor: `${l.color}15`,
+                                                    backgroundColor: `color-mix(in srgb, ${l.color} 15%, transparent)`,
                                                     color: l.color,
-                                                    borderColor: `${l.color}30`
+                                                    borderColor: `color-mix(in srgb, ${l.color} 30%, transparent)`
                                                 }}
                                             >
                                                 {l.title}

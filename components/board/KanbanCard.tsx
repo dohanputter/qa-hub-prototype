@@ -161,7 +161,7 @@ export function IssueCard({ issue, projectId, isOverlay = false }: { issue: Kanb
                                     key={l}
                                     variant="outline"
                                     className="text-xs px-2.5 py-1 h-6 font-medium rounded-full border-0"
-                                    style={{ backgroundColor: `${colors.bg}15`, color: colors.bg }}
+                                    style={{ backgroundColor: `color-mix(in srgb, ${colors.bg} 15%, transparent)`, color: colors.bg }}
                                 >
                                     {l}
                                 </Badge>

@@ -40,6 +40,9 @@ export function useNotificationStream() {
                         if (!oldData) return [newNotification];
                         return [newNotification, ...oldData].slice(0, 5);
                     });
+
+                    // Force invalidate to ensure consistency
+                    queryClient.invalidateQueries({ queryKey: ['recent-notifications'] });
                 }
             } catch (error) {
                 console.error('Error parsing SSE message:', error);

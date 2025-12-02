@@ -126,7 +126,7 @@ export function IssuesTable({ issues, projectId, labels = [] }: { issues: any[];
                                                     key={label}
                                                     variant="outline"
                                                     className="text-sm font-medium px-2.5 py-1 h-6 rounded-full border-0"
-                                                    style={{ backgroundColor: `${colors.bg}15`, color: colors.bg }}
+                                                    style={{ backgroundColor: `color-mix(in srgb, ${colors.bg} 15%, transparent)`, color: colors.bg }}
                                                 >
                                                     {label}
                                                 </Badge>

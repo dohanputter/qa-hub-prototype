@@ -140,6 +140,15 @@ export function KanbanBoard({
             return [cardCollisions[0]];
         }
 
+        // Check for column collisions
+        const columnCollisions = allCollisions.filter(
+            (collision) => !String(collision.id).includes('-')
+        );
+
+        if (columnCollisions.length > 0) {
+            return [columnCollisions[0]];
+        }
+
         // Fall back to closest center for column detection
         return closestCenter(args);
     };
