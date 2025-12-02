@@ -328,50 +328,7 @@ export const qaBlockers = sqliteTable("qa_blockers", {
     createdAt: integer('created_at', { mode: 'timestamp_ms' }).$defaultFn(() => new Date()).notNull(),
 });
 
-// ===== ANALYTICS TABLES =====
-export const metricSnapshots = sqliteTable("metric_snapshots", {
-    id: integer('id').primaryKey({ autoIncrement: true }),
-    projectId: integer('project_id').references(() => projects.id),
-    snapshotDate: integer('snapshot_date', { mode: 'timestamp_ms' }).notNull(),
 
-    // Time-based metrics
-    avgTimeToTest: integer('avg_time_to_test'),
-    avgTimeToClose: integer('avg_time_to_close'),
-    testingVelocity: integer('testing_velocity'), // issues per day
-
-    // Quality metrics
-    passRate: integer('pass_rate'),
-    reopenRate: integer('reopen_rate'),
-
-    // Blocker metrics (NEW)
-    activeBlockerCount: integer('active_blocker_count'),
-    blockerResolutionTime: integer('blocker_resolution_time'), // avg hours
-    criticalBlockerCount: integer('critical_blocker_count'),
-    blockersCreated: integer('blockers_created'),
-    blockersResolved: integer('blockers_resolved'),
-
-    // Workload metrics
-    totalIssues: integer('total_issues'),
-    readyForQaCount: integer('ready_for_qa_count'),
-    inTestingCount: integer('in_testing_count'),
-    completedCount: integer('completed_count'),
-});
-
-export const automatedInsights = sqliteTable("automated_insights", {
-    id: integer('id').primaryKey({ autoIncrement: true }),
-    projectId: integer('project_id').references(() => projects.id),
-    generatedAt: integer('generated_at', { mode: 'timestamp_ms' }).$defaultFn(() => new Date()).notNull(),
-
-    insightType: text('insight_type').$type<'warning' | 'critical' | 'info'>(),
-    title: text('title').notNull(),
-    description: text('description').notNull(),
-    action: text('action'),
-
-    // For blocker-specific insights
-    relatedBlockerId: integer('related_blocker_id').references(() => qaBlockers.id),
-
-    dismissed: integer('dismissed', { mode: 'boolean' }).default(false),
-});
 
 // ===== NEW RELATIONS =====
 export const exploratorySessionsRelations = relations(exploratorySessions, ({ one, many }) => ({
@@ -392,11 +349,4 @@ export const qaBlockersRelations = relations(qaBlockers, ({ one }) => ({
     relatedIssue: one(qaIssues, { fields: [qaBlockers.relatedIssueId], references: [qaIssues.id] }),
 }));
 
-export const metricSnapshotsRelations = relations(metricSnapshots, ({ one }) => ({
-    project: one(projects, { fields: [metricSnapshots.projectId], references: [projects.id] }),
-}));
 
-export const automatedInsightsRelations = relations(automatedInsights, ({ one }) => ({
-    project: one(projects, { fields: [automatedInsights.projectId], references: [projects.id] }),
-    relatedBlocker: one(qaBlockers, { fields: [automatedInsights.relatedBlockerId], references: [qaBlockers.id] }),
-}));

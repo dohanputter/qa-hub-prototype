@@ -58,7 +58,7 @@ export function SessionHeader({ session, onStatusChange }: SessionHeaderProps) {
     const handleAbandon = async () => {
         if (confirm('Are you sure you want to stop this session? This will mark it as abandoned.')) {
             await abandonSession(session.id);
-            router.push(`/${session.projectId}/sessions`);
+            router.push(`/${session.project.groupId}/sessions`);
         }
     };
 

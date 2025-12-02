@@ -271,7 +271,6 @@ export async function createBlocker(data: unknown) {
         }
 
         revalidatePath(`/${blockerData.projectId}/blockers`);
-        revalidatePath(`/analytics/enhanced`);
 
         return { success: true, blockerId: blocker.id };
     } catch (error) {
@@ -312,7 +311,7 @@ export async function resolveBlocker(data: unknown) {
             }
         }
 
-        revalidatePath(`/analytics/enhanced`);
+
         return { success: true };
     } catch (error) {
         logger.error('Failed to resolve blocker', error);
@@ -342,7 +341,7 @@ export async function updateBlocker(blockerId: number, updates: {
             revalidatePath(`/sessions/${updatedBlocker.sessionId}`);
         }
         revalidatePath(`/${updatedBlocker.projectId}/blockers`);
-        revalidatePath(`/analytics/enhanced`);
+
 
         return { success: true, blocker: updatedBlocker };
     } catch (error) {
@@ -381,7 +380,7 @@ export async function deleteBlocker(blockerId: number) {
 
         // Revalidate paths
         revalidatePath(`/${blocker.projectId}/blockers`);
-        revalidatePath(`/analytics/enhanced`);
+
 
         return { success: true };
     } catch (error) {
