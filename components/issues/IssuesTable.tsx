@@ -65,6 +65,7 @@ export function IssuesTable({ issues, projectId, labels = [] }: { issues: any[];
     const [deletingIssueId, setDeletingIssueId] = useState<number | null>(null);
     const [blockerModalOpen, setBlockerModalOpen] = useState(false);
     const [selectedProjectForBlocker, setSelectedProjectForBlocker] = useState<number | null>(null);
+    const [selectedIssueForBlocker, setSelectedIssueForBlocker] = useState<string | null>(null);
 
     const handleDelete = async (issueIid: number) => {
         if (!confirm('Are you sure you want to delete this issue? This action cannot be undone.')) {
@@ -180,6 +181,7 @@ export function IssuesTable({ issues, projectId, labels = [] }: { issues: any[];
                                     onClick={(e) => {
                                         e.stopPropagation();
                                         setSelectedProjectForBlocker(issue.project.id);
+                                        setSelectedIssueForBlocker(issue.iid);
                                         setBlockerModalOpen(true);
                                     }}
                                     title="Log Blocker"
@@ -205,10 +207,12 @@ export function IssuesTable({ issues, projectId, labels = [] }: { issues: any[];
                     onOpenChange={setBlockerModalOpen}
                     // sessionId={0} - Removed to allow standalone blockers
                     projectId={selectedProjectForBlocker}
+                    relatedIssueId={selectedIssueForBlocker || undefined}
                     onSuccess={() => {
                         router.refresh();
                         setBlockerModalOpen(false);
                         setSelectedProjectForBlocker(null);
+                        setSelectedIssueForBlocker(null);
                     }}
                 />
             )}

@@ -5,7 +5,7 @@ import { Card, CardContent } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { formatDistanceToNow } from 'date-fns';
-import { ShieldAlert, Trash2, Edit, Clock, CheckCircle2 } from 'lucide-react';
+import { ShieldAlert, Trash2, Edit, Clock, CheckCircle2, Link as LinkIcon } from 'lucide-react';
 import { deleteBlocker, updateBlocker } from '@/app/actions/exploratorySessions';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/components/ui/useToast';
@@ -36,6 +36,12 @@ export interface Blocker {
     session?: {
         id: number;
         // add other session fields if needed
+    } | null;
+    relatedIssue?: {
+        id: string;
+        issueTitle: string;
+        issueUrl: string;
+        gitlabIssueIid: number;
     } | null;
 }
 
@@ -168,8 +174,8 @@ export function BlockersList({ blockers, projectId }: BlockersListProps) {
                                 <div className="space-y-2 flex-1">
                                     <div className="flex items-center gap-2">
                                         <ShieldAlert className={`w-5 h-5 ${blocker.severity === 'critical' || blocker.severity === 'high'
-                                                ? 'text-destructive'
-                                                : 'text-muted-foreground'
+                                            ? 'text-destructive'
+                                            : 'text-muted-foreground'
                                             }`} />
                                         <h3 className="font-semibold text-lg">{blocker.title}</h3>
                                         {getStatusBadge(blocker.status)}
@@ -192,6 +198,30 @@ export function BlockersList({ blockers, projectId }: BlockersListProps) {
                                                 >
                                                     Session #{blocker.sessionId}
                                                 </Link>
+                                            </>
+                                        )}
+                                        {blocker.relatedIssue && (
+                                            <>
+                                                <span>•</span>
+                                                {process.env.NEXT_PUBLIC_MOCK_MODE === 'true' ? (
+                                                    <Link
+                                                        href={`/${projectId}/qa/${blocker.relatedIssue.gitlabIssueIid}`}
+                                                        className="flex items-center gap-1 hover:underline"
+                                                    >
+                                                        <LinkIcon className="w-3 h-3" />
+                                                        Issue #{blocker.relatedIssue.gitlabIssueIid}
+                                                    </Link>
+                                                ) : (
+                                                    <a
+                                                        href={blocker.relatedIssue.issueUrl}
+                                                        target="_blank"
+                                                        rel="noopener noreferrer"
+                                                        className="flex items-center gap-1 hover:underline"
+                                                    >
+                                                        <LinkIcon className="w-3 h-3" />
+                                                        Issue #{blocker.relatedIssue.gitlabIssueIid}
+                                                    </a>
+                                                )}
                                             </>
                                         )}
                                         <span>•</span>

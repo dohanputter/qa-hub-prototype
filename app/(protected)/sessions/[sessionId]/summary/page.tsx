@@ -137,9 +137,9 @@ export default async function SessionSummaryPage({ params }: SessionSummaryPageP
             </Card>
 
             <div className="flex justify-end gap-4">
-                {session.issueId && (
+                {session.issue && (
                     <Button asChild>
-                        <Link href={`/${session.project.groupId}/qa/${session.issueId}`}>
+                        <Link href={`/${session.project.groupId}/qa/${session.issue.gitlabIssueIid}`}>
                             Return to Issue
                         </Link>
                     </Button>

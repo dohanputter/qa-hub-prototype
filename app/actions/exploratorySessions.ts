@@ -3,8 +3,9 @@
 import { auth } from '@/auth';
 import { db } from '@/lib/db';
 import { exploratorySessions, sessionNotes, qaBlockers, projects, users, qaIssues } from '@/db/schema';
-import { eq, desc, and, inArray, sql } from 'drizzle-orm';
+import { eq, and, desc, inArray, sql } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
+import { getIssue } from '@/lib/gitlab';
 import { safeParse, startSessionSchema, captureNoteSchema, createBlockerSchema, resolveBlockerSchema } from '@/lib/validations';
 import { isMockMode } from '@/lib/mode';
 import { logger } from '@/lib/logger';
@@ -187,7 +188,7 @@ export async function captureSessionNote(data: unknown) {
         const fieldToIncrement = counterMap[noteData.type];
 
         if (fieldToIncrement) {
-             await db.update(exploratorySessions)
+            await db.update(exploratorySessions)
                 .set({
                     [fieldToIncrement]: sql`${exploratorySessions[fieldToIncrement as keyof typeof exploratorySessions._.columns]} + 1`
                 })
@@ -209,6 +210,7 @@ export async function captureSessionNote(data: unknown) {
                     severity: noteData.blockerSeverity || 'medium',
                     blockingWhat: 'testing', // Default
                     createdFromNoteId: note.id,
+                    relatedIssueId: currentSession.issueId,
                     status: 'active',
                 });
             }
@@ -232,6 +234,75 @@ export async function createBlocker(data: unknown) {
     if (!parsed.success) throw new Error(parsed.error);
     const blockerData = parsed.data;
 
+    let relatedIssueId: string | undefined = blockerData.relatedIssueId ? String(blockerData.relatedIssueId) : undefined;
+
+    // If relatedIssueId is provided, check if it's a UUID or an IID
+    if (relatedIssueId) {
+        // Check if it's a UUID (simple regex check)
+        const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(relatedIssueId);
+
+        if (!isUuid) {
+            // Assume it's an IID (GitLab IID)
+            const iid = Number(relatedIssueId);
+
+            // Try to find existing issue in local DB
+            const existingIssue = await db.query.qaIssues.findFirst({
+                where: and(
+                    eq(qaIssues.gitlabProjectId, blockerData.projectId),
+                    eq(qaIssues.gitlabIssueIid, iid)
+                )
+            });
+
+            if (existingIssue) {
+                relatedIssueId = existingIssue.id;
+            } else {
+                // Issue not in local DB, try to fetch from GitLab and sync
+                try {
+                    const session = await auth();
+                    if (session?.accessToken) {
+                        const gitlabIssue = await getIssue(blockerData.projectId, iid, session.accessToken);
+
+                        if (gitlabIssue) {
+                            // Sync issue to local DB
+                            const [newIssue] = await db.insert(qaIssues).values({
+                                gitlabIssueId: gitlabIssue.id,
+                                gitlabIssueIid: gitlabIssue.iid,
+                                gitlabProjectId: gitlabIssue.project_id,
+                                issueTitle: gitlabIssue.title,
+                                issueDescription: gitlabIssue.description,
+                                issueUrl: gitlabIssue.web_url,
+                                status: gitlabIssue.state === 'opened' ? 'pending' : 'passed', // Simplified mapping
+                                jsonLabels: gitlabIssue.labels,
+                                createdAt: new Date(gitlabIssue.created_at),
+                                updatedAt: new Date(gitlabIssue.updated_at),
+                            }).returning();
+
+                            relatedIssueId = newIssue.id;
+                        }
+                    }
+                } catch (error) {
+                    console.error('Failed to sync issue for blocker:', error);
+                    // If sync fails, we can't link the issue, so we leave relatedIssueId as is (which will fail FK)
+                    // or set to null? Better to fail so we know something is wrong, or set to null to allow blocker creation?
+                    // The user wants it linked. If we can't link, maybe we should still create the blocker but warn?
+                    // But the FK constraint will fail if we pass the IID.
+                    // So we must set it to null if we can't resolve it.
+                    relatedIssueId = undefined;
+                }
+            }
+        }
+    }
+
+    // If linked to a session but no issue ID provided, try to find it from the session
+    if (blockerData.sessionId && !relatedIssueId) {
+        const session = await db.query.exploratorySessions.findFirst({
+            where: eq(exploratorySessions.id, blockerData.sessionId),
+        });
+        if (session?.issueId) {
+            relatedIssueId = session.issueId;
+        }
+    }
+
     try {
         const [blocker] = await db.insert(qaBlockers).values({
             sessionId: blockerData.sessionId,
@@ -242,7 +313,7 @@ export async function createBlocker(data: unknown) {
             blockingWhat: blockerData.blockingWhat,
             estimatedResolutionHours: blockerData.estimatedResolutionHours,
             createdFromNoteId: blockerData.createdFromNoteId,
-            relatedIssueId: blockerData.relatedIssueId,
+            relatedIssueId: relatedIssueId,
             status: 'active',
         }).returning();
 
@@ -394,6 +465,7 @@ export async function getProjectBlockers(groupIdOrProjectId: number) {
         orderBy: [desc(qaBlockers.createdAt)],
         with: {
             session: true,
+            relatedIssue: true,
         }
     });
 

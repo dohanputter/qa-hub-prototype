@@ -17,10 +17,11 @@ interface BlockerFormModalProps {
     sessionId?: number;
     projectId: number;
     initialContent?: string;
+    relatedIssueId?: string;
     onSuccess?: () => void;
 }
 
-export function BlockerFormModal({ open, onOpenChange, sessionId, projectId, initialContent, onSuccess }: BlockerFormModalProps) {
+export function BlockerFormModal({ open, onOpenChange, sessionId, projectId, initialContent, relatedIssueId, onSuccess }: BlockerFormModalProps) {
     const [title, setTitle] = useState('');
     const [description, setDescription] = useState(initialContent || '');
     const [severity, setSeverity] = useState('medium');
@@ -41,6 +42,7 @@ export function BlockerFormModal({ open, onOpenChange, sessionId, projectId, ini
                 severity,
                 blockingWhat,
                 estimatedResolutionHours: 0,
+                relatedIssueId,
             });
             toast({ title: 'Blocker logged', variant: 'destructive' });
             onOpenChange(false);

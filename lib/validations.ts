@@ -116,7 +116,7 @@ export const createBlockerSchema = z.object({
     blockingWhat: z.enum(['testing', 'development', 'deployment']),
     estimatedResolutionHours: z.number().optional(),
     createdFromNoteId: z.number().optional(),
-    relatedIssueId: z.string().optional(),
+    relatedIssueId: z.union([z.string(), z.number()]).optional().transform(val => val ? String(val) : undefined),
 });
 
 /**
