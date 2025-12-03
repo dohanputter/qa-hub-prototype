@@ -41,9 +41,9 @@ export default async function SessionSummaryPage({ params }: SessionSummaryPageP
         <div className="container max-w-4xl py-10 space-y-8">
             <div className="flex items-center gap-4">
                 <Button variant="ghost" size="sm" asChild>
-                    <Link href={`/${session.project.groupId}/issues`}>
+                    <Link href={`/${session.project.groupId}/sessions`}>
                         <ArrowLeft className="w-4 h-4 mr-2" />
-                        Back to Issues
+                        Back to Sessions
                     </Link>
                 </Button>
             </div>
