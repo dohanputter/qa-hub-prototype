@@ -1,5 +1,5 @@
 
-import { startExploratorySession, getSession } from '@/app/actions/exploratory-sessions';
+import { startExploratorySession, getSession } from '@/app/actions/exploratorySessions';
 import { NextResponse } from 'next/server';
 
 export async function POST(request: Request) {

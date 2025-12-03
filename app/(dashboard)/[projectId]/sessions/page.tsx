@@ -1,8 +1,8 @@
 
-import { getProjectSessions } from '@/app/actions/exploratory-sessions';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
+import { getProjectSessions } from '@/app/actions/exploratorySessions';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
+import { Badge } from '@/components/ui/Badge';
+import { Button } from '@/components/ui/Button';
 import { formatDistanceToNow } from 'date-fns';
 import { PlayCircle, Clock, CheckCircle2, AlertCircle } from 'lucide-react';
 import Link from 'next/link';

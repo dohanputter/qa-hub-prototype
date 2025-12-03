@@ -4,7 +4,7 @@
  */
 
 import { env } from '@/lib/env';
-import { MOCK_PROJECTS, MOCK_USERS } from './mock-data';
+import { MOCK_PROJECTS, MOCK_USERS } from './mockData';
 import type { WebhookPayload } from './types';
 
 // Local isMockMode to avoid circular dependency

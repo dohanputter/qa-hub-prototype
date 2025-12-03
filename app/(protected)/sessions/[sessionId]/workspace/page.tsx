@@ -1,4 +1,4 @@
-import { getSession } from '@/app/actions/exploratory-sessions';
+import { getSession } from '@/app/actions/exploratorySessions';
 import { notFound } from 'next/navigation';
 import { SessionWorkspace } from '@/components/sessions/SessionWorkspace';
 

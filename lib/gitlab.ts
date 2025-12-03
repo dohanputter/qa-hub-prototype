@@ -15,7 +15,7 @@ import {
     MOCK_ISSUES,
     MOCK_SNIPPETS,
     USER_MOCK_PERMISSIONS,
-} from '@/lib/gitlab/mock-data';
+} from '@/lib/gitlab/mockData';
 
 // Import simulation utilities
 import {

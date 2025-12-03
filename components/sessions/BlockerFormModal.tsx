@@ -2,14 +2,14 @@
 'use client';
 
 import { useState } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
-import { Label } from '@/components/ui/label';
-import { Input } from '@/components/ui/input';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Textarea } from '@/components/ui/textarea'; // Assuming standard textarea if not in UI
-import { createBlocker } from '@/app/actions/exploratory-sessions';
-import { useToast } from '@/components/ui/use-toast';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/Dialog';
+import { Button } from '@/components/ui/Button';
+import { Label } from '@/components/ui/Label';
+import { Input } from '@/components/ui/Input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/Select';
+import { Textarea } from '@/components/ui/Textarea'; // Assuming standard textarea if not in UI
+import { createBlocker } from '@/app/actions/exploratorySessions';
+import { useToast } from '@/components/ui/useToast';
 
 interface BlockerFormModalProps {
     open: boolean;

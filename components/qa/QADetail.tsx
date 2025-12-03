@@ -4,20 +4,20 @@
 import { useState, useEffect, useCallback, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { TiptapEditor } from './TiptapEditor';
-import { Button } from '@/components/ui/button';
-import { Label } from '@/components/ui/label';
+import { Button } from '@/components/ui/Button';
+import { Label } from '@/components/ui/Label';
 import { getOrCreateQARun, submitQARun } from '@/app/actions/qa';
 import { uploadAttachment } from '@/app/actions/uploadAttachment';
 import { removeAttachment } from '@/app/actions/removeAttachment';
 import { getSnippetsAction } from '@/app/actions/snippets';
-import { toast } from '@/components/ui/use-toast';
+import { toast } from '@/components/ui/useToast';
 import { Loader2, Save, PlayCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { logger } from '@/lib/logger';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/Tabs";
 import { useDescriptionProcessor } from './hooks/useDescriptionProcessor';
 import { useAutoDeleteWithReset } from './hooks/useAutoDelete';
-import { useImageUpload } from '@/hooks/use-image-upload';
+import { useImageUpload } from '@/hooks/useImageUpload';
 import { QAHeader } from './QAHeader';
 import { QAHistory } from './QAHistory';
 import { QAAttachments } from './QAAttachments';
@@ -289,7 +289,7 @@ export function QADetail({ issue, qaIssue, runs = [], allAttachments = [], membe
 
                     <div className="flex items-center gap-3">
                         <Button variant="outline" onClick={async () => {
-                            const { startExploratorySession } = await import('@/app/actions/exploratory-sessions');
+                            const { startExploratorySession } = await import('@/app/actions/exploratorySessions');
                             try {
                                 const result = await startExploratorySession({
                                     projectId,

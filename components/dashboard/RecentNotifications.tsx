@@ -2,11 +2,11 @@
 
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { getUserNotifications } from '@/app/actions/notifications';
-import { useNotificationStream } from '@/hooks/use-notification-stream';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { ScrollArea } from '@/components/ui/scroll-area';
+import { useNotificationStream } from '@/hooks/useNotificationStream';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
+import { ScrollArea } from '@/components/ui/ScrollArea';
 import { formatDistanceToNow } from 'date-fns';
-import { Skeleton } from '@/components/ui/skeleton';
+import { Skeleton } from '@/components/ui/Skeleton';
 import { useEffect, useState } from 'react';
 
 export function RecentNotifications() {

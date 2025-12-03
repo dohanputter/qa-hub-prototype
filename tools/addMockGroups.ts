@@ -1,13 +1,13 @@
 /**
  * Add Mock Groups to Existing Database
  * This adds the new MOCK_GROUPS alongside existing groups/projects/issues
- * Run with: npx tsx tools/add-mock-groups.ts
+ * Run with: npx tsx tools/addMockGroups.ts
  */
 
 import { drizzle } from 'drizzle-orm/libsql';
 import { createClient } from '@libsql/client';
 import { groups, projects } from '../db/schema';
-import { MOCK_GROUPS, MOCK_PROJECTS } from '../lib/gitlab/mock-data';
+import { MOCK_GROUPS, MOCK_PROJECTS } from '../lib/gitlab/mockData';
 import { eq } from 'drizzle-orm';
 
 async function addMockGroups() {

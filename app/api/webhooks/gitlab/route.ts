@@ -5,7 +5,7 @@ import { qaIssues, qaRuns, notifications, projects } from '@/db/schema';
 import { eq, and, desc } from 'drizzle-orm';
 import { mapLabelToStatus } from '@/lib/utils';
 import { env } from '@/lib/env';
-import { ensureWebhookUser } from '@/lib/mock-user';
+import { ensureWebhookUser } from '@/lib/mockUser';
 import { SYSTEM_USERS } from '@/lib/constants';
 import { logger } from '@/lib/logger';
 import { createNotification } from '@/app/actions/notifications';

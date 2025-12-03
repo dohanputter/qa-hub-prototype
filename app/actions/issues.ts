@@ -7,7 +7,7 @@ import { getIssues } from '@/lib/gitlab';
 import { revalidatePath } from 'next/cache';
 import { isMockMode, getMockToken } from '@/lib/mode';
 import { SYSTEM_USERS, DEFAULT_QA_LABELS, MOCK_PROJECT_IDS } from '@/lib/constants';
-import { ensureMockUser, ensureMockGroup, ensureMockProject } from '@/lib/mock-user';
+import { ensureMockUser, ensureMockGroup, ensureMockProject } from '@/lib/mockUser';
 import { createIssueSchema, safeParse } from '@/lib/validations';
 import { logger } from '@/lib/logger';
 import type { GitLabIssue, GitLabProject, Project } from '@/types';

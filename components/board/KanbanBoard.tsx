@@ -18,7 +18,7 @@ import { arrayMove } from "@dnd-kit/sortable";
 import { KanbanColumn } from "./KanbanColumn";
 import { KanbanCard, IssueCard, LabelColorsProvider } from "./KanbanCard";
 import { moveIssue } from "@/app/actions/board";
-import { toast } from "@/components/ui/use-toast";
+import { toast } from "@/components/ui/useToast";
 import { Search, X, Loader2 } from "lucide-react";
 import type { KanbanIssue, GitLabLabel, QALabelMapping } from "@/types";
 import { DEFAULT_QA_LABELS } from "@/lib/constants";

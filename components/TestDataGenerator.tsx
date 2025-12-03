@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { Database, User, CreditCard, MapPin, Copy, Check, RefreshCw, ArrowLeft } from 'lucide-react';
-import { useToast } from '@/components/ui/use-toast';
+import { useToast } from '@/components/ui/useToast';
 import { FIRST_NAMES, LAST_NAMES, DOMAINS, STREETS, CITIES, PROVINCES } from '@/lib/testData';
 import { useRouter } from 'next/navigation';
 

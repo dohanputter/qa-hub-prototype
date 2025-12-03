@@ -1,4 +1,4 @@
-import { Badge } from '@/components/ui/badge';
+import { Badge } from '@/components/ui/Badge';
 import { TiptapEditor } from './TiptapEditor';
 import { cn } from '@/lib/utils';
 import { formatDistanceToNow } from 'date-fns';

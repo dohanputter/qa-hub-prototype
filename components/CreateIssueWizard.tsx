@@ -1,15 +1,15 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
-import { useOnClickOutside } from '@/hooks/use-on-click-outside';
-import { useImageUpload } from '@/hooks/use-image-upload';
+import { useOnClickOutside } from '@/hooks/useOnClickOutside';
+import { useImageUpload } from '@/hooks/useImageUpload';
 import {
     X, ChevronDown, Calendar, Flag, User as UserIcon,
     Tag, Folder, ArrowLeft, ChevronRight, Search, Layers
 } from 'lucide-react';
 import { Project, User, Label, QAStatus } from '@/types';
-import { useToast } from '@/components/ui/use-toast';
-import { Skeleton } from '@/components/ui/skeleton';
+import { useToast } from '@/components/ui/useToast';
+import { Skeleton } from '@/components/ui/Skeleton';
 import { useRouter, useParams } from 'next/navigation';
 import { getUserProjects, getProjectUsers, getProjectLabelsAction } from '@/app/actions/project';
 import { createIssue } from '@/app/actions/issues';
@@ -18,9 +18,9 @@ import { logger } from '@/lib/logger';
 import Image from 'next/image';
 import { TiptapEditor } from '@/components/qa/TiptapEditor';
 import { cn } from '@/lib/utils';
-import { tiptapToMarkdown } from '@/lib/tiptap-utils';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
+import { tiptapToMarkdown } from '@/lib/tiptapUtils';
+import { Button } from '@/components/ui/Button';
+import { Badge } from '@/components/ui/Badge';
 
 interface CreateIssueWizardProps {
     onClose?: () => void;

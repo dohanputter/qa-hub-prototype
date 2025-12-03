@@ -1,4 +1,4 @@
-import { Label } from '@/components/ui/label';
+import { Label } from '@/components/ui/Label';
 import { Paperclip, Plus, X } from 'lucide-react';
 import type { QAAttachmentsProps } from '@/types/qa';
 

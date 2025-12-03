@@ -1,4 +1,4 @@
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Activity, CheckCircle, Clock, AlertCircle } from 'lucide-react';
 import { DashboardCharts } from '@/components/dashboard/DashboardCharts';
 import { RecentNotifications } from '@/components/dashboard/RecentNotifications';

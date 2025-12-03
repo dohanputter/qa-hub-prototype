@@ -3,7 +3,7 @@ import { getGroup, getGroupProjects } from '@/lib/gitlab';
 import { auth } from '@/auth';
 import { IssuesTable } from '@/components/issues/IssuesTable';
 import { IssueSearch } from '@/components/issues/IssueSearch';
-import { Button } from '@/components/ui/button';
+import { Button } from '@/components/ui/Button';
 import { Plus } from 'lucide-react';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';

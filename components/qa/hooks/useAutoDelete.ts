@@ -1,7 +1,7 @@
 import { useEffect, useRef, useCallback } from 'react';
 import { extractImageUrls } from '@/lib/tiptap';
 import { removeAttachment } from '@/app/actions/removeAttachment';
-import { toast } from '@/components/ui/use-toast';
+import { toast } from '@/components/ui/useToast';
 import type { JSONContent } from '@tiptap/core';
 
 export function useAutoDeleteWithReset(

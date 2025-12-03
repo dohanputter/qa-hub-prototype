@@ -1,8 +1,8 @@
 
-import { getSession } from '@/app/actions/exploratory-sessions';
+import { getSession } from '@/app/actions/exploratorySessions';
 import { notFound, redirect } from 'next/navigation';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
+import { Button } from '@/components/ui/Button';
 import { formatDistanceToNow } from 'date-fns';
 import { CheckCircle2, Clock, ArrowLeft, ShieldAlert, Bug, FileText } from 'lucide-react';
 import Link from 'next/link';

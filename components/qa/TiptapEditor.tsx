@@ -12,7 +12,7 @@ import { TableHeader } from '@tiptap/extension-table-header';
 import { TableRow } from '@tiptap/extension-table-row';
 import TaskList from '@tiptap/extension-task-list';
 import TaskItem from '@tiptap/extension-task-item';
-import { Button } from '@/components/ui/button';
+import { Button } from '@/components/ui/Button';
 import { Bold, Italic, List, ListOrdered, Code, ScrollText, Table as TableIcon, Type, CheckSquare } from 'lucide-react';
 import tippy from 'tippy.js';
 import { marked } from 'marked';
@@ -28,14 +28,14 @@ import {
     DropdownMenuContent,
     DropdownMenuItem,
     DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { toast } from '@/components/ui/use-toast';
+} from "@/components/ui/DropdownMenu";
+import { toast } from '@/components/ui/useToast';
 import { cn } from '@/lib/utils';
 import {
     Popover,
     PopoverContent,
     PopoverTrigger,
-} from "@/components/ui/popover";
+} from "@/components/ui/Popover";
 import type { TiptapEditorProps, EditorMember, EditorSnippet, ImageUploadResult } from '@/types/editor';
 
 export function TiptapEditor({

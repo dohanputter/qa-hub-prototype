@@ -6,8 +6,8 @@ import { usePathname } from 'next/navigation';
 import { LayoutDashboard, ListTodo, KanbanSquare, Bell, Wrench, LogOut, BarChart3, ShieldAlert, PlayCircle } from 'lucide-react';
 import { signOut } from 'next-auth/react';
 import { cn } from '@/lib/utils';
-import { ThemeToggle } from "@/components/theme-toggle";
-import { Button } from "@/components/ui/button";
+import { ThemeToggle } from "@/components/ThemeToggle";
+import { Button } from "@/components/ui/Button";
 
 export function Sidebar() {
     const pathname = usePathname();

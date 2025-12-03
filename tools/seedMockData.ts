@@ -1,13 +1,13 @@
 /**
  * Seed Script for Mock Data
  * Initializes the database with mock groups, projects, and issues
- * Run with: npx tsx tools/seed-mock-data.ts
+ * Run with: npx tsx tools/seedMockData.ts
  */
 
 import { drizzle } from 'drizzle-orm/libsql';
 import { createClient } from '@libsql/client';
 import { groups, projects, qaIssues, users } from '../db/schema';
-import { MOCK_GROUPS, MOCK_PROJECTS, MOCK_ISSUES } from '../lib/gitlab/mock-data';
+import { MOCK_GROUPS, MOCK_PROJECTS, MOCK_ISSUES } from '../lib/gitlab/mockData';
 import { SYSTEM_USERS } from '../lib/constants';
 import { eq, and } from 'drizzle-orm';
 

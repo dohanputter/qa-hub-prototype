@@ -3,13 +3,13 @@
 import { useInfiniteQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useRef } from 'react';
 import { getUserNotifications, markAllNotificationsAsRead } from '@/app/actions/notifications';
-import { useNotificationStream } from '@/hooks/use-notification-stream';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
-import { ScrollArea } from '@/components/ui/scroll-area';
+import { useNotificationStream } from '@/hooks/useNotificationStream';
+import { Button } from '@/components/ui/Button';
+import { Card, CardContent } from '@/components/ui/Card';
+import { ScrollArea } from '@/components/ui/ScrollArea';
 import { formatDistanceToNow } from 'date-fns';
 import { CheckCheck, Bell } from 'lucide-react';
-import { Skeleton } from '@/components/ui/skeleton';
+import { Skeleton } from '@/components/ui/Skeleton';
 
 export function NotificationsList() {
     const queryClient = useQueryClient();

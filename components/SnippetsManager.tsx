@@ -4,14 +4,14 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { ScrollText, Plus, Search, Trash2, Edit2, Save, X, CheckSquare, AlertCircle, Clock, ArrowLeft } from 'lucide-react';
 import { Snippet } from '@/types';
 import { getSnippetsAction, createSnippetAction, updateSnippetAction, deleteSnippetAction } from '@/app/actions/snippets';
-import { useToast } from '@/components/ui/use-toast';
+import { useToast } from '@/components/ui/useToast';
 import { useRouter } from 'next/navigation';
 import { TiptapEditor } from '@/components/qa/TiptapEditor';
-import { tiptapToMarkdown } from '@/lib/tiptap-utils';
+import { tiptapToMarkdown } from '@/lib/tiptapUtils';
 import { uploadAttachment } from '@/app/actions/uploadAttachment';
 import { getUserProjects, getProjectUsers } from '@/app/actions/project';
 import { logger } from '@/lib/logger';
-import { useImageUpload } from '@/hooks/use-image-upload';
+import { useImageUpload } from '@/hooks/useImageUpload';
 
 export const SnippetsManager: React.FC = () => {
     const { toast } = useToast();

@@ -1,14 +1,14 @@
 'use client';
 
 import { useState } from 'react';
-import { Card, CardContent } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/Card';
+import { Badge } from '@/components/ui/Badge';
+import { Button } from '@/components/ui/Button';
 import { formatDistanceToNow } from 'date-fns';
 import { ShieldAlert, Trash2, Edit, Clock, CheckCircle2 } from 'lucide-react';
-import { deleteBlocker, updateBlocker } from '@/app/actions/exploratory-sessions';
+import { deleteBlocker, updateBlocker } from '@/app/actions/exploratorySessions';
 import { useRouter } from 'next/navigation';
-import { useToast } from '@/components/ui/use-toast';
+import { useToast } from '@/components/ui/useToast';
 import Link from 'next/link';
 import { extractTextFromTiptap } from '@/lib/tiptap';
 import {
@@ -20,7 +20,7 @@ import {
     AlertDialogFooter,
     AlertDialogHeader,
     AlertDialogTitle,
-} from '@/components/ui/alert-dialog';
+} from '@/components/ui/AlertDialog';
 
 export interface Blocker {
     id: number;

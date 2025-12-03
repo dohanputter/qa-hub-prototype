@@ -2,12 +2,12 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import { Button } from '@/components/ui/button';
-import { Textarea } from '@/components/ui/textarea'; // Assuming this exists, if not I'll use standard textarea
-import { captureSessionNote } from '@/app/actions/exploratory-sessions';
+import { Button } from '@/components/ui/Button';
+import { Textarea } from '@/components/ui/Textarea'; // Assuming this exists, if not I'll use standard textarea
+import { captureSessionNote } from '@/app/actions/exploratorySessions';
 import { Bug, Lightbulb, ShieldAlert, HelpCircle, Ban, Image as ImageIcon, CheckCircle2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { useToast } from '@/components/ui/use-toast';
+import { useToast } from '@/components/ui/useToast';
 import { BlockerFormModal } from './BlockerFormModal';
 
 interface QuickCaptureBarProps {

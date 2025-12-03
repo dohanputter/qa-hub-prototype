@@ -3,8 +3,8 @@
 import { useDroppable } from '@dnd-kit/core';
 import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { KanbanCard } from './KanbanCard';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { Badge } from '@/components/ui/badge';
+import { ScrollArea } from '@/components/ui/ScrollArea';
+import { Badge } from '@/components/ui/Badge';
 import { cn } from '@/lib/utils';
 import type { KanbanIssue, KanbanColumnId } from '@/types';
 

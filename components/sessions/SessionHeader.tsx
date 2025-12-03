@@ -2,9 +2,9 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { completeSession, abandonSession } from '@/app/actions/exploratory-sessions';
+import { Badge } from '@/components/ui/Badge';
+import { Button } from '@/components/ui/Button';
+import { completeSession, abandonSession } from '@/app/actions/exploratorySessions';
 import { useRouter } from 'next/navigation';
 import { format } from 'date-fns';
 import { Pause, Play, Square, Clock } from 'lucide-react';

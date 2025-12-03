@@ -3,8 +3,8 @@
 
 import { useState } from 'react';
 import { format } from 'date-fns';
-import { Badge } from '@/components/ui/badge';
-import { ScrollArea } from '@/components/ui/scroll-area';
+import { Badge } from '@/components/ui/Badge';
+import { ScrollArea } from '@/components/ui/ScrollArea';
 import { Bug, Lightbulb, ShieldAlert, HelpCircle, Ban, CheckCircle2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { extractTextFromTiptap } from '@/lib/tiptap';

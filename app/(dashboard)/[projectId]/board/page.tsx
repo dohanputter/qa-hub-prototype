@@ -2,7 +2,7 @@ import { getAllIssues } from '@/app/actions/issues';
 import { getGroup, getGroupProjects } from '@/lib/gitlab';
 import { auth } from '@/auth';
 import { KanbanBoard } from '@/components/board/KanbanBoard';
-import { Button } from '@/components/ui/button';
+import { Button } from '@/components/ui/Button';
 import { Plus } from 'lucide-react';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';

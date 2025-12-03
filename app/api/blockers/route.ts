@@ -1,5 +1,5 @@
 
-import { createBlocker, resolveBlocker } from '@/app/actions/exploratory-sessions';
+import { createBlocker, resolveBlocker } from '@/app/actions/exploratorySessions';
 import { NextResponse } from 'next/server';
 
 export async function POST(request: Request) {
