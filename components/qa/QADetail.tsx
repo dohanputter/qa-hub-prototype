@@ -69,6 +69,8 @@ export function QADetail({ issue, qaIssue, runs = [], allAttachments = [], membe
     useAutoDeleteWithReset(testCases, activeRun?.testCasesContent, runId, attachments, setAttachments);
     useAutoDeleteWithReset(issuesFound, activeRun?.issuesFoundContent, runId, attachments, setAttachments);
 
+    const [hasTyped, setHasTyped] = useState(false);
+
     // Continuous Auto-Save Effect
     useEffect(() => {
         const timer = setTimeout(async () => {
@@ -82,6 +84,7 @@ export function QADetail({ issue, qaIssue, runs = [], allAttachments = [], membe
                 // Only auto-save if we have an active run
                 if (!runId) return;
 
+                setHasTyped(true);
                 setAutoSaving(true);
                 try {
                     await updateQARunContent(runId, testCases, issuesFound);
@@ -343,23 +346,22 @@ export function QADetail({ issue, qaIssue, runs = [], allAttachments = [], membe
 
                         {activeRun ? (
                             <>
-                                <div className="flex items-center text-xs text-muted-foreground mr-2 transition-opacity duration-300">
-                                    {autoSaving ? (
-                                        <span className="flex items-center">
-                                            <Loader2 className="h-3 w-3 animate-spin mr-1.5" />
-                                            Saving...
-                                        </span>
-                                    ) : (
-                                        <span className="flex items-center opacity-70">
-                                            <CheckCircle2 className="h-3 w-3 mr-1.5 text-emerald-500" />
-                                            Saved
-                                        </span>
-                                    )}
-                                </div>
-                                <Button variant="ghost" onClick={() => handleSave(false)} disabled={saving} className="text-muted-foreground hover:text-foreground">
-                                    {saving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Save className="h-4 w-4 mr-2" />}
-                                    Save Draft
-                                </Button>
+                                {hasTyped || autoSaving ? (
+                                    <div className="flex items-center text-xs text-muted-foreground mr-2 transition-opacity duration-300">
+                                        {autoSaving ? (
+                                            <span className="flex items-center">
+                                                <Loader2 className="h-3 w-3 animate-spin mr-1.5" />
+                                                Saving...
+                                            </span>
+                                        ) : (
+                                            <span className="flex items-center opacity-70">
+                                                <CheckCircle2 className="h-3 w-3 mr-1.5 text-emerald-500" />
+                                                Saved
+                                            </span>
+                                        )}
+                                    </div>
+                                ) : null}
+
                                 <div className="h-6 w-px bg-border/60 mx-1" />
                                 <Button variant="destructive" size="sm" onClick={() => handleSubmit('failed')} disabled={isPending} className="shadow-none">
                                     {isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
