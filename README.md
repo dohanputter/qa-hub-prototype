@@ -15,6 +15,17 @@ The application is now fully functional in **Mock Mode** for offline development
 - **Real-time Updates**: Server-Sent Events (SSE)
 - **UI**: Shadcn UI + Tailwind CSS
 
+### Recent Updates (2025-12-03)
+
+#### ✅ Auto-Save & Draft History
+- **Auto-Save Mechanism**: Automatically saves drafts every 5 minutes during active QA runs
+- **Draft History**: Track up to 50 previous versions of test cases and issues found
+- **One-Click Restore**: Recover any previous draft version with a single click
+- **Smart Detection**: Avoids duplicate saves and only saves when content has changed
+- **Save Type Indicators**: Visual distinction between auto-saves and manual saves
+- **Prevent Data Loss**: Never lose work due to accidental changes or browser issues
+- **Complete Audit Trail**: Full history of all changes with timestamps and save types
+
 ### Recent Updates (2025-12-02)
 
 #### ✅ Exploratory Testing Sessions
@@ -77,6 +88,7 @@ The application is now fully functional in **Mock Mode** for offline development
 - ✅ Auth tables (users, accounts, sessions, verification tokens)
 - ✅ Groups and Projects with GitLab sync
 - ✅ QA Issues and QA Runs with Tiptap JSON content
+- ✅ **QA Draft History** (auto-save snapshots, version tracking, restore capability)
 - ✅ Attachments with GitLab URLs
 - ✅ Notifications system with SSE support
 - ✅ Snippets for reusable content
@@ -128,6 +140,7 @@ The application is now fully functional in **Mock Mode** for offline development
 - ✅ `uploadAttachment.ts` - File upload with validation and rate limiting
 - ✅ `removeAttachment.ts` - File attachment removal
 - ✅ `notifications.ts` - Get, mark read, mark all read
+- ✅ **`draftHistory.ts`** - Auto-save, draft history tracking, and restore operations
 - ✅ **`exploratorySessions.ts`** - Session lifecycle, note capture, blocker management
 
 #### 7. API Routes (`/app/api/`)
@@ -167,6 +180,8 @@ The application is now fully functional in **Mock Mode** for offline development
 3. **QA Workflow**
    - Test Cases editor (Tiptap JSON) with tables & images
    - Issues Found editor (Tiptap JSON)
+   - **New**: Auto-save every 5 minutes with draft history
+   - **New**: Restore previous versions from up to 50 saved drafts
    - **New**: Drag-to-resize images and advanced table controls
    - **New**: Text snippets for quick insertion
    - @mentions extraction
@@ -185,14 +200,24 @@ The application is now fully functional in **Mock Mode** for offline development
    - **Snippets Manager**: Create and manage reusable text snippets for test cases and issue descriptions
    - **Real-time Notifications**: SSE-based instant updates without page refreshes
 
-6. **Exploratory Testing**
+6. **Draft History & Auto-Save**
+   - **Automatic Saving**: Drafts auto-save every 5 minutes during active QA runs
+   - **Version History**: Browse up to 50 previous versions of test cases and issues found
+   - **Smart Detection**: Only saves when content has meaningfully changed (>50 characters)
+   - **One-Click Restore**: Recover any previous draft version instantly
+   - **Save Type Tracking**: Clear distinction between auto-saves and manual saves
+   - **Timestamps**: Human-readable timestamps for each draft (e.g., "Dec 3, 2024 at 7:30 PM")
+   - **Content Preview**: See what each draft contains before restoring
+   - **Data Loss Prevention**: Never lose work due to accidental changes or browser issues
+
+7. **Exploratory Testing**
    - **Session Workspace**: Dedicated environment for exploratory testing with charter definition
    - **Real-time Note Capture**: Quick capture bar for observations, bugs, blockers, questions, and patterns
    - **Context Preservation**: Automatic URL, test data, and console log tracking
    - **Session Analytics**: Track duration, issues found, blockers logged, and questions raised
    - **Session Summary**: Auto-generated reports with timeline and outcomes
 
-7. **Blocker Management**
+8. **Blocker Management**
    - **Centralized Tracking**: View all blockers across projects in one place
    - **Severity Classification**: Low, medium, high, and critical severity levels
    - **Impact Assessment**: Track what's being blocked (testing, development, deployment)

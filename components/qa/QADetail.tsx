@@ -18,9 +18,11 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/Tabs";
 import { useDescriptionProcessor } from './hooks/useDescriptionProcessor';
 import { useAutoDeleteWithReset } from './hooks/useAutoDelete';
 import { useImageUpload } from '@/hooks/useImageUpload';
+import { useAutoSaveDraft } from '@/hooks/useAutoSaveDraft';
 import { QAHeader } from './QAHeader';
 import { QAHistory } from './QAHistory';
 import { QAAttachments } from './QAAttachments';
+import { DraftHistoryDialog } from './DraftHistoryDialog';
 import type { QADetailProps, Snippet, Attachment } from '@/types/qa';
 
 export function QADetail({ issue, qaIssue, runs = [], allAttachments = [], members, projectId, issueIid, labels: projectLabels }: QADetailProps) {
@@ -61,6 +63,20 @@ export function QADetail({ issue, qaIssue, runs = [], allAttachments = [], membe
     // We pass activeRun content explicitly to ensure the baseline is reset correctly on run switch
     useAutoDeleteWithReset(testCases, activeRun?.testCasesContent, runId, attachments, setAttachments);
     useAutoDeleteWithReset(issuesFound, activeRun?.issuesFoundContent, runId, attachments, setAttachments);
+
+    // Auto-save draft every 5 minutes
+    const { saveNow } = useAutoSaveDraft({
+        qaRunId: runId,
+        testCasesContent: testCases,
+        issuesFoundContent: issuesFound,
+        enabled: !!activeRun, // Only auto-save when there's an active run
+    });
+
+    // Handle draft restoration
+    const handleRestoreDraft = useCallback((draft: { testCasesContent: any; issuesFoundContent: any }) => {
+        setTestCases(draft.testCasesContent);
+        setIssuesFound(draft.issuesFoundContent);
+    }, []);
 
     const handleRemoveAttachment = useCallback(async (attachmentId: string, filename: string) => {
         try {
@@ -308,6 +324,10 @@ export function QADetail({ issue, qaIssue, runs = [], allAttachments = [], membe
 
                         {activeRun ? (
                             <>
+                                <DraftHistoryDialog
+                                    qaRunId={runId}
+                                    onRestore={handleRestoreDraft}
+                                />
                                 <Button variant="ghost" onClick={() => handleSave(false)} disabled={saving} className="text-muted-foreground hover:text-foreground">
                                     {saving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Save className="h-4 w-4 mr-2" />}
                                     Save Draft

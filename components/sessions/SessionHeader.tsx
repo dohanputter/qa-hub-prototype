@@ -7,7 +7,8 @@ import { Button } from '@/components/ui/Button';
 import { completeSession, abandonSession, pauseSession, resumeSession } from '@/app/actions/exploratorySessions';
 import { useRouter } from 'next/navigation';
 import { format } from 'date-fns';
-import { Pause, Play, Square, Clock } from 'lucide-react';
+import { Pause, Play, Square, Clock, ArrowLeft } from 'lucide-react';
+import Link from 'next/link';
 
 interface SessionHeaderProps {
     session: any;
@@ -92,6 +93,12 @@ export function SessionHeader({ session, onStatusChange }: SessionHeaderProps) {
     return (
         <header className="h-16 border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 px-4 flex items-center justify-between z-10">
             <div className="flex items-center gap-4">
+                <Button variant="ghost" size="sm" asChild>
+                    <Link href={`/${session.project.groupId}/sessions`}>
+                        <ArrowLeft className="w-4 h-4 mr-2" />
+                        Sessions
+                    </Link>
+                </Button>
                 <div className="flex flex-col">
                     <h1 className="font-semibold text-lg leading-tight">{session.charter}</h1>
                     <div className="flex items-center gap-2 text-xs text-muted-foreground">
