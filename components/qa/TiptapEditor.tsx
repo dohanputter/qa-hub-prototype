@@ -1,7 +1,7 @@
 'use client';
 
 // Enhanced Tiptap Editor
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useEditor, EditorContent, ReactRenderer } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Mention from '@tiptap/extension-mention';
@@ -325,6 +325,30 @@ export function TiptapEditor({
             },
         },
     });
+
+    // Sync editor content when content prop changes (e.g., from draft restoration)
+    useEffect(() => {
+        if (!editor || readOnly) return;
+
+        // Get current editor content
+        const currentContent = editor.getJSON();
+
+        // Compare with new content to avoid unnecessary updates
+        const newContentString = JSON.stringify(normalizedContent);
+        const currentContentString = JSON.stringify(currentContent);
+
+        // Only update if content actually changed
+        if (newContentString !== currentContentString) {
+            // Update the editor content
+            editor.commands.setContent(normalizedContent || { type: 'doc', content: [] });
+
+            // Manually trigger onChange to update parent state
+            // This is crucial for draft restoration to work with Pass/Fail
+            if (onChange && normalizedContent) {
+                onChange(normalizedContent);
+            }
+        }
+    }, [editor, normalizedContent, readOnly, onChange]);
 
     if (!editor) return null;
 

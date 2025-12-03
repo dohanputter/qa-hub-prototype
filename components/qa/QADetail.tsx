@@ -1,28 +1,26 @@
 'use client';
 
 // Refined Issue Detail Page
-import { useState, useEffect, useCallback, useTransition } from 'react';
+import { useState, useEffect, useCallback, useTransition, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { TiptapEditor } from './TiptapEditor';
 import { Button } from '@/components/ui/Button';
 import { Label } from '@/components/ui/Label';
-import { getOrCreateQARun, submitQARun } from '@/app/actions/qa';
+import { getOrCreateQARun, submitQARun, updateQARunContent } from '@/app/actions/qa';
 import { uploadAttachment } from '@/app/actions/uploadAttachment';
 import { removeAttachment } from '@/app/actions/removeAttachment';
 import { getSnippetsAction } from '@/app/actions/snippets';
 import { toast } from '@/components/ui/useToast';
-import { Loader2, Save, PlayCircle } from 'lucide-react';
+import { Loader2, Save, PlayCircle, CheckCircle2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { logger } from '@/lib/logger';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/Tabs";
 import { useDescriptionProcessor } from './hooks/useDescriptionProcessor';
 import { useAutoDeleteWithReset } from './hooks/useAutoDelete';
 import { useImageUpload } from '@/hooks/useImageUpload';
-import { useAutoSaveDraft } from '@/hooks/useAutoSaveDraft';
 import { QAHeader } from './QAHeader';
 import { QAHistory } from './QAHistory';
 import { QAAttachments } from './QAAttachments';
-import { DraftHistoryDialog } from './DraftHistoryDialog';
 import type { QADetailProps, Snippet, Attachment } from '@/types/qa';
 
 export function QADetail({ issue, qaIssue, runs = [], allAttachments = [], members, projectId, issueIid, labels: projectLabels }: QADetailProps) {
@@ -49,11 +47,18 @@ export function QADetail({ issue, qaIssue, runs = [], allAttachments = [], membe
     const [attachments, setAttachments] = useState<Attachment[]>(allAttachments.filter(a => a.qaRunId === activeRun?.id) || []);
 
     const [saving, setSaving] = useState(false);
+    const [autoSaving, setAutoSaving] = useState(false);
     const [isPending, startTransition] = useTransition();
     const [snippets, setSnippets] = useState<Snippet[]>([]);
 
     // Track run ID
     const [runId, setRunId] = useState(activeRun?.id || null);
+
+    // Track last saved content to avoid unnecessary saves
+    const lastSavedRef = useRef({
+        testCases: activeRun?.testCasesContent,
+        issuesFound: activeRun?.issuesFoundContent
+    });
 
     useEffect(() => {
         getSnippetsAction().then(setSnippets).catch(err => logger.error("Failed to load snippets", err));
@@ -64,19 +69,33 @@ export function QADetail({ issue, qaIssue, runs = [], allAttachments = [], membe
     useAutoDeleteWithReset(testCases, activeRun?.testCasesContent, runId, attachments, setAttachments);
     useAutoDeleteWithReset(issuesFound, activeRun?.issuesFoundContent, runId, attachments, setAttachments);
 
-    // Auto-save draft every 5 minutes
-    const { saveNow } = useAutoSaveDraft({
-        qaRunId: runId,
-        testCasesContent: testCases,
-        issuesFoundContent: issuesFound,
-        enabled: !!activeRun, // Only auto-save when there's an active run
-    });
+    // Continuous Auto-Save Effect
+    useEffect(() => {
+        const timer = setTimeout(async () => {
+            const currentTestCasesStr = JSON.stringify(testCases);
+            const currentIssuesFoundStr = JSON.stringify(issuesFound);
+            const lastSavedTestCasesStr = JSON.stringify(lastSavedRef.current.testCases);
+            const lastSavedIssuesFoundStr = JSON.stringify(lastSavedRef.current.issuesFound);
 
-    // Handle draft restoration
-    const handleRestoreDraft = useCallback((draft: { testCasesContent: any; issuesFoundContent: any }) => {
-        setTestCases(draft.testCasesContent);
-        setIssuesFound(draft.issuesFoundContent);
-    }, []);
+            // Only save if content has changed
+            if (currentTestCasesStr !== lastSavedTestCasesStr || currentIssuesFoundStr !== lastSavedIssuesFoundStr) {
+                // Only auto-save if we have an active run
+                if (!runId) return;
+
+                setAutoSaving(true);
+                try {
+                    await updateQARunContent(runId, testCases, issuesFound);
+                    lastSavedRef.current = { testCases, issuesFound };
+                } catch (e) {
+                    console.error("Auto-save failed", e);
+                } finally {
+                    setAutoSaving(false);
+                }
+            }
+        }, 2000); // Debounce for 2 seconds
+
+        return () => clearTimeout(timer);
+    }, [testCases, issuesFound, runId, projectId, issueIid]);
 
     const handleRemoveAttachment = useCallback(async (attachmentId: string, filename: string) => {
         try {
@@ -324,10 +343,19 @@ export function QADetail({ issue, qaIssue, runs = [], allAttachments = [], membe
 
                         {activeRun ? (
                             <>
-                                <DraftHistoryDialog
-                                    qaRunId={runId}
-                                    onRestore={handleRestoreDraft}
-                                />
+                                <div className="flex items-center text-xs text-muted-foreground mr-2 transition-opacity duration-300">
+                                    {autoSaving ? (
+                                        <span className="flex items-center">
+                                            <Loader2 className="h-3 w-3 animate-spin mr-1.5" />
+                                            Saving...
+                                        </span>
+                                    ) : (
+                                        <span className="flex items-center opacity-70">
+                                            <CheckCircle2 className="h-3 w-3 mr-1.5 text-emerald-500" />
+                                            Saved
+                                        </span>
+                                    )}
+                                </div>
                                 <Button variant="ghost" onClick={() => handleSave(false)} disabled={saving} className="text-muted-foreground hover:text-foreground">
                                     {saving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Save className="h-4 w-4 mr-2" />}
                                     Save Draft
@@ -408,7 +436,7 @@ export function QADetail({ issue, qaIssue, runs = [], allAttachments = [], membe
                     </TabsContent>
 
                     <TabsContent value="history" className="flex-1 overflow-y-auto p-8 outline-none">
-                        <QAHistory runs={runs} />
+                        <QAHistory runs={runs.filter(r => r.status !== 'pending')} />
                     </TabsContent>
                 </Tabs>
             </div>

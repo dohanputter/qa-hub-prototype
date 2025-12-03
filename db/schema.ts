@@ -143,23 +143,6 @@ export const qaRuns = sqliteTable('qa_runs', {
     runNumberIdx: index('idx_qa_runs_number').on(table.qaIssueId, table.runNumber),
 }));
 
-// QA DRAFT HISTORY TABLE
-export const qaDraftHistory = sqliteTable('qa_draft_history', {
-    id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
-    qaRunId: text('qa_run_id').notNull().references(() => qaRuns.id, { onDelete: 'cascade' }),
-
-    // Draft content snapshots
-    testCasesContent: text('test_cases_content', { mode: 'json' }),
-    issuesFoundContent: text('issues_found_content', { mode: 'json' }),
-
-    // Metadata
-    savedBy: text('saved_by').notNull().references(() => users.id),
-    saveType: text('save_type').$type<'auto' | 'manual'>().default('auto').notNull(),
-    createdAt: integer('created_at', { mode: 'timestamp_ms' }).$defaultFn(() => new Date()),
-}, (table) => ({
-    qaRunIdx: index('idx_draft_history_run').on(table.qaRunId),
-    createdAtIdx: index('idx_draft_history_created').on(table.qaRunId, table.createdAt),
-}));
 
 export const attachments = sqliteTable('attachments', {
     id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
@@ -223,14 +206,9 @@ export const qaIssuesRelations = relations(qaIssues, ({ one, many }) => ({
 export const qaRunsRelations = relations(qaRuns, ({ one, many }) => ({
     qaIssue: one(qaIssues, { fields: [qaRuns.qaIssueId], references: [qaIssues.id] }),
     attachments: many(attachments),
-    draftHistory: many(qaDraftHistory),
     creator: one(users, { fields: [qaRuns.createdBy], references: [users.id] }),
 }));
 
-export const qaDraftHistoryRelations = relations(qaDraftHistory, ({ one }) => ({
-    qaRun: one(qaRuns, { fields: [qaDraftHistory.qaRunId], references: [qaRuns.id] }),
-    saver: one(users, { fields: [qaDraftHistory.savedBy], references: [users.id] }),
-}));
 
 export const attachmentsRelations = relations(attachments, ({ one }) => ({
     qaRun: one(qaRuns, { fields: [attachments.qaRunId], references: [qaRuns.id] }),

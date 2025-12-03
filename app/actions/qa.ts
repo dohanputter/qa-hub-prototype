@@ -332,3 +332,18 @@ export async function deleteQARun(runId: string) {
 
     return { success: true };
 }
+
+export async function updateQARunContent(runId: string, testCasesContent: JSONContent | null, issuesFoundContent: JSONContent | null) {
+    const session = await auth();
+    if (!session?.accessToken) throw new Error('Unauthorized');
+
+    await db.update(qaRuns)
+        .set({
+            testCasesContent: testCasesContent,
+            issuesFoundContent: issuesFoundContent,
+            updatedAt: new Date(),
+        })
+        .where(eq(qaRuns.id, runId));
+
+    return { success: true };
+}
