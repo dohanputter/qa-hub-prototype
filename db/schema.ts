@@ -246,6 +246,7 @@ export const exploratorySessions = sqliteTable("exploratory_sessions", {
     pausedAt: integer('paused_at', { mode: 'timestamp_ms' }),
     completedAt: integer('completed_at', { mode: 'timestamp_ms' }),
     totalDuration: integer('total_duration'), // in seconds
+    totalPausedDuration: integer('total_paused_duration').default(0), // accumulated paused time in seconds
 
     // Testing context
     preTestNotes: text('pre_test_notes'),

@@ -13,7 +13,7 @@ interface SessionWorkspaceProps {
 }
 
 export function SessionWorkspace({ session, sessionId }: SessionWorkspaceProps) {
-    const [isPaused, setIsPaused] = useState(session.status !== 'active');
+    const [isPaused, setIsPaused] = useState(session.status === 'paused');
 
     return (
         <div className="h-screen w-full bg-background flex flex-col overflow-hidden">

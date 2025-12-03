@@ -83,6 +83,63 @@ export async function getSession(sessionId: number) {
     return result;
 }
 
+export async function pauseSession(sessionId: number) {
+    const session = await auth();
+    if (!session?.user?.id && !isMockMode()) throw new Error('Unauthorized');
+
+    try {
+        await db.update(exploratorySessions)
+            .set({
+                status: 'paused',
+                pausedAt: new Date(),
+            })
+            .where(eq(exploratorySessions.id, sessionId));
+
+        revalidatePath(`/sessions/${sessionId}`);
+        return { success: true };
+    } catch (error) {
+        logger.error('Failed to pause session', error);
+        throw new Error('Failed to pause session');
+    }
+}
+
+export async function resumeSession(sessionId: number) {
+    const session = await auth();
+    if (!session?.user?.id && !isMockMode()) throw new Error('Unauthorized');
+
+    try {
+        // Get current session to calculate pause duration
+        const currentSession = await db.query.exploratorySessions.findFirst({
+            where: eq(exploratorySessions.id, sessionId),
+        });
+
+        if (!currentSession) throw new Error('Session not found');
+        if (!currentSession.pausedAt) throw new Error('Session is not paused');
+
+        // Calculate how long the session was paused
+        const pausedAt = new Date(currentSession.pausedAt).getTime();
+        const now = new Date().getTime();
+        const pauseDuration = Math.round((now - pausedAt) / 1000); // in seconds
+
+        // Add to total paused duration
+        const totalPausedDuration = (currentSession.totalPausedDuration || 0) + pauseDuration;
+
+        await db.update(exploratorySessions)
+            .set({
+                status: 'active',
+                pausedAt: null,
+                totalPausedDuration,
+            })
+            .where(eq(exploratorySessions.id, sessionId));
+
+        revalidatePath(`/sessions/${sessionId}`);
+        return { success: true };
+    } catch (error) {
+        logger.error('Failed to resume session', error);
+        throw new Error('Failed to resume session');
+    }
+}
+
 export async function completeSession(sessionId: number, postTestNotes?: string) {
     const session = await auth();
     if (!session?.user?.id && !isMockMode()) throw new Error('Unauthorized');
@@ -97,13 +154,24 @@ export async function completeSession(sessionId: number, postTestNotes?: string)
 
         const completedAt = new Date();
         const startedAt = currentSession.startedAt || new Date();
-        const totalDuration = Math.round((completedAt.getTime() - startedAt.getTime()) / 1000);
+        let totalPausedDuration = currentSession.totalPausedDuration || 0;
+
+        // If the session is currently paused, add the current pause duration
+        if (currentSession.status === 'paused' && currentSession.pausedAt) {
+            const pausedAt = new Date(currentSession.pausedAt).getTime();
+            const currentPauseDuration = Math.round((completedAt.getTime() - pausedAt) / 1000);
+            totalPausedDuration += currentPauseDuration;
+        }
+
+        // Total duration is the total time minus time spent paused
+        const totalDuration = Math.round((completedAt.getTime() - startedAt.getTime()) / 1000) - totalPausedDuration;
 
         await db.update(exploratorySessions)
             .set({
                 status: 'completed',
                 completedAt,
                 totalDuration,
+                totalPausedDuration,
                 postTestNotes: postTestNotes || null,
             })
             .where(eq(exploratorySessions.id, sessionId));
@@ -131,13 +199,24 @@ export async function abandonSession(sessionId: number) {
 
         const abandonedAt = new Date();
         const startedAt = currentSession.startedAt || new Date();
-        const totalDuration = Math.round((abandonedAt.getTime() - startedAt.getTime()) / 1000);
+        let totalPausedDuration = currentSession.totalPausedDuration || 0;
+
+        // If the session is currently paused, add the current pause duration
+        if (currentSession.status === 'paused' && currentSession.pausedAt) {
+            const pausedAt = new Date(currentSession.pausedAt).getTime();
+            const currentPauseDuration = Math.round((abandonedAt.getTime() - pausedAt) / 1000);
+            totalPausedDuration += currentPauseDuration;
+        }
+
+        // Total duration is the total time minus time spent paused
+        const totalDuration = Math.round((abandonedAt.getTime() - startedAt.getTime()) / 1000) - totalPausedDuration;
 
         await db.update(exploratorySessions)
             .set({
                 status: 'abandoned',
                 completedAt: abandonedAt,
                 totalDuration,
+                totalPausedDuration,
             })
             .where(eq(exploratorySessions.id, sessionId));
 

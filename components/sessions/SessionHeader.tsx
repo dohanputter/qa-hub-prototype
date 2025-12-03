@@ -4,7 +4,7 @@
 import { useState, useEffect } from 'react';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
-import { completeSession, abandonSession } from '@/app/actions/exploratorySessions';
+import { completeSession, abandonSession, pauseSession, resumeSession } from '@/app/actions/exploratorySessions';
 import { useRouter } from 'next/navigation';
 import { format } from 'date-fns';
 import { Pause, Play, Square, Clock } from 'lucide-react';
@@ -17,23 +17,32 @@ interface SessionHeaderProps {
 export function SessionHeader({ session, onStatusChange }: SessionHeaderProps) {
     const router = useRouter();
     const [elapsed, setElapsed] = useState(0);
-    const [status, setStatus] = useState(session.status);
+    const [status, setStatus] = useState<'active' | 'paused'>(session.status === 'paused' ? 'paused' : 'active');
+    const [isUpdating, setIsUpdating] = useState(false);
 
     useEffect(() => {
-        if (status !== 'active') return;
+        const totalPausedDuration = session.totalPausedDuration || 0;
 
-        // Calculate initial elapsed time
-        const startTime = new Date(session.startedAt).getTime();
-        const now = new Date().getTime();
-        const initialElapsed = Math.floor((now - startTime) / 1000);
-        setElapsed(initialElapsed);
+        if (status === 'active') {
+            // Calculate initial elapsed time minus paused duration
+            const startTime = new Date(session.startedAt).getTime();
+            const now = new Date().getTime();
+            const initialElapsed = Math.floor((now - startTime) / 1000) - totalPausedDuration;
+            setElapsed(initialElapsed);
 
-        const interval = setInterval(() => {
-            setElapsed(e => e + 1);
-        }, 1000);
+            const interval = setInterval(() => {
+                setElapsed(e => e + 1);
+            }, 1000);
 
-        return () => clearInterval(interval);
-    }, [status, session.startedAt]);
+            return () => clearInterval(interval);
+        } else if (status === 'paused' && session.pausedAt) {
+            // When paused, freeze the timer at the pause moment
+            const startTime = new Date(session.startedAt).getTime();
+            const pausedTime = new Date(session.pausedAt).getTime();
+            const frozenElapsed = Math.floor((pausedTime - startTime) / 1000) - totalPausedDuration;
+            setElapsed(frozenElapsed);
+        }
+    }, [status, session.startedAt, session.pausedAt, session.totalPausedDuration]);
 
     const formatTime = (seconds: number) => {
         const h = Math.floor(seconds / 3600);
@@ -42,10 +51,28 @@ export function SessionHeader({ session, onStatusChange }: SessionHeaderProps) {
         return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
     };
 
-    const handleStatusToggle = () => {
-        const newStatus = status === 'active' ? 'paused' : 'active';
-        setStatus(newStatus);
-        onStatusChange?.(newStatus);
+    const handleStatusToggle = async () => {
+        if (isUpdating) return;
+
+        setIsUpdating(true);
+        try {
+            const newStatus = status === 'active' ? 'paused' : 'active';
+
+            if (newStatus === 'paused') {
+                await pauseSession(session.id);
+            } else {
+                await resumeSession(session.id);
+            }
+
+            setStatus(newStatus);
+            onStatusChange?.(newStatus);
+            router.refresh();
+        } catch (error) {
+            console.error('Failed to toggle session status:', error);
+            alert('Failed to update session status. Please try again.');
+        } finally {
+            setIsUpdating(false);
+        }
     };
 
     const handleComplete = async () => {
@@ -91,7 +118,7 @@ export function SessionHeader({ session, onStatusChange }: SessionHeaderProps) {
                         </Badge>
                     )}
 
-                    <Button variant="outline" size="sm" onClick={handleStatusToggle}>
+                    <Button variant="outline" size="sm" onClick={handleStatusToggle} disabled={isUpdating}>
                         {status === 'active' ? <Pause className="w-4 h-4 mr-2" /> : <Play className="w-4 h-4 mr-2" />}
                         {status === 'active' ? 'Pause' : 'Resume'}
                     </Button>
