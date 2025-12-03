@@ -128,7 +128,7 @@ The application is now fully functional in **Mock Mode** for offline development
 - ✅ `uploadAttachment.ts` - File upload with validation and rate limiting
 - ✅ `removeAttachment.ts` - File attachment removal
 - ✅ `notifications.ts` - Get, mark read, mark all read
-- ✅ **`exploratory-sessions.ts`** - Session lifecycle, note capture, blocker management
+- ✅ **`exploratorySessions.ts`** - Session lifecycle, note capture, blocker management
 
 #### 7. API Routes (`/app/api/`)
 - ✅ `/api/auth/[...nextauth]` - NextAuth handlers
