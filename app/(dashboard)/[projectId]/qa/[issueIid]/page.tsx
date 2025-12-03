@@ -1,6 +1,16 @@
 import { auth } from '@/auth';
 import { getIssue, getProjectLabels } from '@/lib/gitlab';
-import { QADetail } from '@/components/qa/QADetail';
+import dynamic from 'next/dynamic';
+import { Loader2 } from 'lucide-react';
+
+const QADetail = dynamic(() => import('@/components/qa/QADetail').then(mod => mod.QADetail), {
+    ssr: false,
+    loading: () => (
+        <div className="flex items-center justify-center h-screen">
+            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </div>
+    )
+});
 import { getProjectUsers } from '@/app/actions/project';
 
 import { db } from '@/lib/db';
