@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Bug, Lightbulb, ShieldAlert, HelpCircle, Ban, CheckCircle2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { extractTextFromTiptap } from '@/lib/tiptap';
 
 interface Note {
     id: number;
@@ -87,8 +88,7 @@ export function NotesTimeline({ sessionId, initialNotes }: NotesTimelineProps) {
                                 </span>
                             </div>
                             <div className="text-sm prose dark:prose-invert max-w-none">
-                                {/* Simple rendering of Tiptap JSON text content for MVP */}
-                                {note.content?.content?.[0]?.content?.[0]?.text || 'No content'}
+                                {extractTextFromTiptap(note.content)}
                             </div>
                         </div>
                     </div>

@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { formatDistanceToNow } from 'date-fns';
 import { CheckCircle2, Clock, ArrowLeft, ShieldAlert, Bug, FileText } from 'lucide-react';
 import Link from 'next/link';
+import { extractTextFromTiptap } from '@/lib/tiptap';
 
 interface SessionSummaryPageProps {
     params: Promise<{
@@ -121,7 +122,7 @@ export default async function SessionSummaryPage({ params }: SessionSummaryPageP
                                         </span>
                                     </div>
                                     <div className="text-sm">
-                                        {note.content?.content?.[0]?.content?.[0]?.text || 'No content'}
+                                        {extractTextFromTiptap(note.content)}
                                     </div>
                                 </div>
                             </div>
