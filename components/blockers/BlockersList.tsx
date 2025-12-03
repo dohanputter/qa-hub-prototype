@@ -10,6 +10,7 @@ import { deleteBlocker, updateBlocker } from '@/app/actions/exploratory-sessions
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/components/ui/use-toast';
 import Link from 'next/link';
+import { extractTextFromTiptap } from '@/lib/tiptap';
 import {
     AlertDialog,
     AlertDialogAction,
@@ -21,8 +22,25 @@ import {
     AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 
+export interface Blocker {
+    id: number;
+    sessionId?: number | null;
+    projectId: number;
+    title: string;
+    description: any;
+    severity: 'low' | 'medium' | 'high' | 'critical';
+    status: 'active' | 'resolved' | 'escalated' | null; // Allow null to match DB schema
+    blockingWhat: 'testing' | 'development' | 'deployment';
+    createdAt: Date;
+    resolvedAt?: Date | null;
+    session?: {
+        id: number;
+        // add other session fields if needed
+    } | null;
+}
+
 interface BlockersListProps {
-    blockers: any[];
+    blockers: Blocker[];
     projectId: number;
 }
 
@@ -35,7 +53,7 @@ export function BlockersList({ blockers, projectId }: BlockersListProps) {
 
     const filteredBlockers = blockers.filter(blocker => {
         if (statusFilter === 'all') return true;
-        if (statusFilter === 'active') return blocker.status === 'active' || blocker.status === 'escalated';
+        if (statusFilter === 'active') return (blocker.status === 'active' || blocker.status === 'escalated' || blocker.status === null); // Treat null as active
         if (statusFilter === 'resolved') return blocker.status === 'resolved';
         return true;
     });
@@ -88,11 +106,12 @@ export function BlockersList({ blockers, projectId }: BlockersListProps) {
         }
     };
 
-    const getStatusBadge = (status: string) => {
+    const getStatusBadge = (status: string | null) => {
         switch (status) {
             case 'active': return <Badge variant="destructive">Active</Badge>;
             case 'resolved': return <Badge variant="secondary">Resolved</Badge>;
             case 'escalated': return <Badge variant="destructive">Escalated</Badge>;
+            case null: return <Badge variant="destructive">Active</Badge>; // Default null to active
             default: return <Badge>{status}</Badge>;
         }
     };
@@ -114,7 +133,7 @@ export function BlockersList({ blockers, projectId }: BlockersListProps) {
                         size="sm"
                         onClick={() => setStatusFilter('active')}
                     >
-                        Active ({blockers.filter(b => b.status === 'active' || b.status === 'escalated').length})
+                        Active ({blockers.filter(b => b.status === 'active' || b.status === 'escalated' || b.status === null).length})
                     </Button>
                     <Button
                         variant={statusFilter === 'resolved' ? 'default' : 'outline'}
@@ -179,9 +198,9 @@ export function BlockersList({ blockers, projectId }: BlockersListProps) {
                                         <span>Blocking: {blocker.blockingWhat}</span>
                                     </div>
 
-                                    {blocker.description?.content?.[0]?.content?.[0]?.text && (
+                                    {extractTextFromTiptap(blocker.description) && (
                                         <p className="text-sm text-muted-foreground">
-                                            {blocker.description.content[0].content[0].text}
+                                            {extractTextFromTiptap(blocker.description)}
                                         </p>
                                     )}
 

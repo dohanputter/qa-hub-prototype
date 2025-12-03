@@ -3,7 +3,7 @@
 import { auth } from '@/auth';
 import { db } from '@/lib/db';
 import { exploratorySessions, sessionNotes, qaBlockers, projects, users, qaIssues } from '@/db/schema';
-import { eq, desc, and, inArray } from 'drizzle-orm';
+import { eq, desc, and, inArray, sql } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 import { safeParse, startSessionSchema, captureNoteSchema, createBlockerSchema, resolveBlockerSchema } from '@/lib/validations';
 import { isMockMode } from '@/lib/mode';
@@ -177,32 +177,21 @@ export async function captureSessionNote(data: unknown) {
         }).returning();
 
         // 2. Update session counters
-        const counterMap: Record<string, any> = {
-            'bug': { issuesFoundCount: 1 },
-            'blocker': { blockersLoggedCount: 1 },
-            'question': { questionsCount: 1 },
-            'out_of_scope': { outOfScopeCount: 1 },
+        const counterMap: Record<string, string> = {
+            'bug': 'issuesFoundCount',
+            'blocker': 'blockersLoggedCount',
+            'question': 'questionsCount',
+            'out_of_scope': 'outOfScopeCount',
         };
 
-        if (counterMap[noteData.type]) {
-            // We need to increment. Drizzle doesn't have a simple increment, so we fetch and update or use sql
-            // Using sql for atomicity would be better, but for now let's keep it simple with read-update
-            // Actually, let's use sql operator if possible, or just simple update for MVP
-            const currentSession = await db.query.exploratorySessions.findFirst({
-                where: eq(exploratorySessions.id, noteData.sessionId),
-            });
+        const fieldToIncrement = counterMap[noteData.type];
 
-            if (currentSession) {
-                const updateData: any = {};
-                if (noteData.type === 'bug') updateData.issuesFoundCount = (currentSession.issuesFoundCount || 0) + 1;
-                if (noteData.type === 'blocker') updateData.blockersLoggedCount = (currentSession.blockersLoggedCount || 0) + 1;
-                if (noteData.type === 'question') updateData.questionsCount = (currentSession.questionsCount || 0) + 1;
-                if (noteData.type === 'out_of_scope') updateData.outOfScopeCount = (currentSession.outOfScopeCount || 0) + 1;
-
-                await db.update(exploratorySessions)
-                    .set(updateData)
-                    .where(eq(exploratorySessions.id, noteData.sessionId));
-            }
+        if (fieldToIncrement) {
+             await db.update(exploratorySessions)
+                .set({
+                    [fieldToIncrement]: sql`${exploratorySessions[fieldToIncrement as keyof typeof exploratorySessions._.columns]} + 1`
+                })
+                .where(eq(exploratorySessions.id, noteData.sessionId));
         }
 
         // 3. If it's a blocker, create a QA Blocker entry automatically
@@ -259,14 +248,12 @@ export async function createBlocker(data: unknown) {
 
         // If linked to a session, increment counter
         if (blockerData.sessionId) {
-            const currentSession = await db.query.exploratorySessions.findFirst({
-                where: eq(exploratorySessions.id, blockerData.sessionId),
-            });
-            if (currentSession) {
-                await db.update(exploratorySessions)
-                    .set({ blockersLoggedCount: (currentSession.blockersLoggedCount || 0) + 1 })
-                    .where(eq(exploratorySessions.id, blockerData.sessionId));
-            }
+            await db.update(exploratorySessions)
+                .set({
+                    blockersLoggedCount: sql`${exploratorySessions.blockersLoggedCount} + 1`
+                })
+                .where(eq(exploratorySessions.id, blockerData.sessionId));
+
             revalidatePath(`/sessions/${blockerData.sessionId}`);
         }
 
@@ -300,15 +287,13 @@ export async function resolveBlocker(data: unknown) {
 
         // Update session resolved count if applicable
         if (updatedBlocker.sessionId) {
-            const currentSession = await db.query.exploratorySessions.findFirst({
-                where: eq(exploratorySessions.id, updatedBlocker.sessionId),
-            });
-            if (currentSession) {
-                await db.update(exploratorySessions)
-                    .set({ blockersResolvedCount: (currentSession.blockersResolvedCount || 0) + 1 })
-                    .where(eq(exploratorySessions.id, updatedBlocker.sessionId));
-                revalidatePath(`/sessions/${updatedBlocker.sessionId}`);
-            }
+            await db.update(exploratorySessions)
+                .set({
+                    blockersResolvedCount: sql`${exploratorySessions.blockersResolvedCount} + 1`
+                })
+                .where(eq(exploratorySessions.id, updatedBlocker.sessionId));
+
+            revalidatePath(`/sessions/${updatedBlocker.sessionId}`);
         }
 
 
@@ -367,15 +352,14 @@ export async function deleteBlocker(blockerId: number) {
 
         // Decrement session counter if applicable
         if (blocker.sessionId) {
-            const currentSession = await db.query.exploratorySessions.findFirst({
-                where: eq(exploratorySessions.id, blocker.sessionId),
-            });
-            if (currentSession && (currentSession.blockersLoggedCount || 0) > 0) {
-                await db.update(exploratorySessions)
-                    .set({ blockersLoggedCount: (currentSession.blockersLoggedCount || 0) - 1 })
-                    .where(eq(exploratorySessions.id, blocker.sessionId));
-                revalidatePath(`/sessions/${blocker.sessionId}`);
-            }
+            // Ensure we don't go below 0 (though unlikely if logic is correct)
+            await db.update(exploratorySessions)
+                .set({
+                    blockersLoggedCount: sql`MAX(0, ${exploratorySessions.blockersLoggedCount} - 1)`
+                })
+                .where(eq(exploratorySessions.id, blocker.sessionId));
+
+            revalidatePath(`/sessions/${blocker.sessionId}`);
         }
 
         // Revalidate paths
