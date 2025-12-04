@@ -9,8 +9,7 @@
     "start": "next start",
     "lint": "eslint . --ext .ts,.tsx --max-warnings=0",
     "db:push": "drizzle-kit push",
-    "db:studio": "drizzle-kit studio",
-    "seed": "tsx tools/seed-mock-data.ts"
+    "db:studio": "drizzle-kit studio"
   },
   "dependencies": {
     "@auth/drizzle-adapter": "^1.5.0",
