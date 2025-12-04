@@ -111,6 +111,8 @@ export const qaIssues = sqliteTable('qa_issues', {
     issueUrl: text('issue_url').notNull(),
     // We keep a high-level status on the issue for quick filtering
     status: text('status').$type<'pending' | 'passed' | 'failed'>().default('pending').notNull(),
+    // Track where the defect was discovered (defect leakage tracking)
+    leakageSource: text('leakage_source').$type<'qa' | 'uat' | 'production'>().default('qa').notNull(),
     jsonLabels: text('json_labels', { mode: 'json' }),
     assigneeId: integer('assignee_id'),
     authorId: integer('author_id'),

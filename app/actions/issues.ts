@@ -199,6 +199,7 @@ export async function createIssue(projectId: number, data: unknown) {
                 issueDescription: validatedData.description || '',
                 issueUrl: `https://gitlab.com/mock/issues/${newId}`,
                 status,
+                leakageSource: validatedData.leakageSource,
                 jsonLabels: issueLabels,
                 assigneeId: assigneeId,
                 authorId: SYSTEM_USERS.MOCK ? 1 : null, // Default to mock user ID 1 if in mock mode
@@ -293,6 +294,7 @@ export async function createIssue(projectId: number, data: unknown) {
                     issueDescription: validatedData.description || '',
                     issueUrl: `https://gitlab.com/mock/issues/${newId}`,
                     status,
+                    leakageSource: validatedData.leakageSource,
                     jsonLabels: issueLabels,
                     assigneeId: assigneeId,
                     authorId: SYSTEM_USERS.MOCK ? 1 : null,

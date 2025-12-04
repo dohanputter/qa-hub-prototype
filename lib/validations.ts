@@ -15,6 +15,7 @@ export const createIssueSchema = z.object({
     ),
     labels: z.string().optional().default(''),
     labelId: z.string().optional(),
+    leakageSource: z.enum(['qa', 'uat', 'production']).default('qa'),
 });
 
 /**

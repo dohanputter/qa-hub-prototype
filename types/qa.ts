@@ -96,6 +96,7 @@ export interface QAIssue {
     gitlabProjectId: number;
     gitlabIssueIid: number;
     status: string;
+    leakageSource: 'qa' | 'uat' | 'production';
     createdAt: Date | string | null;
     updatedAt: Date | string | null;
 }
@@ -136,6 +137,7 @@ export interface QAHeaderProps {
     isUpdatingLabels: boolean;
     onLabelToggle: (label: string) => void;
     onLabelRemove: (label: string) => void;
+    leakageSource?: 'qa' | 'uat' | 'production';
 }
 
 /**

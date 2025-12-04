@@ -27,20 +27,44 @@ export function QAHeader({
     projectLabels,
     isUpdatingLabels,
     onLabelToggle,
-    onLabelRemove
+    onLabelRemove,
+    leakageSource
 }: QAHeaderProps) {
     const filteredProjectLabels = projectLabels?.filter((l: any) => !l.name.startsWith('qa::')) || [];
+
+    // Helper to get display label and styling for leakage source
+    const getLeakageSourceInfo = (source: 'qa' | 'uat' | 'production' | undefined) => {
+        switch (source) {
+            case 'uat':
+                return { label: 'UAT / Staging', color: 'bg-amber-500/15 text-amber-600 border-amber-500/30' };
+            case 'production':
+                return { label: 'Production Leak', color: 'bg-red-500/15 text-red-600 border-red-500/30' };
+            case 'qa':
+            default:
+                return { label: 'Internal QA', color: 'bg-emerald-500/15 text-emerald-600 border-emerald-500/30' };
+        }
+    };
+
+    const leakageInfo = getLeakageSourceInfo(leakageSource);
 
     return (
         <div className="w-[400px] border-r border-border/40 flex flex-col overflow-y-auto bg-background/60 backdrop-blur-md">
             <div className="p-8 space-y-8">
                 {/* Header */}
                 <div className="space-y-4">
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 flex-wrap">
                         <span className="font-mono text-sm text-muted-foreground">#{issue.iid}</span>
                         <Badge variant={issue.state === 'opened' ? 'default' : 'secondary'} className="rounded-md px-2 font-normal capitalize">
                             {issue.state}
                         </Badge>
+                        {leakageSource && (
+                            <Badge
+                                variant="outline"
+                                className={`rounded-md px-2 font-medium text-xs border ${leakageInfo.color}`}
+                            >
+                                {leakageInfo.label}
+                            </Badge>
+                        )}
                     </div>
                     <h1 className="text-2xl font-bold leading-tight tracking-tight text-foreground">{issue.title}</h1>
 

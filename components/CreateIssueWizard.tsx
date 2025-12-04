@@ -21,6 +21,13 @@ import { cn } from '@/lib/utils';
 import { tiptapToMarkdown } from '@/lib/tiptap';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from '@/components/ui/Select';
 
 interface CreateIssueWizardProps {
     onClose?: () => void;
@@ -49,6 +56,7 @@ export const CreateIssueWizard: React.FC<CreateIssueWizardProps> = ({ onClose, o
     const [description, setDescription] = useState<any>(null); // Tiptap JSON content
     const [titleError, setTitleError] = useState('');
     const [issueType, setIssueType] = useState('issue');
+    const [leakageSource, setLeakageSource] = useState<'qa' | 'uat' | 'production'>('qa');
 
     // Sidebar State
     const [assignee, setAssignee] = useState<User | undefined>(undefined);
@@ -128,6 +136,7 @@ export const CreateIssueWizard: React.FC<CreateIssueWizardProps> = ({ onClose, o
             description: description ? tiptapToMarkdown(description) : '',
             assigneeId: assignee?.id,
             labels: selectedLabels.map(l => l.title).join(','),
+            leakageSource,
         };
 
         if (onCreate) {
@@ -338,6 +347,25 @@ export const CreateIssueWizard: React.FC<CreateIssueWizardProps> = ({ onClose, o
                                         </button>
                                     ))}
                                 </div>
+                            </div>
+
+                            <div className="h-px bg-border/40" />
+
+                            {/* Defect Source */}
+                            <div className="space-y-3">
+                                <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                                    Defect Source
+                                </label>
+                                <Select value={leakageSource} onValueChange={(v) => setLeakageSource(v as 'qa' | 'uat' | 'production')}>
+                                    <SelectTrigger className="w-full bg-muted/30 border-border/50">
+                                        <SelectValue placeholder="Select source" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="qa">Internal QA</SelectItem>
+                                        <SelectItem value="uat">UAT / Staging</SelectItem>
+                                        <SelectItem value="production">Production Leak</SelectItem>
+                                    </SelectContent>
+                                </Select>
                             </div>
 
                             <div className="h-px bg-border/40" />
