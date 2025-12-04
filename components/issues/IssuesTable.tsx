@@ -4,14 +4,14 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/Badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/Avatar";
 import { Button } from "@/components/ui/Button";
+import { Pagination } from "@/components/ui/Pagination";
 import { formatDistanceToNow } from "date-fns";
 import Link from "next/link";
-import { Trash2 } from "lucide-react";
+import { Trash2, ShieldAlert } from "lucide-react";
 import { deleteIssue } from "@/app/actions/issues";
 import { useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { BlockerFormModal } from "@/components/sessions/BlockerFormModal";
-import { ShieldAlert } from "lucide-react";
 
 const isMockMode = process.env.NEXT_PUBLIC_MOCK_MODE === 'true';
 
@@ -67,6 +67,16 @@ export function IssuesTable({ issues, projectId, labels = [] }: { issues: any[];
     const [selectedProjectForBlocker, setSelectedProjectForBlocker] = useState<number | null>(null);
     const [selectedIssueForBlocker, setSelectedIssueForBlocker] = useState<string | null>(null);
 
+    // Pagination state
+    const [currentPage, setCurrentPage] = useState(1);
+    const [itemsPerPage, setItemsPerPage] = useState(10);
+
+    // Calculate paginated issues
+    const paginatedIssues = useMemo(() => {
+        const startIndex = (currentPage - 1) * itemsPerPage;
+        return issues.slice(startIndex, startIndex + itemsPerPage);
+    }, [issues, currentPage, itemsPerPage]);
+
     const handleDelete = async (issueIid: number) => {
         if (!confirm('Are you sure you want to delete this issue? This action cannot be undone.')) {
             return;
@@ -99,7 +109,7 @@ export function IssuesTable({ issues, projectId, labels = [] }: { issues: any[];
                     </TableRow>
                 </TableHeader>
                 <TableBody>
-                    {issues.map((issue) => (
+                    {paginatedIssues.map((issue) => (
                         <TableRow
                             key={`${issue.project.id}-${issue.iid}`}
                             className="group hover:bg-muted/50 transition-colors h-16 cursor-pointer"
@@ -200,6 +210,14 @@ export function IssuesTable({ issues, projectId, labels = [] }: { issues: any[];
                     )}
                 </TableBody>
             </Table>
+
+            <Pagination
+                currentPage={currentPage}
+                totalItems={issues.length}
+                itemsPerPage={itemsPerPage}
+                onPageChange={setCurrentPage}
+                onItemsPerPageChange={setItemsPerPage}
+            />
 
             {selectedProjectForBlocker && (
                 <BlockerFormModal

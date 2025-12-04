@@ -1,9 +1,10 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { Card, CardContent } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
+import { Pagination } from '@/components/ui/Pagination';
 import { formatDistanceToNow } from 'date-fns';
 import { ShieldAlert, Trash2, Edit, Clock, CheckCircle2, Link as LinkIcon } from 'lucide-react';
 import { deleteBlocker, updateBlocker } from '@/app/actions/exploratorySessions';
@@ -57,12 +58,27 @@ export function BlockersList({ blockers, projectId }: BlockersListProps) {
     const [deletingId, setDeletingId] = useState<number | null>(null);
     const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
 
+    // Pagination state
+    const [currentPage, setCurrentPage] = useState(1);
+    const [itemsPerPage, setItemsPerPage] = useState(10);
+
     const filteredBlockers = blockers.filter(blocker => {
         if (statusFilter === 'all') return true;
         if (statusFilter === 'active') return (blocker.status === 'active' || blocker.status === 'escalated' || blocker.status === null); // Treat null as active
         if (statusFilter === 'resolved') return blocker.status === 'resolved';
         return true;
     });
+
+    // Calculate paginated blockers
+    const paginatedBlockers = useMemo(() => {
+        const startIndex = (currentPage - 1) * itemsPerPage;
+        return filteredBlockers.slice(startIndex, startIndex + itemsPerPage);
+    }, [filteredBlockers, currentPage, itemsPerPage]);
+
+    // Reset to page 1 when filter changes
+    useEffect(() => {
+        setCurrentPage(1);
+    }, [statusFilter]);
 
     const handleDelete = async () => {
         if (!deletingId) return;
@@ -167,7 +183,7 @@ export function BlockersList({ blockers, projectId }: BlockersListProps) {
                     </Card>
                 )}
 
-                {filteredBlockers.map((blocker) => (
+                {paginatedBlockers.map((blocker) => (
                     <Card key={blocker.id} className="hover:bg-muted/5 transition-colors">
                         <CardContent className="p-6">
                             <div className="flex items-start justify-between gap-4">
@@ -268,6 +284,14 @@ export function BlockersList({ blockers, projectId }: BlockersListProps) {
                         </CardContent>
                     </Card>
                 ))}
+
+                <Pagination
+                    currentPage={currentPage}
+                    totalItems={filteredBlockers.length}
+                    itemsPerPage={itemsPerPage}
+                    onPageChange={setCurrentPage}
+                    onItemsPerPageChange={setItemsPerPage}
+                />
             </div>
 
             {/* Delete Confirmation Dialog */}

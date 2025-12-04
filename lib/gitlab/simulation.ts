@@ -170,9 +170,14 @@ export function createIssueWebhookPayload(
     const project = MOCK_PROJECTS.find(p => p.id === projectId);
     if (!project) throw new Error('Project not found for webhook payload');
 
-    // Get current issue state from global store
+    // Get current issue state from global store (may not be populated if issues are in DB)
     const issue = global.mockIssuesStore?.[projectId]?.find((i: any) => i.iid === issueIid);
-    if (!issue) throw new Error('Issue not found for webhook payload');
+
+    // If issue not in global store, use minimal data from changes
+    // This happens because in mock mode, issues are stored in the database, not the global store
+    if (!issue) {
+        console.warn(`[WEBHOOK SIMULATION] Issue #${issueIid} not found in global store, using minimal payload`);
+    }
 
     return {
         object_kind: 'issue',
@@ -183,15 +188,15 @@ export function createIssueWebhookPayload(
             web_url: project.web_url,
         },
         object_attributes: {
-            id: issue.id || issue.gitlabIssueId,
+            id: issue?.id || issue?.gitlabIssueId || issueIid,
             iid: issueIid,
-            title: issue.title,
-            description: issue.description,
-            state: issue.state || 'opened',
-            created_at: issue.created_at,
+            title: issue?.title || `Issue #${issueIid}`,
+            description: issue?.description || '',
+            state: issue?.state || 'opened',
+            created_at: issue?.created_at || new Date().toISOString(),
             updated_at: new Date().toISOString(),
-            labels: issue.labels || [],
-            url: issue.web_url || issue.issueUrl,
+            labels: changes.labels?.current || issue?.labels || [],
+            url: issue?.web_url || issue?.issueUrl || `${project.web_url}/-/issues/${issueIid}`,
         },
         user: {
             id: userId,

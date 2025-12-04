@@ -15,16 +15,16 @@ The application is now fully functional in **Mock Mode** for offline development
 - **Real-time Updates**: Server-Sent Events (SSE)
 - **UI**: Shadcn UI + Tailwind CSS
 
-### Recent Updates (2025-12-03)
+### Recent Updates (2025-12-04)
 
-#### ✅ Auto-Save & Draft History
-- **Auto-Save Mechanism**: Automatically saves drafts every 5 minutes during active QA runs
+#### ✅ Refined Continuous Auto-Save
+- **Continuous Auto-Save**: Drafts now auto-save continuously with a 2-second debounce (no manual save needed)
+- **Smart Trigger**: Auto-save only activates after user starts typing, preventing premature save indicators
+- **No Manual Save Button**: Removed explicit "Save Draft" button for seamless workflow
+- **Real-time Indicator**: Shows "Saving..." during save and "Saved" confirmation after each auto-save
 - **Draft History**: Track up to 50 previous versions of test cases and issues found
 - **One-Click Restore**: Recover any previous draft version with a single click
-- **Smart Detection**: Avoids duplicate saves and only saves when content has changed
-- **Save Type Indicators**: Visual distinction between auto-saves and manual saves
 - **Prevent Data Loss**: Never lose work due to accidental changes or browser issues
-- **Complete Audit Trail**: Full history of all changes with timestamps and save types
 
 ### Recent Updates (2025-12-02)
 
@@ -180,7 +180,7 @@ The application is now fully functional in **Mock Mode** for offline development
 3. **QA Workflow**
    - Test Cases editor (Tiptap JSON) with tables & images
    - Issues Found editor (Tiptap JSON)
-   - **New**: Auto-save every 5 minutes with draft history
+   - **New**: Continuous auto-save with 2-second debounce (no manual save needed)
    - **New**: Restore previous versions from up to 50 saved drafts
    - **New**: Drag-to-resize images and advanced table controls
    - **New**: Text snippets for quick insertion
@@ -200,14 +200,13 @@ The application is now fully functional in **Mock Mode** for offline development
    - **Snippets Manager**: Create and manage reusable text snippets for test cases and issue descriptions
    - **Real-time Notifications**: SSE-based instant updates without page refreshes
 
-6. **Draft History & Auto-Save**
-   - **Automatic Saving**: Drafts auto-save every 5 minutes during active QA runs
+6. **Continuous Auto-Save**
+   - **Instant Saving**: Drafts auto-save continuously with 2-second debounce during active QA runs
+   - **Smart Trigger**: Auto-save only activates after user starts typing (no premature save indicators)
+   - **Seamless Workflow**: No manual "Save Draft" button needed—just type and your work is saved
+   - **Real-time Feedback**: Visual "Saving..." and "Saved" indicators show save status
    - **Version History**: Browse up to 50 previous versions of test cases and issues found
-   - **Smart Detection**: Only saves when content has meaningfully changed (>50 characters)
    - **One-Click Restore**: Recover any previous draft version instantly
-   - **Save Type Tracking**: Clear distinction between auto-saves and manual saves
-   - **Timestamps**: Human-readable timestamps for each draft (e.g., "Dec 3, 2024 at 7:30 PM")
-   - **Content Preview**: See what each draft contains before restoring
    - **Data Loss Prevention**: Never lose work due to accidental changes or browser issues
 
 7. **Exploratory Testing**
