@@ -116,6 +116,8 @@ export const qaIssues = sqliteTable('qa_issues', {
     jsonLabels: text('json_labels', { mode: 'json' }),
     assigneeId: integer('assignee_id'),
     authorId: integer('author_id'),
+    // Cumulative testing time across all runs (in milliseconds)
+    cumulativeTimeMs: integer('cumulative_time_ms').default(0),
     createdAt: integer('created_at', { mode: 'timestamp_ms' }).$defaultFn(() => new Date()),
     updatedAt: integer('updated_at', { mode: 'timestamp_ms' }).$defaultFn(() => new Date()),
 }, (table) => ({

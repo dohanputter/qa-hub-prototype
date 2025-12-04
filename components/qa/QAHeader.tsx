@@ -1,3 +1,6 @@
+'use client';
+
+import { useState, useEffect } from 'react';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/Avatar';
@@ -14,11 +17,27 @@ import {
     DialogTitle,
     DialogTrigger,
 } from "@/components/ui/Dialog";
-import { Plus, X, ExternalLink } from 'lucide-react';
+import { Plus, X, ExternalLink, Clock } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import Link from 'next/link';
 import type { QAHeaderProps } from '@/types/qa';
 import { DescriptionContent } from './DescriptionContent';
+
+// Format milliseconds as hours:minutes:seconds
+function formatDuration(ms: number): string {
+    const totalSeconds = Math.floor(ms / 1000);
+    const hours = Math.floor(totalSeconds / 3600);
+    const minutes = Math.floor((totalSeconds % 3600) / 60);
+    const seconds = totalSeconds % 60;
+
+    if (hours > 0) {
+        return `${hours}h ${minutes}m ${seconds}s`;
+    } else if (minutes > 0) {
+        return `${minutes}m ${seconds}s`;
+    } else {
+        return `${seconds}s`;
+    }
+}
 
 export function QAHeader({
     issue,
@@ -28,9 +47,29 @@ export function QAHeader({
     isUpdatingLabels,
     onLabelToggle,
     onLabelRemove,
-    leakageSource
+    leakageSource,
+    cumulativeTimeMs,
+    activeRun
 }: QAHeaderProps) {
+    const [now, setNow] = useState(Date.now());
     const filteredProjectLabels = projectLabels?.filter((l: any) => !l.name.startsWith('qa::')) || [];
+
+    // Live timer effect - update every second when there's an active run
+    useEffect(() => {
+        if (!activeRun) return;
+
+        const interval = setInterval(() => {
+            setNow(Date.now());
+        }, 1000);
+
+        return () => clearInterval(interval);
+    }, [activeRun]);
+
+    // Calculate total display time
+    const activeRunTime = activeRun?.createdAt
+        ? now - new Date(activeRun.createdAt).getTime()
+        : 0;
+    const totalTime = (cumulativeTimeMs || 0) + activeRunTime;
 
     // Helper to get display label and styling for leakage source
     const getLeakageSourceInfo = (source: 'qa' | 'uat' | 'production' | undefined) => {
@@ -79,6 +118,21 @@ export function QAHeader({
                         <span>•</span>
                         <span>{formatDistanceToNow(new Date(issue.created_at))} ago</span>
                     </div>
+
+                    {/* Cumulative Time Display */}
+                    {(totalTime > 0 || activeRun) && (
+                        <div className="flex items-center gap-2 mt-3 p-3 rounded-lg border border-border/40 bg-card/40">
+                            <Clock className={`h-4 w-4 ${activeRun ? 'text-blue-500 animate-pulse' : 'text-muted-foreground'}`} />
+                            <div className="flex flex-col">
+                                <span className="text-xs text-muted-foreground font-medium">
+                                    {activeRun ? 'Time Spent (Active)' : 'Total Time Spent'}
+                                </span>
+                                <span className={`font-mono text-sm font-semibold ${activeRun ? 'text-blue-500' : 'text-foreground'}`}>
+                                    {formatDuration(totalTime)}
+                                </span>
+                            </div>
+                        </div>
+                    )}
                 </div>
 
                 {/* Description */}

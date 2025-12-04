@@ -54,6 +54,70 @@ export async function moveIssue(projectId: number, issueIid: number, newLabel: s
                     return { success: true };
                 }
             }
+        } else if (!newLabel && oldLabel && (oldLabel === labelMapping.pending || oldLabel === labelMapping.passed || oldLabel === labelMapping.failed)) {
+            // Moving OUT of QA columns to Backlog - close any pending runs
+            logger.info('moveIssue: Moving to Backlog - Abandoning pending QA Runs');
+            const { deleteQARun } = await import('./qa');
+            const { qaIssues, qaRuns } = await import('@/db/schema');
+            const { and } = await import('drizzle-orm');
+
+            // Find the QA issue
+            const existingIssue = await db
+                .select()
+                .from(qaIssues)
+                .where(and(
+                    eq(qaIssues.gitlabProjectId, projectId),
+                    eq(qaIssues.gitlabIssueIid, issueIid)
+                ))
+                .limit(1);
+
+            if (existingIssue.length > 0) {
+                // Find and close any pending runs
+                const pendingRuns = await db
+                    .select()
+                    .from(qaRuns)
+                    .where(and(
+                        eq(qaRuns.qaIssueId, existingIssue[0].id),
+                        eq(qaRuns.status, 'pending')
+                    ));
+
+                let accumulatedTime = 0;
+                const now = new Date();
+
+                for (const run of pendingRuns) {
+                    // Calculate duration for this run (createdAt might be null, use now as fallback)
+                    const runCreatedAt = run.createdAt ? new Date(run.createdAt) : now;
+                    const runDuration = now.getTime() - runCreatedAt.getTime();
+                    accumulatedTime += runDuration;
+
+                    // Mark as abandoned with completed time
+                    await db.update(qaRuns)
+                        .set({
+                            status: 'failed',
+                            completedAt: now,
+                            updatedAt: now
+                        })
+                        .where(eq(qaRuns.id, run.id));
+                    logger.info(`moveIssue: Abandoned Run #${run.runNumber} for Issue #${issueIid} (duration: ${runDuration}ms)`);
+                }
+
+                // Update cumulative time on issue with the accumulated time from abandoned runs
+                const currentCumulativeTime = existingIssue[0].cumulativeTimeMs || 0;
+                const newCumulativeTime = currentCumulativeTime + accumulatedTime;
+
+                // Reset issue status to pending (for Backlog) and update cumulative time
+                await db.update(qaIssues)
+                    .set({
+                        status: 'pending',
+                        cumulativeTimeMs: newCumulativeTime,
+                        updatedAt: now
+                    })
+                    .where(eq(qaIssues.id, existingIssue[0].id));
+
+                if (accumulatedTime > 0) {
+                    logger.info(`moveIssue: Added ${accumulatedTime}ms to cumulative time for Issue #${issueIid} (total: ${newCumulativeTime}ms)`);
+                }
+            }
         }
 
         // 3. Standard Label Update (if not handled by submitQARun above)

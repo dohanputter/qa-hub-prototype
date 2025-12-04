@@ -302,6 +302,8 @@ export function QADetail({ issue, qaIssue, runs = [], allAttachments = [], membe
                 onLabelToggle={handleLabelToggle}
                 onLabelRemove={handleRemoveLabel}
                 leakageSource={qaIssue?.leakageSource}
+                cumulativeTimeMs={qaIssue?.cumulativeTimeMs}
+                activeRun={activeRun}
             />
 
             {/* Right Panel: QA Work */}

@@ -347,10 +347,19 @@ export function KanbanBoard({
 
         if (overIssue) {
             droppedOnCard = true;
-            destStatus = Object.keys(columns).find((key) =>
+            // Check which column the target card is in
+            const overIssueColumn = Object.keys(columns).find((key) =>
                 overIssue.labels.includes(columns[key as keyof typeof columns])
-            ) as keyof typeof columns;
-            log('[Drag] Dropped on card', { destStatus });
+            ) as keyof typeof columns | undefined;
+
+            if (overIssueColumn) {
+                destStatus = overIssueColumn;
+                log('[Drag] Dropped on card in column', { destStatus });
+            } else {
+                // Target card is in backlog (no QA labels)
+                isMovingToBacklog = true;
+                log('[Drag] Dropped on card in backlog');
+            }
         } else {
             // Check if dropped on a column
             if (overIdStr === 'backlog') {
@@ -380,7 +389,18 @@ export function KanbanBoard({
                 (i.project_id || project.id) === activeProjectId && i.iid === activeIssueIid
             );
             let newIssues = [...issues];
-            newIssues[activeIndex] = updatedIssue;
+            newIssues.splice(activeIndex, 1);
+
+            // Calculate insert position when dropped on a backlog card
+            let insertIndex = 0;
+            if (droppedOnCard && overIssue) {
+                const [overProjectId, overIssueIid] = overIdStr.split('-').map(Number);
+                insertIndex = newIssues.findIndex((i: any) =>
+                    (i.project_id || project.id) === overProjectId && i.iid === overIssueIid
+                );
+                if (insertIndex === -1) insertIndex = newIssues.length;
+            }
+            newIssues.splice(insertIndex, 0, updatedIssue);
 
             setIssues(newIssues);
 
@@ -433,7 +453,18 @@ export function KanbanBoard({
                 (i.project_id || project.id) === activeProjectId && i.iid === activeIssueIid
             );
             let newIssues = [...issues];
-            newIssues[activeIndex] = updatedIssue;
+            newIssues.splice(activeIndex, 1);
+
+            // Calculate insert position
+            let insertIndex = 0;
+            if (droppedOnCard && overIssue) {
+                const [overProjectId, overIssueIid] = overIdStr.split('-').map(Number);
+                insertIndex = newIssues.findIndex((i: any) =>
+                    (i.project_id || project.id) === overProjectId && i.iid === overIssueIid
+                );
+                if (insertIndex === -1) insertIndex = newIssues.length;
+            }
+            newIssues.splice(insertIndex, 0, updatedIssue);
 
             setIssues(newIssues);
 
@@ -513,18 +544,19 @@ export function KanbanBoard({
         );
         let newIssues = [...issues];
         newIssues.splice(activeIndex, 1);
+
+        // Calculate insert position in the modified array (after active card is removed)
         let insertIndex = 0;
         if (droppedOnCard && overIssue) {
             const [overProjectId, overIssueIid] = overIdStr.split('-').map(Number);
-            const overIndex = issues.findIndex((i: any) =>
+            // Find position in the NEW array (after active card was removed)
+            insertIndex = newIssues.findIndex((i: any) =>
                 (i.project_id || project.id) === overProjectId && i.iid === overIssueIid
             );
-            insertIndex = overIndex;
-            if (activeIndex < overIndex) {
-                insertIndex--;
+            // If not found, add to end
+            if (insertIndex === -1) {
+                insertIndex = newIssues.length;
             }
-        } else {
-            insertIndex = 0;
         }
         newIssues.splice(insertIndex, 0, updatedIssue);
 

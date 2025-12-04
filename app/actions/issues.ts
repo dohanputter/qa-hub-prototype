@@ -414,23 +414,46 @@ export async function deleteIssue(projectId: number, issueIid: number) {
 
     const { deleteMockIssue } = await import('@/lib/gitlab');
     const { db } = await import('@/lib/db');
-    const { qaIssues } = await import('@/db/schema');
+    const { qaIssues, qaRuns, qaBlockers } = await import('@/db/schema');
     const { eq, and } = await import('drizzle-orm');
 
     // Delete from in-memory mock store
     const deletedFromMemory = deleteMockIssue(projectId, issueIid);
 
-    // Also delete from database
-    await db
-        .delete(qaIssues)
+    // Find the QA issue first to get its ID for cascading deletes
+    const existingIssue = await db
+        .select()
+        .from(qaIssues)
         .where(
             and(
                 eq(qaIssues.gitlabProjectId, projectId),
                 eq(qaIssues.gitlabIssueIid, issueIid)
             )
-        );
+        )
+        .limit(1);
 
-    logger.mock(`Deleted issue ${issueIid} from project ${projectId} - Memory: ${deletedFromMemory}`);
+    if (existingIssue.length > 0) {
+        const qaIssueId = existingIssue[0].id;
+
+        // Delete related runs first (foreign key constraint)
+        await db
+            .delete(qaRuns)
+            .where(eq(qaRuns.qaIssueId, qaIssueId));
+
+        // Delete related blockers (foreign key constraint)
+        await db
+            .delete(qaBlockers)
+            .where(eq(qaBlockers.relatedIssueId, qaIssueId));
+
+        // Now delete the issue itself
+        await db
+            .delete(qaIssues)
+            .where(eq(qaIssues.id, qaIssueId));
+
+        logger.mock(`Deleted issue ${issueIid} from project ${projectId} (with ${existingIssue.length} related records) - Memory: ${deletedFromMemory}`);
+    } else {
+        logger.mock(`Issue ${issueIid} not found in database, only deleted from memory: ${deletedFromMemory}`);
+    }
 
     return { success: true, deletedFromMemory };
 }
@@ -574,27 +597,26 @@ export async function getDashboardStats(groupId?: number) {
     const projectStats = Array.from(projectStatsMap.values());
 
     // 2. Time Spent Trend (Last 7 days)
-    // We'll use completed runs to calculate time spent
-    const timeStatsMap = new Map<string, { date: string; hours: number; count: number }>();
+    // Track average cumulative time per issue that was completed each day
+    const timeStatsMap = new Map<string, { date: string; totalMs: number; count: number }>();
 
     // Initialize last 7 days
     for (let i = 6; i >= 0; i--) {
         const date = subDays(new Date(), i);
         const key = format(date, 'EEE'); // Mon, Tue, etc.
-        timeStatsMap.set(key, { date: key, hours: 0, count: 0 });
+        timeStatsMap.set(key, { date: key, totalMs: 0, count: 0 });
     }
 
-    allRuns.forEach(run => {
-        if (run.completedAt && run.createdAt) {
-            const date = new Date(run.completedAt);
-            // Only consider last 7 days
-            if (date >= subDays(new Date(), 7)) {
-                const key = format(date, 'EEE');
+    // Use issues with cumulative time that were updated in the last 7 days
+    allIssues.forEach(issue => {
+        if (issue.cumulativeTimeMs && issue.cumulativeTimeMs > 0 && issue.updatedAt) {
+            const updatedDate = new Date(issue.updatedAt);
+            // Only consider issues updated in last 7 days
+            if (updatedDate >= subDays(new Date(), 7)) {
+                const key = format(updatedDate, 'EEE');
                 if (timeStatsMap.has(key)) {
                     const entry = timeStatsMap.get(key)!;
-                    const minutes = differenceInMinutes(new Date(run.completedAt), new Date(run.createdAt));
-                    // Cap at reasonable max (e.g. 24h = 1440m) to avoid outliers
-                    entry.hours += Math.min(minutes, 1440); // reusing 'hours' field for minutes to avoid breaking types everywhere immediately, or better rename it
+                    entry.totalMs += issue.cumulativeTimeMs;
                     entry.count++;
                 }
             }
@@ -603,7 +625,7 @@ export async function getDashboardStats(groupId?: number) {
 
     const timeStats = Array.from(timeStatsMap.values()).map(stat => ({
         date: stat.date,
-        minutes: stat.count > 0 ? Math.round(stat.hours / stat.count) : 0 // 'hours' here actually stores minutes sum
+        minutes: stat.count > 0 ? Math.round((stat.totalMs / stat.count) / 60000) : 0 // Convert ms to minutes
     }));
 
     // 3. Pass/Fail Rates (First Time Pass)
@@ -641,22 +663,34 @@ export async function getDashboardStats(groupId?: number) {
     ];
 
     // 4. KPI Metrics
-    // Active Tests (Pending Issues)
-    const activeTests = allIssues.filter(i => i.status === 'pending').length;
+    // Active Tests = Issues that have a pending (active) QA run
+    // This accurately reflects tickets in "Ready for QA" column
+    const issuesWithPendingRuns = new Set(
+        allRuns.filter(r => r.status === 'pending').map(r => r.qaIssueId)
+    );
+    const activeTests = issuesWithPendingRuns.size;
 
     // Issues Found (Total Issues)
     const issuesFound = allIssues.length;
 
     // Avg Time to Test (Overall)
-    let totalMinutes = 0;
-    let completedRunsCount = 0;
-    allRuns.forEach(run => {
-        if (run.completedAt && run.createdAt) {
-            totalMinutes += differenceInMinutes(new Date(run.completedAt), new Date(run.createdAt));
-            completedRunsCount++;
+    // Use cumulativeTimeMs from issues for more accurate calculation
+    // This represents the actual time spent testing each issue across all runs
+    let totalCumulativeMs = 0;
+    let issuesWithTimeCount = 0;
+
+    allIssues.forEach(issue => {
+        // Only count issues that have been tested (have cumulative time)
+        if (issue.cumulativeTimeMs && issue.cumulativeTimeMs > 0) {
+            totalCumulativeMs += issue.cumulativeTimeMs;
+            issuesWithTimeCount++;
         }
     });
-    const avgTimeToTest = completedRunsCount > 0 ? Math.round(totalMinutes / completedRunsCount) : 0;
+
+    // Convert to minutes for display
+    const avgTimeToTest = issuesWithTimeCount > 0
+        ? Math.round((totalCumulativeMs / issuesWithTimeCount) / 60000) // Convert ms to minutes
+        : 0;
 
     return {
         projectStats,

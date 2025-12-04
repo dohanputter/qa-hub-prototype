@@ -203,7 +203,8 @@ export function KanbanCard({ issue, projectId }: { issue: KanbanIssue, projectId
         setNodeRef,
         transform,
         transition,
-        isDragging
+        isDragging,
+        isOver,
     } = useSortable({ id: `${issue.project_id || projectId}-${issue.iid}`, data: { ...issue, type: 'Issue' } });
 
     const style = {
@@ -213,7 +214,11 @@ export function KanbanCard({ issue, projectId }: { issue: KanbanIssue, projectId
     };
 
     return (
-        <div ref={setNodeRef} style={style} {...attributes} {...listeners} className="touch-none">
+        <div ref={setNodeRef} style={style} {...attributes} {...listeners} className="touch-none relative">
+            {/* Drop indicator line */}
+            {isOver && !isDragging && (
+                <div className="absolute -top-1.5 left-0 right-0 h-1 bg-primary rounded-full z-10" />
+            )}
             <IssueCard issue={issue} projectId={projectId} />
         </div>
     );

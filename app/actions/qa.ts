@@ -3,7 +3,7 @@ import 'server-only';
 import { auth } from '@/auth';
 import { db } from '@/lib/db';
 import { qaIssues, qaRuns, attachments, notifications, projects, groups, users, accounts } from '@/db/schema';
-import { eq, and, isNull, desc } from 'drizzle-orm';
+import { eq, and, isNull, desc, sql } from 'drizzle-orm';
 import {
     getIssue,
     createIssueNote,
@@ -244,8 +244,16 @@ export async function submitQARun(projectId: number, runId: string, result: 'pas
         .set({ status: result, completedAt: new Date(), updatedAt: new Date() })
         .where(eq(qaRuns.id, runId));
 
+    // Calculate and update cumulative time
+    const runCreatedAt = run.createdAt ? new Date(run.createdAt).getTime() : Date.now();
+    const duration = Date.now() - runCreatedAt;
+
     await db.update(qaIssues)
-        .set({ status: result, updatedAt: new Date() })
+        .set({
+            status: result,
+            cumulativeTimeMs: sql`${qaIssues.cumulativeTimeMs} + ${duration}`,
+            updatedAt: new Date()
+        })
         .where(eq(qaIssues.id, issue.id));
 
     // Clean up any pending attachments for this run (just in case)
