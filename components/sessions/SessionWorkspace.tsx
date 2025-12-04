@@ -4,7 +4,6 @@ import { useState } from 'react';
 import { SessionHeader } from '@/components/sessions/SessionHeader';
 import { QuickCaptureBar } from '@/components/sessions/QuickCaptureBar';
 import { NotesTimeline } from '@/components/sessions/NotesTimeline';
-import { MindMapCanvas } from '@/components/sessions/MindMapCanvas';
 import { cn } from '@/lib/utils';
 
 interface SessionWorkspaceProps {
@@ -39,12 +38,18 @@ export function SessionWorkspace({ session, sessionId }: SessionWorkspaceProps) 
                     <NotesTimeline sessionId={sessionId} initialNotes={session.notes} />
                 </div>
 
-                {/* Right Panel: Mind Map - Fixed width 400px (or flexible if we want) */}
+                {/* Right Panel: Mind Map - Placeholder for future implementation */}
                 <div className="w-[400px] flex flex-col bg-muted/5 shrink-0">
                     <div className="p-4 border-b border-border">
                         <h2 className="font-semibold text-sm uppercase tracking-wider text-muted-foreground">Mind Map</h2>
                     </div>
-                    <MindMapCanvas sessionId={sessionId} charter={session.charter} />
+                    <div className="flex-1 flex items-center justify-center p-10">
+                        <div className="text-center text-muted-foreground">
+                            <div className="text-4xl mb-4">🧠</div>
+                            <p className="text-sm">Mind Map visualization</p>
+                            <p className="text-xs mt-1">Coming soon</p>
+                        </div>
+                    </div>
                 </div>
 
                 {isPaused && (

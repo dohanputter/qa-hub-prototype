@@ -47,7 +47,7 @@ export async function getAllIssues(params?: { state?: 'opened' | 'closed'; searc
                 project
             }));
         });
-        return results.flat().sort((a: any, b: any) =>
+        return results.flat().sort((a, b) =>
             new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
         );
     }
@@ -105,7 +105,7 @@ export async function getAllIssues(params?: { state?: 'opened' | 'closed'; searc
             })
     );
 
-    return results.flat().sort((a: any, b: any) =>
+    return results.flat().sort((a, b) =>
         new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
     );
 }
@@ -239,7 +239,7 @@ export async function createIssue(projectId: number, data: unknown) {
                 });
                 await simulateWebhook('Issue Hook', webhookPayload);
             } catch (error) {
-                console.warn('[MOCK] Failed to simulate webhook for new issue:', error);
+                logger.warn('[MOCK] Failed to simulate webhook for new issue', error);
             }
 
             // Create notification for the new issue
@@ -276,9 +276,9 @@ export async function createIssue(projectId: number, data: unknown) {
 
             return { success: true, id: newId, iid: newIid };
 
-        } catch (error: any) {
+        } catch (error: unknown) {
             // Handle unique constraint violation
-            if (error.message && error.message.includes('UNIQUE constraint failed')) {
+            if (error instanceof Error && error.message.includes('UNIQUE constraint failed')) {
                 logger.error(`[MOCK] Issue #${newIid} already exists in project ${projectId}, retrying with next IID...`);
                 // Recursively try with next IID
                 const existingIssues2 = await db.select().from(qaIssues).where(eq(qaIssues.gitlabProjectId, projectId));
@@ -332,7 +332,7 @@ export async function createIssue(projectId: number, data: unknown) {
                     });
                     await simulateWebhook('Issue Hook', webhookPayload);
                 } catch (webhookError) {
-                    console.warn('[MOCK] Failed to simulate webhook for new issue (retry):', webhookError);
+                    logger.warn('[MOCK] Failed to simulate webhook for new issue (retry)', webhookError);
                 }
 
                 // Create notification for retry case too
@@ -445,8 +445,8 @@ export async function getProjectStats(projectIds: number[]) {
         for (const pid of projectIds) {
             const issues = await getIssues(pid, token);
             stats[pid] = {
-                open: issues.filter((i: any) => i.state === 'opened').length,
-                closed: issues.filter((i: any) => i.state === 'closed').length,
+                open: issues.filter((i: GitLabIssue) => i.state === 'opened').length,
+                closed: issues.filter((i: GitLabIssue) => i.state === 'closed').length,
                 total: issues.length
             };
         }
@@ -509,7 +509,7 @@ export async function getDashboardStats(groupId?: number) {
         const { getGroupProjects } = await import('@/lib/gitlab');
         const token = session?.accessToken || getMockToken();
         const groupProjects = await getGroupProjects(groupId, token);
-        const projectIds = groupProjects.map((p: any) => p.id);
+        const projectIds = groupProjects.map((p: GitLabProject) => p.id);
 
         if (projectIds.length > 0) {
             // Fetch issues from all projects in the group
@@ -540,7 +540,7 @@ export async function getDashboardStats(groupId?: number) {
 
     // Initialize with known projects
     // Fetch projects based on groupId context
-    let targetProjects: any[];
+    let targetProjects: Array<{ id: number; name: string }>;
     if (groupId) {
         // Fetch all projects in the group
         const { getGroupProjects } = await import('@/lib/gitlab');
@@ -551,7 +551,7 @@ export async function getDashboardStats(groupId?: number) {
         targetProjects = await getUserProjects();
     }
 
-    targetProjects.forEach((p: any) => {
+    targetProjects.forEach((p) => {
         projectStatsMap.set(p.id, { name: p.name, open: 0, closed: 0 });
     });
 

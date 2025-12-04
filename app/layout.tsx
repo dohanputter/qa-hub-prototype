@@ -3,6 +3,7 @@ import { Inter } from 'next/font/google';
 import './globals.css';
 import Providers from './providers';
 import { Toaster } from '@/components/ui/Toaster';
+import { ErrorBoundary } from '@/components/ErrorBoundary';
 
 const inter = Inter({ subsets: ['latin'], variable: '--font-sans' });
 
@@ -20,10 +21,13 @@ export default function RootLayout({
         <html lang="en" suppressHydrationWarning>
             <body className={`${inter.variable} font-sans antialiased`} suppressHydrationWarning>
                 <Providers>
-                    {children}
+                    <ErrorBoundary>
+                        {children}
+                    </ErrorBoundary>
                     <Toaster />
                 </Providers>
             </body>
         </html>
     );
 }
+

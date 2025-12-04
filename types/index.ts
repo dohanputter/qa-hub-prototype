@@ -41,14 +41,6 @@ export interface Group {
     avatarUrl?: string;
 }
 
-export interface Snippet {
-    id: number;
-    title: string;
-    content: string;
-    type: 'test_case' | 'issue';
-    updatedAt: string;
-}
-
 export interface Issue {
     id: number;
     iid: number; // internal id like #123
@@ -99,7 +91,7 @@ export interface GitLabLabel {
     name: string;
     color: string;
     text_color: string;
-    description?: string;
+    description?: string | null;
 }
 
 export interface QALabelMapping {
@@ -165,5 +157,7 @@ export type {
     GitLabProject,
     QARun,
     Attachment,
-    QAIssue
+    QAIssue,
+    Snippet
 } from './qa';
+

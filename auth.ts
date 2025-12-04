@@ -1,5 +1,6 @@
 // auth.ts (root)
 import NextAuth from 'next-auth';
+import type { NextAuthConfig } from 'next-auth';
 import GitLabProvider from 'next-auth/providers/gitlab';
 import CredentialsProvider from 'next-auth/providers/credentials';
 import { DrizzleAdapter } from '@auth/drizzle-adapter';
@@ -7,7 +8,7 @@ import { db } from '@/lib/db';
 import { env } from '@/lib/env';
 import { logger } from '@/lib/logger';
 
-export const authOptions = {
+export const authOptions: NextAuthConfig = {
     // Only use adapter in Node.js runtime (not Edge)
     adapter: process.env.NEXT_RUNTIME !== 'edge' ? DrizzleAdapter(db) : undefined,
     providers: [
@@ -25,7 +26,7 @@ export const authOptions = {
                 id: 'mock-login',
                 name: 'Mock Login',
                 credentials: {},
-                async authorize(credentials, req) {
+                async authorize() {
                     return {
                         id: 'mock-user-id',
                         name: 'Mock Tester',
@@ -37,16 +38,16 @@ export const authOptions = {
             : []),
     ],
     callbacks: {
-        async jwt({ token, account, user }: { token: any; account: any; user: any }) {
+        async jwt({ token, account, user }) {
             if (account?.access_token) {
                 token.accessToken = account.access_token;
                 // Set token expiration (2 hours for production, 1 hour for mock)
                 const expiresIn = process.env.NEXT_PUBLIC_MOCK_MODE === 'true' ? 3600 : 7200;
                 token.accessTokenExpires = Date.now() + (expiresIn * 1000);
-                token.refreshToken = account.refresh_token;
+                token.refreshToken = account.refresh_token ?? undefined;
             } else if (user && process.env.NEXT_PUBLIC_MOCK_MODE === 'true') {
                 token.accessToken = 'mock-access-token-' + Date.now();
-                token.sub = user.id;
+                token.sub = user.id ?? '';
                 // Mock tokens expire in 1 hour
                 token.accessTokenExpires = Date.now() + (3600 * 1000);
                 token.refreshToken = 'mock-refresh-token-' + Date.now();
@@ -69,7 +70,7 @@ export const authOptions = {
                                 client_id: env.GITLAB_CLIENT_ID || '',
                                 client_secret: env.GITLAB_CLIENT_SECRET || '',
                                 grant_type: 'refresh_token',
-                                refresh_token: token.refreshToken as string,
+                                refresh_token: token.refreshToken,
                                 redirect_uri: `${env.NEXT_PUBLIC_APP_URL}/api/auth/callback/gitlab`,
                             }),
                             method: 'POST',
@@ -86,7 +87,7 @@ export const authOptions = {
                             refreshToken: tokens.refresh_token ?? token.refreshToken, // Fallback to old refresh token
                         };
                     } catch (error) {
-                        console.error('Error refreshing access token', error);
+                        logger.error('Error refreshing access token', error);
                         // The error property will be used in client-side to handle the error
                         return { ...token, error: 'RefreshAccessTokenError' };
                     }
@@ -95,26 +96,26 @@ export const authOptions = {
 
             return token;
         },
-        async session({ session, token }: { session: any; token: any }) {
+        async session({ session, token }) {
             // Check if token is expired
             if (token.accessTokenExpires && Date.now() > token.accessTokenExpires) {
-                console.warn('Access token has expired');
+                logger.warn('Access token has expired');
                 session.error = 'AccessTokenExpired';
                 // In production, this would trigger a re-auth flow
                 // For now, we'll keep the session but mark it as having an expired token
             }
 
-            session.accessToken = token.accessToken as string;
+            session.accessToken = token.accessToken;
             session.accessTokenExpires = token.accessTokenExpires;
             if (token.sub) {
-                session.user.id = token.sub as string;
+                session.user.id = token.sub;
             }
             return session;
         },
     },
     pages: { signIn: '/auth/signin', error: '/auth/error' },
-    // Explicit const assertion ensures correct literal type for strategy
-    session: { strategy: 'jwt' } as const,
-} as any;
+    session: { strategy: 'jwt' },
+};
 
-export const { handlers, auth, signIn, signOut } = NextAuth(authOptions as any);
+export const { handlers, auth, signIn, signOut } = NextAuth(authOptions);
+

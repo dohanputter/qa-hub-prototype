@@ -7,7 +7,7 @@ import { getSnippetsAction, createSnippetAction, updateSnippetAction, deleteSnip
 import { useToast } from '@/components/ui/useToast';
 import { useRouter } from 'next/navigation';
 import { TiptapEditor } from '@/components/qa/TiptapEditor';
-import { tiptapToMarkdown } from '@/lib/tiptapUtils';
+import { tiptapToMarkdown } from '@/lib/tiptap';
 import { uploadAttachment } from '@/app/actions/uploadAttachment';
 import { getUserProjects, getProjectUsers } from '@/app/actions/project';
 import { logger } from '@/lib/logger';

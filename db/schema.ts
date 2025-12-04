@@ -100,7 +100,7 @@ export const userProjects = sqliteTable(
     })
 );
 
-// RENAMED & REFACTORED: qaRecords -> qaIssues
+
 export const qaIssues = sqliteTable('qa_issues', {
     id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
     gitlabIssueId: integer('gitlab_issue_id').notNull(),

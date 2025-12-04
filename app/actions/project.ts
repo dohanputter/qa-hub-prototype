@@ -7,6 +7,8 @@ import { eq, and } from 'drizzle-orm';
 import { getProjectLabels, createProjectWebhook } from '@/lib/gitlab';
 import { revalidatePath } from 'next/cache';
 import { isMockMode, getMockToken } from '@/lib/mode';
+import type { GitLabUser } from '@/types/qa';
+import type { GitLabLabel } from '@/types';
 
 export async function configureProjectLabels(
     projectId: number,
@@ -72,11 +74,11 @@ export async function getProjectUsers(projectId: number) {
 
     if (isMockMode()) {
         const members = await getProjectMembers(projectId, getMockToken());
-        return members.map((m: any) => ({
+        return members.map((m: GitLabUser) => ({
             id: m.id,
             name: m.name,
             username: m.username,
-            avatarUrl: m.avatar_url
+            avatarUrl: m.avatar_url || ''
         }));
     }
 
@@ -84,16 +86,16 @@ export async function getProjectUsers(projectId: number) {
     if (!session?.accessToken) throw new Error('Unauthorized');
 
     const members = await getProjectMembers(projectId, session.accessToken);
-    return members.map((m: any) => ({
+    return members.map((m: GitLabUser) => ({
         id: m.id,
         name: m.name,
         username: m.username,
-        avatarUrl: m.avatar_url
+        avatarUrl: m.avatar_url || ''
     }));
 }
 
 export async function getProjectLabelsAction(projectId: number) {
-    const mapLabel = (l: any) => ({
+    const mapLabel = (l: GitLabLabel) => ({
         id: l.id,
         title: l.name,
         color: l.color,

@@ -11,7 +11,7 @@ import {
     getProjectMembers,
     getProject,
 } from '@/lib/gitlab';
-import { tiptapToMarkdown, extractMentions } from '@/lib/tiptapUtils';
+import { tiptapToMarkdown, extractMentions } from '@/lib/tiptap';
 import { revalidatePath, revalidateTag } from 'next/cache';
 import { env } from '@/lib/env';
 import { logger } from '@/lib/logger';
@@ -230,10 +230,10 @@ export async function submitQARun(projectId: number, runId: string, result: 'pas
                 removeLabels: labelsToRemove,
             });
         } else {
-            console.warn('Project labels not configured, skipping GitLab updates. Please configure labels in project settings.');
+            logger.warn('Project labels not configured, skipping GitLab updates. Please configure labels in project settings.');
         }
     } catch (gitlabError) {
-        console.error('GitLab update failed:', gitlabError);
+        logger.error('GitLab update failed', gitlabError);
         // Don't throw in mock mode, just log
         if (!isMockMode) {
             throw new Error('Failed to update GitLab. Please try again.');

@@ -99,7 +99,7 @@ export async function moveIssue(projectId: number, issueIid: number, newLabel: s
         logger.info(`moveIssue: Successfully moved issue #${issueIid}`);
         return { success: true };
     } catch (error) {
-        console.error('Failed to move issue:', error);
+        logger.error('Failed to move issue', error);
         // Sanitize error message to avoid exposing sensitive information
         const errorMessage = error instanceof Error && error.message.includes('rate limit')
             ? error.message  // Rate limit messages are safe and helpful

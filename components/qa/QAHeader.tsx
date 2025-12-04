@@ -18,6 +18,7 @@ import { Plus, X, ExternalLink } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import Link from 'next/link';
 import type { QAHeaderProps } from '@/types/qa';
+import { DescriptionContent } from './DescriptionContent';
 
 export function QAHeader({
     issue,
@@ -61,10 +62,7 @@ export function QAHeader({
                     <h3 className="text-sm font-semibold text-foreground">Description</h3>
                     <div className="overflow-y-auto overflow-x-auto max-h-[60vh] border border-border/40 rounded-lg p-4 bg-card/40 backdrop-blur-sm scrollbar-thin scrollbar-thumb-primary/20 scrollbar-track-transparent">
                         {processedDescription ? (
-                            <div
-                                className="prose prose-sm max-w-none text-foreground/90 dark:prose-invert gitlab-content min-w-full"
-                                dangerouslySetInnerHTML={{ __html: processedDescription }}
-                            />
+                            <DescriptionContent html={processedDescription} />
                         ) : (
                             <div className="text-sm text-muted-foreground">No description provided</div>
                         )}
@@ -83,10 +81,7 @@ export function QAHeader({
                                 </DialogHeader>
                                 <div className="flex-1 overflow-y-auto p-4">
                                     {processedDescription ? (
-                                        <div
-                                            className="prose prose-sm max-w-none text-foreground/90 dark:prose-invert gitlab-content min-w-full"
-                                            dangerouslySetInnerHTML={{ __html: processedDescription }}
-                                        />
+                                        <DescriptionContent html={processedDescription} />
                                     ) : (
                                         <div className="text-sm text-muted-foreground">No description provided</div>
                                     )}

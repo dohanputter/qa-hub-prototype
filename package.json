@@ -13,7 +13,6 @@
     "seed": "tsx tools/seed-mock-data.ts"
   },
   "dependencies": {
-    "@auth/core": "^0.35.0",
     "@auth/drizzle-adapter": "^1.5.0",
     "@dnd-kit/core": "^6.1.0",
     "@dnd-kit/sortable": "^8.0.0",
@@ -22,7 +21,6 @@
     "@libsql/client": "^0.10.0",
     "@radix-ui/react-alert-dialog": "^1.1.15",
     "@radix-ui/react-avatar": "^1.1.0",
-    "@radix-ui/react-checkbox": "^1.1.1",
     "@radix-ui/react-dialog": "^1.1.1",
     "@radix-ui/react-dropdown-menu": "^2.1.1",
     "@radix-ui/react-label": "^2.1.0",
@@ -31,10 +29,8 @@
     "@radix-ui/react-select": "^2.1.1",
     "@radix-ui/react-separator": "^1.1.0",
     "@radix-ui/react-slot": "^1.1.0",
-    "@radix-ui/react-switch": "^1.1.0",
     "@radix-ui/react-tabs": "^1.1.0",
     "@radix-ui/react-toast": "^1.2.1",
-    "@radix-ui/react-tooltip": "^1.1.2",
     "@t3-oss/env-nextjs": "^0.11.1",
     "@tanstack/react-query": "^5.56.2",
     "@tiptap/core": "^3.11.0",
@@ -55,12 +51,11 @@
     "@tiptap/suggestion": "^3.11.0",
     "class-variance-authority": "^0.7.0",
     "clsx": "^2.1.1",
-    "cmdk": "^1.0.0",
     "date-fns": "^3.6.0",
     "drizzle-orm": "^0.33.0",
     "lucide-react": "^0.441.0",
     "marked": "^17.0.1",
-    "next": "^15.0.0",
+    "next": "^15.0.5",
     "next-auth": "^5.0.0-beta.30",
     "next-themes": "^0.4.6",
     "react": "^19.0.0",
@@ -84,7 +79,6 @@
     "eslint-config-next": "^15.0.0",
     "postcss": "^8",
     "tailwindcss": "^3.4.1",
-    "ts-prune": "^0.10.3",
     "tsx": "^4.20.6",
     "typescript": "^5"
   }

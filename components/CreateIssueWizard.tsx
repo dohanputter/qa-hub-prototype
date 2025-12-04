@@ -18,7 +18,7 @@ import { logger } from '@/lib/logger';
 import Image from 'next/image';
 import { TiptapEditor } from '@/components/qa/TiptapEditor';
 import { cn } from '@/lib/utils';
-import { tiptapToMarkdown } from '@/lib/tiptapUtils';
+import { tiptapToMarkdown } from '@/lib/tiptap';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
 

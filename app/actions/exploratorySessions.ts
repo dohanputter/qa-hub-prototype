@@ -360,7 +360,7 @@ export async function createBlocker(data: unknown) {
                         }
                     }
                 } catch (error) {
-                    console.error('Failed to sync issue for blocker:', error);
+                    logger.error('Failed to sync issue for blocker', error);
                     // If sync fails, we can't link the issue, so we leave relatedIssueId as is (which will fail FK)
                     // or set to null? Better to fail so we know something is wrong, or set to null to allow blocker creation?
                     // The user wants it linked. If we can't link, maybe we should still create the blocker but warn?
@@ -456,7 +456,7 @@ export async function resolveBlocker(data: unknown) {
 
 export async function updateBlocker(blockerId: number, updates: {
     title?: string;
-    description?: any;
+    description?: JSONContent;
     severity?: 'low' | 'medium' | 'high' | 'critical';
     status?: 'active' | 'resolved' | 'escalated';
     blockingWhat?: 'testing' | 'development' | 'deployment';
