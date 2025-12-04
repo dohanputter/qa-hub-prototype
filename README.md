@@ -22,8 +22,6 @@ The application is now fully functional in **Mock Mode** for offline development
 - **Smart Trigger**: Auto-save only activates after user starts typing, preventing premature save indicators
 - **No Manual Save Button**: Removed explicit "Save Draft" button for seamless workflow
 - **Real-time Indicator**: Shows "Saving..." during save and "Saved" confirmation after each auto-save
-- **Draft History**: Track up to 50 previous versions of test cases and issues found
-- **One-Click Restore**: Recover any previous draft version with a single click
 - **Prevent Data Loss**: Never lose work due to accidental changes or browser issues
 
 ### Recent Updates (2025-12-02)
@@ -88,7 +86,6 @@ The application is now fully functional in **Mock Mode** for offline development
 - ✅ Auth tables (users, accounts, sessions, verification tokens)
 - ✅ Groups and Projects with GitLab sync
 - ✅ QA Issues and QA Runs with Tiptap JSON content
-- ✅ **QA Draft History** (auto-save snapshots, version tracking, restore capability)
 - ✅ Attachments with GitLab URLs
 - ✅ Notifications system with SSE support
 - ✅ Snippets for reusable content
@@ -140,7 +137,6 @@ The application is now fully functional in **Mock Mode** for offline development
 - ✅ `uploadAttachment.ts` - File upload with validation and rate limiting
 - ✅ `removeAttachment.ts` - File attachment removal
 - ✅ `notifications.ts` - Get, mark read, mark all read
-- ✅ **`draftHistory.ts`** - Auto-save, draft history tracking, and restore operations
 - ✅ **`exploratorySessions.ts`** - Session lifecycle, note capture, blocker management
 
 #### 7. API Routes (`/app/api/`)
@@ -181,7 +177,6 @@ The application is now fully functional in **Mock Mode** for offline development
    - Test Cases editor (Tiptap JSON) with tables & images
    - Issues Found editor (Tiptap JSON)
    - **New**: Continuous auto-save with 2-second debounce (no manual save needed)
-   - **New**: Restore previous versions from up to 50 saved drafts
    - **New**: Drag-to-resize images and advanced table controls
    - **New**: Text snippets for quick insertion
    - @mentions extraction
@@ -205,8 +200,6 @@ The application is now fully functional in **Mock Mode** for offline development
    - **Smart Trigger**: Auto-save only activates after user starts typing (no premature save indicators)
    - **Seamless Workflow**: No manual "Save Draft" button needed—just type and your work is saved
    - **Real-time Feedback**: Visual "Saving..." and "Saved" indicators show save status
-   - **Version History**: Browse up to 50 previous versions of test cases and issues found
-   - **One-Click Restore**: Recover any previous draft version instantly
    - **Data Loss Prevention**: Never lose work due to accidental changes or browser issues
 
 7. **Exploratory Testing**
