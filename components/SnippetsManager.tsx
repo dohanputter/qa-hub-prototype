@@ -22,6 +22,9 @@ export const SnippetsManager: React.FC = () => {
     const [isEditing, setIsEditing] = useState(false);
     const [currentSnippet, setCurrentSnippet] = useState<Partial<Snippet>>({});
 
+    // Separate state for TipTap editor content (JSON) to prevent conversion loops
+    const [editorContent, setEditorContent] = useState<any>(null);
+
     // Editor context state
     const [defaultProjectId, setDefaultProjectId] = useState<number | null>(null);
     const [members, setMembers] = useState<any[]>([]); // TODO: Use GitLabUser[] when available
@@ -79,6 +82,7 @@ export const SnippetsManager: React.FC = () => {
 
     const handleEdit = (snippet: Snippet) => {
         setCurrentSnippet(snippet);
+        setEditorContent(snippet.content); // Pass markdown, TipTap will convert
         setIsEditing(true);
         setTitleError('');
         setContentError('');
@@ -86,6 +90,7 @@ export const SnippetsManager: React.FC = () => {
 
     const handleCreate = () => {
         setCurrentSnippet({ title: '', content: '', type: 'test_case' });
+        setEditorContent(null); // Empty editor
         setIsEditing(true);
         setTitleError('');
         setContentError('');
@@ -122,8 +127,9 @@ export const SnippetsManager: React.FC = () => {
     };
 
     const handleEditorChange = (jsonContent: any) => { // Tiptap JSONContent
+        setEditorContent(jsonContent); // Keep JSON in state for editor
         const markdown = tiptapToMarkdown(jsonContent);
-        setCurrentSnippet(prev => ({ ...prev, content: markdown }));
+        setCurrentSnippet(prev => ({ ...prev, content: markdown })); // Store markdown for saving
         setContentError('');
     };
 
@@ -345,7 +351,7 @@ export const SnippetsManager: React.FC = () => {
                             </div>
                             <div className="flex-1 flex flex-col relative p-4">
                                 <TiptapEditor
-                                    content={currentSnippet.content}
+                                    content={editorContent}
                                     onChange={handleEditorChange}
                                     members={members}
                                     placeholder="Enter your snippet content here..."

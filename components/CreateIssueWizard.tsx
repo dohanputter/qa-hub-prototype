@@ -52,11 +52,13 @@ export const CreateIssueWizard: React.FC<CreateIssueWizardProps> = ({ onClose, o
     const [projectSearch, setProjectSearch] = useState('');
 
     // Form State
-    const [title, setTitle] = useState('');
-    const [description, setDescription] = useState<any>(null); // Tiptap JSON content
+    const [titleCategory, setTitleCategory] = useState('');
+    const [titleDescription, setTitleDescription] = useState('');
+    const [bodyContent, setBodyContent] = useState<any>(null); // Tiptap JSON content
     const [titleError, setTitleError] = useState('');
     const [issueType, setIssueType] = useState('issue');
     const [leakageSource, setLeakageSource] = useState<'qa' | 'uat' | 'production'>('qa');
+
 
     // Sidebar State
     const [assignee, setAssignee] = useState<User | undefined>(undefined);
@@ -123,17 +125,20 @@ export const CreateIssueWizard: React.FC<CreateIssueWizardProps> = ({ onClose, o
     const { handleImagePaste } = useImageUpload(selectedProject?.id);
 
     const handleSubmit = async () => {
-        if (!title.trim()) {
-            setTitleError('Title is required');
+        if (!titleCategory.trim() || !titleDescription.trim()) {
+            setTitleError('Both category and description are required');
             return;
         }
 
         if (!selectedProject) return;
 
+        // Combine into final title format: Category :: Description
+        const title = `${titleCategory.trim()} :: ${titleDescription.trim()}`;
+
         const issueData = {
             projectId: selectedProject.id,
             title,
-            description: description ? tiptapToMarkdown(description) : '',
+            description: bodyContent ? tiptapToMarkdown(bodyContent) : '',
             assigneeId: assignee?.id,
             labels: selectedLabels.map(l => l.title).join(','),
             leakageSource,
@@ -288,35 +293,57 @@ export const CreateIssueWizard: React.FC<CreateIssueWizardProps> = ({ onClose, o
                     {/* Left Column: Form Inputs */}
                     <div className="space-y-8">
 
-                        {/* Title Input */}
-                        <div className="space-y-2">
-                            <textarea
-                                value={title}
-                                onChange={(e) => {
-                                    setTitle(e.target.value);
-                                    setTitleError('');
-                                    e.target.style.height = 'auto';
-                                    e.target.style.height = e.target.scrollHeight + 'px';
-                                }}
-                                rows={1}
-                                placeholder="Issue Title"
-                                autoFocus
-                                className={cn(
-                                    "w-full px-0 py-2 bg-transparent border-0 border-b-2 border-transparent focus:border-primary/20 text-4xl font-bold tracking-tight placeholder:text-muted-foreground/30 focus:ring-0 outline-none transition-all resize-none overflow-hidden min-h-[60px]",
-                                    titleError && "border-destructive/50 placeholder:text-destructive/40"
-                                )}
-                                style={{ outline: 'none', boxShadow: 'none' }}
-                            />
+                        {/* Title Input - Split into Category and Description */}
+                        <div className="space-y-4">
+                            <div className="flex items-center gap-4">
+                                {/* Category Input */}
+                                <div className="flex-1 max-w-[200px]">
+                                    <input
+                                        type="text"
+                                        value={titleCategory}
+                                        onChange={(e) => {
+                                            setTitleCategory(e.target.value);
+                                            setTitleError('');
+                                        }}
+                                        placeholder="Category"
+                                        autoFocus
+                                        className={cn(
+                                            "w-full px-4 py-3 bg-muted/30 border border-border/50 rounded-xl text-lg font-semibold placeholder:text-muted-foreground/40 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary/50 transition-all",
+                                            titleError && "border-destructive/50 focus:ring-destructive/20"
+                                        )}
+                                    />
+                                </div>
+
+                                {/* Separator */}
+                                <span className="text-2xl font-bold text-muted-foreground/50 select-none">::</span>
+
+                                {/* Description Input */}
+                                <div className="flex-1">
+                                    <input
+                                        type="text"
+                                        value={titleDescription}
+                                        onChange={(e) => {
+                                            setTitleDescription(e.target.value);
+                                            setTitleError('');
+                                        }}
+                                        placeholder="Issue description"
+                                        className={cn(
+                                            "w-full px-4 py-3 bg-muted/30 border border-border/50 rounded-xl text-lg font-semibold placeholder:text-muted-foreground/40 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary/50 transition-all",
+                                            titleError && "border-destructive/50 focus:ring-destructive/20"
+                                        )}
+                                    />
+                                </div>
+                            </div>
                             {titleError && <p className="text-sm text-destructive font-medium animate-in slide-in-from-left-2">{titleError}</p>}
                         </div>
 
                         {/* Description Editor */}
                         <div className="space-y-2">
                             <TiptapEditor
-                                content={description}
-                                onChange={(content) => setDescription(content)}
+                                content={bodyContent}
+                                onChange={(content) => setBodyContent(content)}
                                 members={users.map(u => ({ ...u, avatar_url: u.avatarUrl }))}
-                                placeholder="Describe the issue..."
+                                placeholder="Describe the issue in detail..."
                                 onImagePaste={handleImagePaste}
                                 className="min-h-[400px] border-border/40 bg-card/50 shadow-sm focus-within:ring-1 focus-within:ring-primary/20"
                             />
