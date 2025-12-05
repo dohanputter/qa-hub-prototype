@@ -77,14 +77,14 @@ export function IssuesTable({ issues, projectId, labels = [] }: { issues: any[];
         return issues.slice(startIndex, startIndex + itemsPerPage);
     }, [issues, currentPage, itemsPerPage]);
 
-    const handleDelete = async (issueIid: number) => {
+    const handleDelete = async (issue: any) => {
         if (!confirm('Are you sure you want to delete this issue? This action cannot be undone.')) {
             return;
         }
 
-        setDeletingIssueId(issueIid);
+        setDeletingIssueId(issue.iid);
         try {
-            await deleteIssue(projectId, issueIid);
+            await deleteIssue(issue.project.id, issue.iid);
             router.refresh();
         } catch (error) {
             console.error('Failed to delete issue:', error);
@@ -175,7 +175,7 @@ export function IssuesTable({ issues, projectId, labels = [] }: { issues: any[];
                                         className="h-8 w-8 text-red-600 hover:text-red-700 hover:bg-destructive/10 opacity-0 group-hover:opacity-100"
                                         onClick={(e) => {
                                             e.stopPropagation();
-                                            handleDelete(issue.iid);
+                                            handleDelete(issue);
                                         }}
                                         disabled={deletingIssueId === issue.iid}
                                     >

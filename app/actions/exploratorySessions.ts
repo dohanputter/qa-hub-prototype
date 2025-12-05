@@ -229,6 +229,42 @@ export async function abandonSession(sessionId: number) {
     }
 }
 
+export async function deleteSession(sessionId: number) {
+    const session = await auth();
+    if (!session?.user?.id && !isMockMode()) throw new Error('Unauthorized');
+
+    try {
+        // Get session details before deletion
+        const currentSession = await db.query.exploratorySessions.findFirst({
+            where: eq(exploratorySessions.id, sessionId),
+        });
+
+        if (!currentSession) throw new Error('Session not found');
+
+        const projectId = currentSession.projectId;
+
+        // 1. Delete all session notes (required FK, cascade)
+        await db.delete(sessionNotes).where(eq(sessionNotes.sessionId, sessionId));
+
+        // 2. Unlink blockers (optional FK, set to null)
+        await db.update(qaBlockers)
+            .set({ sessionId: null })
+            .where(eq(qaBlockers.sessionId, sessionId));
+
+        // 3. Delete the session itself
+        await db.delete(exploratorySessions).where(eq(exploratorySessions.id, sessionId));
+
+        // 4. Revalidate paths
+        revalidatePath(`/${projectId}/sessions`);
+        revalidatePath(`/${projectId}/blockers`);
+
+        return { success: true };
+    } catch (error) {
+        logger.error('Failed to delete session', error);
+        throw new Error('Failed to delete session');
+    }
+}
+
 // --- Note Capture ---
 
 export async function captureSessionNote(data: unknown) {
