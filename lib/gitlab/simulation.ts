@@ -10,10 +10,7 @@ import type { WebhookPayload } from './types';
 // Local isMockMode to avoid circular dependency
 const isMockMode = () => process.env.NEXT_PUBLIC_MOCK_MODE === 'true';
 
-// Global store reference (will be imported from store.ts)
-declare global {
-    var mockIssuesStore: Record<number, any[]> | undefined;
-}
+// Note: mockIssuesStore global is declared in gitlab.ts where it's defined
 
 // === ERROR SIMULATION ===
 

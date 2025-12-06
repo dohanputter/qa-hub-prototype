@@ -115,6 +115,7 @@ export async function syncProjectIssues(projectId: number): Promise<{ synced: nu
                     issueTitle: issue.title,
                     issueDescription: issue.description || '',
                     issueUrl: issue.web_url,
+                    status: status, // Update status based on current labels
                     jsonLabels: labels,
                     issueState: issue.state as 'opened' | 'closed',
                     assigneeId: issue.assignees?.[0]?.id || null,

@@ -484,7 +484,7 @@ export const updateIssueLabels = async (
                 logger.mock(`updateIssueLabels: Current labels`, currentLabels);
 
                 // Store old labels for webhook simulation
-                const oldLabels = [...currentLabels];
+                oldLabels = [...currentLabels];
 
                 // Apply label changes
                 if (options.removeLabels) {

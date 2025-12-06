@@ -8,6 +8,7 @@ import { revalidatePath } from 'next/cache';
 import { getIssue } from '@/lib/gitlab';
 import { safeParse, startSessionSchema, captureNoteSchema, createBlockerSchema, resolveBlockerSchema } from '@/lib/validations';
 import { isMockMode } from '@/lib/mode';
+import { SYSTEM_USERS } from '@/lib/constants';
 import { logger } from '@/lib/logger';
 import type { JSONContent } from '@tiptap/core';
 
@@ -21,7 +22,7 @@ export async function startExploratorySession(data: unknown) {
     if (!parsed.success) throw new Error(parsed.error);
     const { projectId, charter, issueId, testArea, environment } = parsed.data;
 
-    const userId = session?.user?.id || 'mock-user-id';
+    const userId = session?.user?.id || SYSTEM_USERS.MOCK;
 
     try {
         const [newSession] = await db.insert(exploratorySessions).values({
@@ -47,7 +48,7 @@ export async function getActiveSession() {
     const session = await auth();
     if (!session?.user?.id && !isMockMode()) return null;
 
-    const userId = session?.user?.id || 'mock-user-id';
+    const userId = session?.user?.id || SYSTEM_USERS.MOCK;
 
     const activeSession = await db.query.exploratorySessions.findFirst({
         where: and(
@@ -482,6 +483,8 @@ export async function resolveBlocker(data: unknown) {
             revalidatePath(`/sessions/${updatedBlocker.sessionId}`);
         }
 
+        // Revalidate blockers page to reflect the resolved status
+        revalidatePath(`/${updatedBlocker.projectId}/blockers`);
 
         return { success: true };
     } catch (error) {

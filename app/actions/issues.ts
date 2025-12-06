@@ -246,7 +246,8 @@ export async function createIssue(projectId: number, data: unknown) {
         const newIid = maxIid + 1;
 
         // Generate a negative ID to avoid collision with real GitLab IDs
-        const newId = -(Date.now());
+        // Add random component to prevent collision if two issues created in same millisecond
+        const newId = -(Date.now() * 1000 + Math.floor(Math.random() * 1000));
 
         // Determine status from labels
         const labelMapping = (project.qaLabelMapping ?? DEFAULT_QA_LABELS) as { pending: string; passed: string; failed: string };

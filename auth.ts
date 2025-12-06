@@ -7,6 +7,7 @@ import { DrizzleAdapter } from '@auth/drizzle-adapter';
 import { db } from '@/lib/db';
 import { env } from '@/lib/env';
 import { logger } from '@/lib/logger';
+import { SYSTEM_USERS } from '@/lib/constants';
 
 export const authOptions: NextAuthConfig = {
     // Only use adapter in Node.js runtime (not Edge)
@@ -28,7 +29,7 @@ export const authOptions: NextAuthConfig = {
                 credentials: {},
                 async authorize() {
                     return {
-                        id: 'mock-user-id',
+                        id: SYSTEM_USERS.MOCK,
                         name: 'Mock Tester',
                         email: 'tester@example.com',
                         image: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Felix',
