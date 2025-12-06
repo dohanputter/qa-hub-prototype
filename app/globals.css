@@ -253,6 +253,40 @@
     object-fit: contain;
   }
 
+  /* Images inside tables - scale nicely as thumbnails */
+  .gitlab-content table img,
+  .gitlab-content table td img,
+  .gitlab-content table th img {
+    max-width: 150px;
+    max-height: 100px;
+    width: auto;
+    height: auto;
+    margin: 0.25rem 0;
+    border-radius: 0.375rem;
+    object-fit: contain;
+    display: inline-block;
+    vertical-align: middle;
+    /* Visual indicator that image is clickable */
+    transition: all 0.2s ease;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  }
+
+  .gitlab-content table img:hover,
+  .gitlab-content table td img:hover,
+  .gitlab-content table th img:hover {
+    transform: scale(1.02);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    cursor: zoom-in;
+  }
+
+  /* Ensure table cells don't stretch awkwardly with images */
+  .gitlab-content table td:has(img),
+  .gitlab-content table th:has(img) {
+    vertical-align: middle;
+    /* Don't let image cells force whitespace */
+    white-space: normal;
+  }
+
   /* Handle broken images */
   .gitlab-content img[src=""],
   .gitlab-content img:not([src]) {
@@ -282,6 +316,20 @@
   .gitlab-content .image-frame img {
     max-width: 100%;
     height: auto;
+  }
+
+  /* Image containers inside tables should also be constrained */
+  .gitlab-content table .image-container,
+  .gitlab-content table .image-frame {
+    max-width: 150px;
+    margin: 0.25rem 0;
+    overflow: visible;
+  }
+
+  .gitlab-content table .image-container img,
+  .gitlab-content table .image-frame img {
+    max-width: 100%;
+    max-height: 100px;
   }
 
   .gitlab-content pre {

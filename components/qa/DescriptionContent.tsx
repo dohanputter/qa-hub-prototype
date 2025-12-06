@@ -33,6 +33,8 @@ export function DescriptionContent({ html, className }: DescriptionContentProps)
             // Add cursor pointer and hover effect
             img.style.cursor = 'pointer';
             img.classList.add('lightbox-image');
+            // Add title for accessibility and user guidance
+            img.setAttribute('title', 'Click to enlarge');
             img.addEventListener('click', handleImageClick);
         });
 
