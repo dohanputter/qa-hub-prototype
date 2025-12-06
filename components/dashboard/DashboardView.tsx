@@ -1,5 +1,5 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
-import { Activity, CheckCircle, Clock, AlertCircle } from 'lucide-react';
+import { Activity, CheckCircle, Clock, AlertCircle, Timer } from 'lucide-react';
 import { DashboardCharts } from '@/components/dashboard/DashboardCharts';
 import { RecentNotifications } from '@/components/dashboard/RecentNotifications';
 import type { DashboardStats as DashboardStatsType } from '@/types/dashboard';
@@ -30,10 +30,10 @@ export function DashboardView({ stats, projectId }: DashboardViewProps) {
             </div>
 
             {/* KPI Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+            <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-6 mb-8">
                 <Card className="bg-card/50 backdrop-blur-sm border-primary/10 hover:bg-card/80 transition-all duration-300 hover:shadow-lg hover:-translate-y-1 group">
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium text-muted-foreground group-hover:text-foreground transition-colors">Avg. Time to Test</CardTitle>
+                        <CardTitle className="text-sm font-medium text-muted-foreground group-hover:text-foreground transition-colors">Avg. Testing Time</CardTitle>
                         <div className="p-2 bg-primary/10 rounded-full group-hover:bg-primary/20 transition-colors">
                             <Clock className="h-4 w-4 text-primary" />
                         </div>
@@ -41,6 +41,18 @@ export function DashboardView({ stats, projectId }: DashboardViewProps) {
                     <CardContent>
                         <div className="text-2xl font-bold tracking-tight">{stats.kpi?.avgTimeToTest || '0'}m</div>
                         <p className="text-xs text-muted-foreground mt-1">Average minutes per run</p>
+                    </CardContent>
+                </Card>
+                <Card className="bg-card/50 backdrop-blur-sm border-amber-500/20 hover:bg-card/80 transition-all duration-300 hover:shadow-lg hover:-translate-y-1 group">
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                        <CardTitle className="text-sm font-medium text-muted-foreground group-hover:text-foreground transition-colors">Avg. Wait Time</CardTitle>
+                        <div className="p-2 bg-amber-500/10 rounded-full group-hover:bg-amber-500/20 transition-colors">
+                            <Timer className="h-4 w-4 text-amber-500" />
+                        </div>
+                    </CardHeader>
+                    <CardContent>
+                        <div className="text-2xl font-bold tracking-tight">{stats.kpi?.avgWaitTime || '0'}m</div>
+                        <p className="text-xs text-muted-foreground mt-1">Time in Ready for QA</p>
                     </CardContent>
                 </Card>
                 <Card className="bg-card/50 backdrop-blur-sm border-green-500/20 hover:bg-card/80 transition-all duration-300 hover:shadow-lg hover:-translate-y-1 group">

@@ -120,6 +120,8 @@ export const qaIssues = sqliteTable('qa_issues', {
     cumulativeTimeMs: integer('cumulative_time_ms').default(0),
     // GitLab issue state (opened/closed) for caching
     issueState: text('issue_state').$type<'opened' | 'closed'>().default('opened'),
+    // Timestamp when issue entered "Ready for QA" - used for wait time metrics
+    readyForQaAt: integer('ready_for_qa_at', { mode: 'timestamp_ms' }),
     createdAt: integer('created_at', { mode: 'timestamp_ms' }).$defaultFn(() => new Date()),
     updatedAt: integer('updated_at', { mode: 'timestamp_ms' }).$defaultFn(() => new Date()),
 }, (table) => ({

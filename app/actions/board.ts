@@ -9,6 +9,7 @@ import { eq } from 'drizzle-orm';
 import { isMockMode, getMockToken, getTokenOrMock } from '@/lib/mode';
 import { DEFAULT_QA_LABELS } from '@/lib/constants';
 import { logger } from '@/lib/logger';
+import { qaIssues } from '@/db/schema';
 
 export async function moveIssue(projectId: number, issueIid: number, newLabel: string, oldLabel: string) {
     const session = await auth();
@@ -30,6 +31,17 @@ export async function moveIssue(projectId: number, issueIid: number, newLabel: s
         // Check if we are moving TO a QA status
         if (newLabel === labelMapping.pending) {
             logger.info('moveIssue: Moving to Ready for QA - Starting new QA Run');
+
+            // Set readyForQaAt timestamp for wait time tracking
+            const { and } = await import('drizzle-orm');
+            await db.update(qaIssues)
+                .set({ readyForQaAt: new Date(), updatedAt: new Date() })
+                .where(and(
+                    eq(qaIssues.gitlabProjectId, projectId),
+                    eq(qaIssues.gitlabIssueIid, issueIid)
+                ));
+            logger.info(`moveIssue: Set readyForQaAt for Issue #${issueIid}`);
+
             await getOrCreateQARun({
                 projectId,
                 issueIid,
@@ -37,6 +49,16 @@ export async function moveIssue(projectId: number, issueIid: number, newLabel: s
             });
         } else if (newLabel === labelMapping.passed) {
             logger.info('moveIssue: Moving to Passed - Completing QA Run');
+
+            // Clear readyForQaAt since testing is starting
+            const { and } = await import('drizzle-orm');
+            await db.update(qaIssues)
+                .set({ readyForQaAt: null, updatedAt: new Date() })
+                .where(and(
+                    eq(qaIssues.gitlabProjectId, projectId),
+                    eq(qaIssues.gitlabIssueIid, issueIid)
+                ));
+
             // Find active run and pass it
             const { run } = await getOrCreateQARun({ projectId, issueIid });
             if (run && run.status === 'pending') {
@@ -47,6 +69,16 @@ export async function moveIssue(projectId: number, issueIid: number, newLabel: s
             }
         } else if (newLabel === labelMapping.failed) {
             logger.info('moveIssue: Moving to Failed - Failing QA Run');
+
+            // Clear readyForQaAt since testing is starting
+            const { and } = await import('drizzle-orm');
+            await db.update(qaIssues)
+                .set({ readyForQaAt: null, updatedAt: new Date() })
+                .where(and(
+                    eq(qaIssues.gitlabProjectId, projectId),
+                    eq(qaIssues.gitlabIssueIid, issueIid)
+                ));
+
             const { run } = await getOrCreateQARun({ projectId, issueIid });
             if (run && run.status === 'pending') {
                 const result = await submitQARun(projectId, run.id, 'failed');

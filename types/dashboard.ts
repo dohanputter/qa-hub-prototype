@@ -24,6 +24,7 @@ export interface DashboardKPI {
     firstTimePassRate: number;
     issuesFound: number;
     activeTests: number;
+    avgWaitTime: number; // Average time issues wait in Ready for QA (in minutes)
 }
 
 export interface DashboardStats {

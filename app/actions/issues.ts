@@ -582,7 +582,7 @@ export async function getDashboardStats(groupId?: number) {
     const session = await auth();
 
     if (!isMockMode() && !session?.accessToken) {
-        return { projectStats: [], timeStats: [], passRates: [], kpi: { avgTimeToTest: 0, firstTimePassRate: 0, issuesFound: 0, activeTests: 0 } };
+        return { projectStats: [], timeStats: [], passRates: [], kpi: { avgTimeToTest: 0, firstTimePassRate: 0, issuesFound: 0, activeTests: 0, avgWaitTime: 0 } };
     }
 
     // Imports for DB access
@@ -760,6 +760,45 @@ export async function getDashboardStats(groupId?: number) {
         ? Math.round((totalCumulativeMs / issuesWithTimeCount) / 60000) // Convert ms to minutes
         : 0;
 
+    // 5. Average Wait Time (Time in Ready for QA before testing starts)
+    // Calculate avg time between readyForQaAt and first QA run createdAt
+    let totalWaitMs = 0;
+    let issuesWithWaitTimeCount = 0;
+
+    allIssues.forEach(issue => {
+        // For completed issues, calculate wait time from readyForQaAt to first run
+        const issueRuns = allRuns.filter(r => r.qaIssueId === issue.id);
+        if (issueRuns.length > 0) {
+            // Sort by run number to find the first run
+            issueRuns.sort((a, b) => a.runNumber - b.runNumber);
+            const firstRun = issueRuns[0];
+
+            // If we have readyForQaAt and first run has createdAt
+            if (issue.readyForQaAt && firstRun.createdAt) {
+                const readyAt = new Date(issue.readyForQaAt).getTime();
+                const runCreatedAt = new Date(firstRun.createdAt).getTime();
+                // Only count positive wait times (run started after ready)
+                if (runCreatedAt >= readyAt) {
+                    totalWaitMs += (runCreatedAt - readyAt);
+                    issuesWithWaitTimeCount++;
+                }
+            }
+        }
+        // For issues currently in Ready for QA (have readyForQaAt but no completed runs)
+        else if (issue.readyForQaAt) {
+            // Calculate current wait time
+            const readyAt = new Date(issue.readyForQaAt).getTime();
+            const currentWait = Date.now() - readyAt;
+            totalWaitMs += currentWait;
+            issuesWithWaitTimeCount++;
+        }
+    });
+
+    // Convert to minutes for display
+    const avgWaitTime = issuesWithWaitTimeCount > 0
+        ? Math.round((totalWaitMs / issuesWithWaitTimeCount) / 60000) // Convert ms to minutes
+        : 0;
+
     return {
         projectStats,
         timeStats,
@@ -768,7 +807,8 @@ export async function getDashboardStats(groupId?: number) {
             avgTimeToTest,
             firstTimePassRate: passRate,
             issuesFound,
-            activeTests
+            activeTests,
+            avgWaitTime
         }
     };
 }
