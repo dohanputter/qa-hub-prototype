@@ -36,6 +36,11 @@ The application is now fully functional in **Mock Mode** for offline development
 - **Webhook Updates**: Enhanced webhook handler to keep cached issue data fresh
 - **Sync Status**: `lastSyncedAt` tracking per project
 
+#### ✅ QA Wait Time Metrics
+- **Avg. Wait Time KPI**: New dashboard metric tracking how long tickets wait in "Ready for QA" before testing
+- **Automatic Tracking**: Wait time automatically captured when issues move to/from Ready for QA column
+- **Dashboard Display**: New amber-styled KPI card showing average queue time in minutes
+
 #### ✅ Bug Fixes & Improvements
 - **Defect Leakage Tracking**: Track where defects were discovered (QA, UAT, Production)
 - **Issue Title Auto-Split**: Use `::` separator to populate title and description fields
