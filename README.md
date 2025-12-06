@@ -170,22 +170,37 @@ The application is now fully functional in **Mock Mode** for offline development
 
 #### 7. API Routes (`/app/api/`)
 - ✅ `/api/auth/[...nextauth]` - NextAuth handlers
-- ✅ `/api/webhooks/gitlab` - GitLab webhook processor
+- ✅ `/api/webhooks/gitlab` - GitLab webhook processor with issue caching
 - ✅ `/api/issues/update-labels` - Label update endpoint
 - ✅ `/api/sse/notifications` - Server-Sent Events for real-time notifications
 - ✅ `/api/images/[...path]` - Image proxy and handling
+- ✅ `/api/blockers` - Blocker management endpoint
+- ✅ `/api/sessions` - Exploratory session API
 
 #### 8. Pages & UI
 - ✅ `/auth/signin` - Sign-in page with mock mode indicator
-- ✅ `/` - Dashboard with statistics
-- ✅ `/issues` - Issues list with blocker logging
+- ✅ `/` - Dashboard with statistics and charts
+- ✅ `/issues` - Issues list with pagination and blocker logging
 - ✅ `/board` - Kanban board redirect
-- ✅ `/[projectId]` - Project board with validation
-- ✅ **`/sessions/[sessionId]/workspace`** - Interactive session workspace
-- ✅ **`/sessions/[sessionId]/summary`** - Session completion summary
-- ✅ **`/blockers`** - Project-wide blockers tracking and management
-- ✅ Sidebar navigation with sessions and blockers
-- ✅ Layout components
+- ✅ `/[projectId]` - Project board with drag-and-drop columns
+- ✅ `/[projectId]/issues/[issueIid]` - QA detail page with rich text editors
+- ✅ `/sessions` - Exploratory sessions list with pagination
+- ✅ `/sessions/[sessionId]/workspace` - Interactive session workspace
+- ✅ `/sessions/[sessionId]/summary` - Session completion summary
+- ✅ `/blockers` - Project-wide blockers tracking and management
+- ✅ `/tools` - Tools index page
+- ✅ `/tools/generator` - Test data generator
+- ✅ `/tools/snippets` - Snippets manager
+- ✅ `/notifications` - Notification center
+- ✅ `/projects` - Project configuration
+- ✅ `/shared/[uuid]` - Public shareable QA run view
+- ✅ Sidebar navigation with version display
+- ✅ Layout components with dark mode toggle
+
+#### 9. Custom Hooks (`/hooks/`)
+- ✅ `useImageUpload.ts` - Reusable image upload logic with GitLab integration
+- ✅ `useNotificationStream.ts` - SSE connection management for real-time notifications
+- ✅ `useOnClickOutside.ts` - Click outside detection for dropdowns and modals
 
 ### Key Features
 
@@ -205,40 +220,50 @@ The application is now fully functional in **Mock Mode** for offline development
 3. **QA Workflow**
    - Test Cases editor (Tiptap JSON) with tables & images
    - Issues Found editor (Tiptap JSON)
-   - **New**: Continuous auto-save with 2-second debounce (no manual save needed)
-   - **New**: Drag-to-resize images and advanced table controls
-   - **New**: Text snippets for quick insertion
+   - **QA Run History**: Track all runs per issue with pass/fail status and timing
+   - **Cumulative Time Tracking**: Track total testing time across all runs
+   - **Defect Leakage Source**: Tag where defects were discovered (QA, UAT, Production)
+   - Continuous auto-save with 2-second debounce
+   - Drag-to-resize images and advanced table controls
+   - Text snippets for quick insertion
    - @mentions extraction
    - Pass/Fail with GitLab comment posting
-   - Shareable public links (UUID-based)
+   - Shareable public links (UUID-based) with closing notes
 
-4. **Type Safety**
+4. **Kanban Board**
+   - **Drag-and-Drop**: Move issues between columns with visual drop indicators
+   - **Column Management**: Backlog, Ready for QA, QA Passed, QA Failed
+   - **Real-time Sync**: Label changes sync with GitLab automatically
+   - **QA Run Lifecycle**: Runs created/closed automatically on column transitions
+
+5. **Type Safety**
    - 100% TypeScript
    - Zod validation for environment and server actions
    - Drizzle ORM type inference
    - NextAuth type augmentation
    - Dedicated type files for dashboard and editor components
 
-5. **Built-in Tools**
+6. **Built-in Tools**
    - **Test Data Generator**: Generate mock identity, finance, and location data for testing
    - **Snippets Manager**: Create and manage reusable text snippets for test cases and issue descriptions
    - **Real-time Notifications**: SSE-based instant updates without page refreshes
 
-6. **Continuous Auto-Save**
+7. **Continuous Auto-Save**
    - **Instant Saving**: Drafts auto-save continuously with 2-second debounce during active QA runs
    - **Smart Trigger**: Auto-save only activates after user starts typing (no premature save indicators)
    - **Seamless Workflow**: No manual "Save Draft" button needed—just type and your work is saved
    - **Real-time Feedback**: Visual "Saving..." and "Saved" indicators show save status
    - **Data Loss Prevention**: Never lose work due to accidental changes or browser issues
 
-7. **Exploratory Testing**
+8. **Exploratory Testing**
    - **Session Workspace**: Dedicated environment for exploratory testing with charter definition
    - **Real-time Note Capture**: Quick capture bar for observations, bugs, blockers, questions, and patterns
+   - **Pause/Resume**: Track total active and paused time separately
    - **Context Preservation**: Automatic URL, test data, and console log tracking
    - **Session Analytics**: Track duration, issues found, blockers logged, and questions raised
    - **Session Summary**: Auto-generated reports with timeline and outcomes
 
-8. **Blocker Management**
+9. **Blocker Management**
    - **Centralized Tracking**: View all blockers across projects in one place
    - **Severity Classification**: Low, medium, high, and critical severity levels
    - **Impact Assessment**: Track what's being blocked (testing, development, deployment)
