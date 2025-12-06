@@ -54,9 +54,16 @@ async function handleIssueEvent(event: any) {
 
     if (!project?.qaLabelMapping) return;
 
+    // Extract labels from webhook payload
     const labels = issue.labels?.map((l: any) => l.title) || [];
     const newStatus = mapLabelToStatus(labels, project.qaLabelMapping) || 'pending';
 
+    // Extract assignee and author from webhook
+    const assigneeId = event.assignees?.[0]?.id || issue.assignee_id || null;
+    const authorId = issue.author_id || null;
+    const issueState = (issue.state === 'opened' || issue.state === 'closed')
+        ? issue.state as 'opened' | 'closed'
+        : 'opened';
 
     // 1. Find or Create QA Issue and track old status
     let qaIssueId: string;
@@ -74,16 +81,26 @@ async function handleIssueEvent(event: any) {
     if (existingIssue.length > 0) {
         qaIssueId = existingIssue[0].id;
         oldStatus = existingIssue[0].status; // Track old status before update
+
+        // Update all cached issue metadata from webhook
         await db
             .update(qaIssues)
             .set({
                 status: newStatus,
                 issueTitle: issue.title,
                 issueDescription: issue.description || '',
+                issueUrl: issue.url || existingIssue[0].issueUrl,
+                jsonLabels: labels,
+                assigneeId: assigneeId,
+                authorId: authorId,
+                issueState: issueState,
                 updatedAt: new Date(),
             })
             .where(eq(qaIssues.id, qaIssueId));
+
+        logger.info(`Webhook: Updated issue #${issue.iid} cache (labels: ${labels.join(', ')}, state: ${issueState})`);
     } else {
+        // Create new issue with full metadata
         const [created] = await db.insert(qaIssues).values({
             gitlabIssueId: issue.id,
             gitlabIssueIid: issue.iid,
@@ -92,9 +109,15 @@ async function handleIssueEvent(event: any) {
             issueDescription: issue.description || '',
             issueUrl: issue.url || `https://gitlab.com/${event.project.path_with_namespace}/-/issues/${issue.iid}`,
             status: newStatus,
+            jsonLabels: labels,
+            assigneeId: assigneeId,
+            authorId: authorId,
+            issueState: issueState,
         }).returning();
         qaIssueId = created.id;
         oldStatus = null; // Issue is new, no old status
+
+        logger.info(`Webhook: Created issue #${issue.iid} in cache`);
     }
 
     logger.info(`Webhook: Status change for Issue #${issue.iid}: ${oldStatus || 'new'} -> ${newStatus}`);

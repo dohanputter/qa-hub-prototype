@@ -118,6 +118,8 @@ export const qaIssues = sqliteTable('qa_issues', {
     authorId: integer('author_id'),
     // Cumulative testing time across all runs (in milliseconds)
     cumulativeTimeMs: integer('cumulative_time_ms').default(0),
+    // GitLab issue state (opened/closed) for caching
+    issueState: text('issue_state').$type<'opened' | 'closed'>().default('opened'),
     createdAt: integer('created_at', { mode: 'timestamp_ms' }).$defaultFn(() => new Date()),
     updatedAt: integer('updated_at', { mode: 'timestamp_ms' }).$defaultFn(() => new Date()),
 }, (table) => ({

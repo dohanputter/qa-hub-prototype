@@ -52,60 +52,127 @@ export async function getAllIssues(params?: { state?: 'opened' | 'closed'; searc
         );
     }
 
+    // --- PRODUCTION MODE: Read from DB cache with stale-while-revalidate ---
     const session = await auth();
     if (!session?.accessToken) throw new Error('Unauthorized');
 
-    let projects = [];
+    const { db } = await import('@/lib/db');
+    const { qaIssues, projects: projectsTable } = await import('@/db/schema');
+    const { eq, inArray, like, or, sql } = await import('drizzle-orm');
+    const { triggerBackgroundSyncIfStale } = await import('./sync');
+    const { getProject, getGroupProjects } = await import('@/lib/gitlab');
+
+    // Determine which projects to fetch
+    let projectIds: number[] = [];
+    let projectsMap = new Map<number, Project>();
+
     if (params?.projectId) {
-        const { getProject } = await import('@/lib/gitlab');
+        const projectId = Number(params.projectId);
+        projectIds = [projectId];
         try {
-            const project = await getProject(Number(params.projectId), session.accessToken);
-            projects = [project];
+            const project = await getProject(projectId, session.accessToken);
+            projectsMap.set(projectId, project as Project);
         } catch (e) {
             logger.error('Error fetching project', e);
             return [];
         }
     } else if (params?.groupId) {
-        const { getGroupProjects } = await import('@/lib/gitlab');
         try {
-            projects = await getGroupProjects(Number(params.groupId), session.accessToken);
+            const groupProjects = await getGroupProjects(Number(params.groupId), session.accessToken);
+            projectIds = groupProjects.map((p: GitLabProject) => p.id);
+            groupProjects.forEach((p: GitLabProject) => projectsMap.set(p.id, p as unknown as Project));
         } catch (e) {
             logger.error('Error fetching group projects', e);
             return [];
         }
     } else {
-        projects = await getUserProjects();
+        const userProjects = await getUserProjects();
+        projectIds = userProjects.map((p: Project) => p.id);
+        userProjects.forEach((p: Project) => projectsMap.set(p.id, p));
     }
 
-    if (projects.length === 0) return [];
+    if (projectIds.length === 0) return [];
 
-    // --- TASK 3 FIX: Batch API calls to prevent thundering herd ---
-    const { executeBatched } = await import('@/lib/utils');
+    // Trigger background sync for stale projects
+    for (const projectId of projectIds) {
+        triggerBackgroundSyncIfStale(projectId).catch(e => {
+            logger.error(`Background sync trigger failed for project ${projectId}`, e);
+        });
+    }
 
-    // Execute in batches of 3 to prevent rate limiting
-    // Execute in batches of 3 to prevent rate limiting
-    const results = await executeBatched(projects, 3, (p: Project) =>
-        getIssues(p.id, session.accessToken!, { ...params })
-            .then(issues => issues.map((i: GitLabIssue) => ({
-                ...i,
-                projectId: i.project_id,
-                createdAt: i.created_at,
-                updatedAt: i.updated_at,
-                avatarUrl: i.author?.avatar_url,
-                author: {
-                    ...i.author,
-                    avatarUrl: i.author?.avatar_url
-                },
-                assignee: i.assignees?.[0] || null,
-                project: p
-            })))
-            .catch(e => {
-                logger.error(`Failed to fetch issues for project ${p.id}`, e);
-                return [];
-            })
-    );
+    // Read from DB cache
+    let query = db.select().from(qaIssues).where(inArray(qaIssues.gitlabProjectId, projectIds));
 
-    return results.flat().sort((a, b) =>
+    const dbIssues = await query;
+
+    // Apply filters
+    let filteredIssues = dbIssues;
+
+    // Filter by state
+    if (params?.state) {
+        filteredIssues = filteredIssues.filter(i => i.issueState === params.state);
+    }
+
+    // Filter by labels
+    if (params?.labels) {
+        const requestedLabels = params.labels.split(',').map(l => l.trim());
+        filteredIssues = filteredIssues.filter(i => {
+            const issueLabels = (i.jsonLabels && Array.isArray(i.jsonLabels)) ? i.jsonLabels as string[] : [];
+            return requestedLabels.some(label => issueLabels.includes(label));
+        });
+    }
+
+    // Filter by search
+    if (params?.search) {
+        const searchLower = params.search.toLowerCase();
+        filteredIssues = filteredIssues.filter(i =>
+            i.issueTitle.toLowerCase().includes(searchLower) ||
+            (i.issueDescription && i.issueDescription.toLowerCase().includes(searchLower))
+        );
+    }
+
+    // Transform to expected format (matching GitLab API response structure)
+    const issues = filteredIssues.map(dbIssue => {
+        const project = projectsMap.get(dbIssue.gitlabProjectId);
+        const labels = (dbIssue.jsonLabels && Array.isArray(dbIssue.jsonLabels)) ? dbIssue.jsonLabels as string[] : [];
+
+        return {
+            id: dbIssue.gitlabIssueId,
+            iid: dbIssue.gitlabIssueIid,
+            project_id: dbIssue.gitlabProjectId,
+            projectId: dbIssue.gitlabProjectId,
+            title: dbIssue.issueTitle,
+            description: dbIssue.issueDescription || '',
+            state: dbIssue.issueState || 'opened',
+            labels: labels,
+            web_url: dbIssue.issueUrl,
+            createdAt: dbIssue.createdAt?.toISOString() || new Date().toISOString(),
+            updatedAt: dbIssue.updatedAt?.toISOString() || new Date().toISOString(),
+            created_at: dbIssue.createdAt?.toISOString() || new Date().toISOString(),
+            updated_at: dbIssue.updatedAt?.toISOString() || new Date().toISOString(),
+            author: {
+                id: dbIssue.authorId || 0,
+                name: 'Cached User',
+                username: 'cached',
+                avatar_url: undefined,
+                avatarUrl: undefined
+            },
+            avatarUrl: undefined,
+            assignee: dbIssue.assigneeId ? {
+                id: dbIssue.assigneeId,
+                name: 'Cached Assignee',
+                username: 'assignee'
+            } : null,
+            assignees: dbIssue.assigneeId ? [{
+                id: dbIssue.assigneeId,
+                name: 'Cached Assignee',
+                username: 'assignee'
+            }] : [],
+            project: project || { id: dbIssue.gitlabProjectId, name: 'Unknown' },
+        };
+    });
+
+    return issues.sort((a, b) =>
         new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
     );
 }
