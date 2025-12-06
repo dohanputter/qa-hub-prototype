@@ -17,6 +17,20 @@ The application is now fully functional in **Mock Mode** for offline development
 
 ### Recent Updates (2025-12-06)
 
+#### ✅ Per-Project Column Mapping (v0.3.0)
+- **Flexible Workflow Columns**: Configure custom QA workflow columns per project
+- **Column Types**: Assign behavior types to columns:
+  - `Queue` - Waiting state, tracks wait time metrics
+  - `Active` - Testing state, starts QA run timer
+  - `Passed` - Completes QA run as passed
+  - `Failed` - Completes QA run as failed  
+  - `Standard` - No special behavior (label update only)
+- **GitLab Label Mapping**: Map each column to a GitLab label with auto-derived colors
+- **Drag-to-Reorder**: Reorder columns via drag-and-drop in settings
+- **Configuration Modal**: New settings UI accessible from the board page (⚙️ button)
+- **Bidirectional Sync**: Webhook handler updated for dynamic column types
+- **Backward Compatible**: Falls back to default columns if not configured
+
 #### ✅ Version Control & Automation
 - **Automatic Version Bumping**: `npm run version:patch/minor/major` scripts for semantic versioning
 - **Version Display**: App version and build date shown in sidebar
@@ -170,6 +184,7 @@ The application is now fully functional in **Mock Mode** for offline development
 - ✅ `uploadAttachment.ts` - File upload with validation and rate limiting
 - ✅ `removeAttachment.ts` - File attachment removal
 - ✅ `notifications.ts` - Get, mark read, mark all read
+- ✅ **`columnMapping.ts`** - Per-project column configuration with GitLab labels
 - ✅ **`exploratorySessions.ts`** - Session lifecycle, note capture, blocker management
 - ✅ **`sync.ts`** - GitLab issue sync with stale-while-revalidate caching
 
@@ -237,9 +252,11 @@ The application is now fully functional in **Mock Mode** for offline development
 
 4. **Kanban Board**
    - **Drag-and-Drop**: Move issues between columns with visual drop indicators
-   - **Column Management**: Backlog, Ready for QA, QA Passed, QA Failed
-   - **Real-time Sync**: Label changes sync with GitLab automatically
-   - **QA Run Lifecycle**: Runs created/closed automatically on column transitions
+   - **Dynamic Columns**: Configure custom columns per project with GitLab label mapping
+   - **Column Types**: Queue, Active, Passed, Failed, Standard - each with specific workflow behavior
+   - **Real-time Sync**: Label changes sync with GitLab automatically (bidirectional)
+   - **QA Run Lifecycle**: Runs created/closed automatically based on column type transitions
+   - **Column Configuration**: Settings modal (⚙️) for adding, removing, and reordering columns
 
 5. **Type Safety**
    - 100% TypeScript
