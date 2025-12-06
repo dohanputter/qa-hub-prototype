@@ -59,8 +59,16 @@ export async function moveIssue(projectId: number, issueIid: number, newLabel: s
                 case 'queue':
                     // Queue column: Set readyForQaAt timestamp for wait time tracking
                     logger.info('moveIssue: Moving to Queue column - Setting wait time timestamp');
+
+                    // If moving from another queue or if readyForQaAt exists, save the previous wait time
+                    const prevWaitTime = getNewWaitTime();
+
                     await db.update(qaIssues)
-                        .set({ readyForQaAt: new Date(), updatedAt: new Date() })
+                        .set({
+                            readyForQaAt: new Date(),
+                            cumulativeWaitTimeMs: prevWaitTime > 0 ? prevWaitTime : (currentIssue?.cumulativeWaitTimeMs || 0),
+                            updatedAt: new Date()
+                        })
                         .where(and(
                             eq(qaIssues.gitlabProjectId, projectId),
                             eq(qaIssues.gitlabIssueIid, issueIid)
