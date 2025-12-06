@@ -100,6 +100,28 @@ export interface QALabelMapping {
     failed: string;
 }
 
+/**
+ * Column type determines special workflow behavior
+ * - queue: Waiting state (sets readyForQaAt timestamp for wait metrics)
+ * - active: Testing state (creates/starts QA Run, timer begins)
+ * - passed: Completes QA Run as passed
+ * - failed: Completes QA Run as failed
+ * - standard: No special behavior, just label changes
+ */
+export type QAColumnType = 'queue' | 'active' | 'passed' | 'failed' | 'standard';
+
+/**
+ * A single QA workflow column configuration
+ */
+export interface QAColumn {
+    id: string;              // Unique ID (e.g., 'testing', 'review')
+    title: string;           // Display name (e.g., 'Ready for QA')
+    gitlabLabel: string;     // Mapped GitLab label (e.g., 'workflow::testing')
+    color: string;           // Auto-derived from GitLab label
+    order: number;           // Display order (0 = first after Backlog)
+    columnType: QAColumnType; // Workflow behavior type
+}
+
 export interface KanbanProject {
     id: number;
     name: string;
@@ -115,6 +137,7 @@ export interface KanbanProject {
         full_path: string;
     };
     qaLabelMapping: QALabelMapping;
+    columnMapping?: QAColumn[];
 }
 
 export interface KanbanIssue {
@@ -133,7 +156,8 @@ export interface KanbanIssue {
     web_url: string;
 }
 
-export type KanbanColumnId = 'backlog' | 'pending' | 'passed' | 'failed';
+// Backlog is always fixed, other columns are dynamic based on project config
+export type KanbanColumnId = 'backlog' | string;
 
 // Re-export dashboard and editor types
 export type {

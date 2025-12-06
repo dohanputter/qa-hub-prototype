@@ -165,14 +165,22 @@ export async function submitQARun(projectId: number, runId: string, result: 'pas
     const project = projectResults[0];
     const isMockMode = process.env.NEXT_PUBLIC_MOCK_MODE === 'true';
 
-    // Default label mapping for mock mode or when not configured
-    const defaultLabelMapping = {
-        pending: 'QA::Pending',
-        passed: 'QA::Passed',
-        failed: 'QA::Failed'
-    };
+    // Import column mapping helpers
+    const { DEFAULT_COLUMNS } = await import('@/lib/constants');
 
-    const labelMapping = project?.qaLabelMapping || defaultLabelMapping;
+    // Get column configuration
+    const columnMapping = (project?.columnMapping as any[]) || DEFAULT_COLUMNS;
+
+    // Find passed and failed columns from configuration
+    const passedColumn = columnMapping.find((col: any) => col.columnType === 'passed');
+    const failedColumn = columnMapping.find((col: any) => col.columnType === 'failed');
+
+    // Build label mapping from column configuration
+    const labelMapping = {
+        pending: columnMapping.find((col: any) => col.columnType === 'queue')?.gitlabLabel || 'QA::Pending',
+        passed: passedColumn?.gitlabLabel || 'QA::Passed',
+        failed: failedColumn?.gitlabLabel || 'QA::Failed',
+    };
 
     const attachmentsResults = await db
         .select()
@@ -217,7 +225,10 @@ export async function submitQARun(projectId: number, runId: string, result: 'pas
     // Only update GitLab if we have proper label configuration or in mock mode
     try {
         const newLabel = result === 'passed' ? labelMapping.passed : labelMapping.failed;
-        const labelsToRemove = [labelMapping.pending, labelMapping.passed, labelMapping.failed].filter((l) => l !== newLabel);
+        // Get all configured labels to remove (from all columns)
+        const labelsToRemove = columnMapping
+            .filter((col: any) => col.gitlabLabel && col.gitlabLabel !== newLabel)
+            .map((col: any) => col.gitlabLabel);
 
         if (isMockMode) {
             logger.mock('Updating labels', {
@@ -232,7 +243,7 @@ export async function submitQARun(projectId: number, runId: string, result: 'pas
             });
 
             logger.mock('Would create GitLab comment', commentBody);
-        } else if (project?.qaLabelMapping) {
+        } else if (passedColumn && failedColumn) {
             // Only update GitLab if labels are properly configured
             await createIssueNote(issue.gitlabProjectId, issue.gitlabIssueIid, session.accessToken, commentBody);
 

@@ -6,6 +6,8 @@ import { Button } from '@/components/ui/Button';
 import { Plus } from 'lucide-react';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
+import { getProjectColumnMapping } from '@/app/actions/columnMapping';
+import { revalidatePath } from 'next/cache';
 
 export default async function BoardPage({
     params,
@@ -33,6 +35,15 @@ export default async function BoardPage({
     const projects = await getGroupProjects(groupId, session.accessToken);
     const labels = projects.length > 0 ? (await import('@/lib/gitlab')).getProjectLabels(projects[0].id, session.accessToken) : [];
 
+    // Fetch column mapping for the project
+    const columns = await getProjectColumnMapping(groupId);
+
+    // Callback to refresh when columns are updated
+    const handleColumnsChange = async () => {
+        'use server';
+        revalidatePath(`/${groupId}/board`);
+    };
+
     return (
         <div className="flex-1 space-y-4 p-8 pt-6">
             <div className="flex items-center justify-between">
@@ -52,10 +63,13 @@ export default async function BoardPage({
 
             <KanbanBoard
                 issues={issues}
-                project={group as any} // KanbanBoard might expect Project type, but Group has similar fields (name, id). Might need adjustment.
+                project={group as any}
                 labels={await labels as any}
                 projectId={groupId}
+                columns={columns}
+                onColumnsChange={handleColumnsChange}
             />
         </div>
     );
 }
+

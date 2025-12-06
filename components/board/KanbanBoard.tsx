@@ -19,9 +19,11 @@ import { KanbanColumn } from "./KanbanColumn";
 import { KanbanCard, IssueCard, LabelColorsProvider } from "./KanbanCard";
 import { moveIssue } from "@/app/actions/board";
 import { toast } from "@/components/ui/useToast";
-import { Search, X, Loader2 } from "lucide-react";
-import type { KanbanIssue, GitLabLabel, QALabelMapping } from "@/types";
-import { DEFAULT_QA_LABELS } from "@/lib/constants";
+import { Search, X, Loader2, Settings2 } from "lucide-react";
+import { Button } from "@/components/ui/Button";
+import { ColumnMappingModal } from "@/components/project/ColumnMappingModal";
+import type { KanbanIssue, GitLabLabel, QALabelMapping, QAColumn } from "@/types";
+import { DEFAULT_COLUMNS } from "@/lib/constants";
 
 // Debug logging - only logs in development
 const DEBUG = process.env.NODE_ENV === 'development';
@@ -35,13 +37,19 @@ interface KanbanBoardProps {
     issues: KanbanIssue[];
     labels: GitLabLabel[];
     projectId: number;
+    /** Dynamic columns configuration */
+    columns?: QAColumn[];
+    /** Callback when columns are updated */
+    onColumnsChange?: () => void;
 }
 
 export function KanbanBoard({
     project,
     issues: initialIssues,
     labels,
-    projectId
+    projectId,
+    columns: configuredColumns,
+    onColumnsChange,
 }: KanbanBoardProps) {
     const [issues, setIssues] = useState<KanbanIssue[]>(initialIssues);
     const [optimisticIssues, setOptimisticIssues] = useOptimistic(issues, (state, newIssues: KanbanIssue[]) => newIssues);
@@ -50,6 +58,12 @@ export function KanbanBoard({
     // Counter-based syncing to handle multiple concurrent operations
     const [syncCount, setSyncCount] = useState(0);
     const isSyncing = syncCount > 0 || isPending;
+
+    // Column configuration modal
+    const [showColumnConfig, setShowColumnConfig] = useState(false);
+
+    // Use configured columns or defaults
+    const qaColumns = configuredColumns || DEFAULT_COLUMNS;
 
     // Helper functions to manage sync state safely
     const startSync = useCallback(() => setSyncCount(c => c + 1), []);
@@ -153,11 +167,18 @@ export function KanbanBoard({
         return closestCenter(args);
     };
 
-    const columns = {
-        pending: project.qaLabelMapping?.pending || DEFAULT_QA_LABELS.pending,
-        passed: project.qaLabelMapping?.passed || DEFAULT_QA_LABELS.passed,
-        failed: project.qaLabelMapping?.failed || DEFAULT_QA_LABELS.failed,
-    };
+    // Build a label lookup from the dynamic columns
+    const columnLabels = qaColumns.reduce((acc, col) => {
+        if (col.gitlabLabel) {
+            acc[col.id] = col.gitlabLabel;
+        }
+        return acc;
+    }, {} as Record<string, string>);
+
+    // All configured labels (for filtering backlog)
+    const allConfiguredLabels = qaColumns
+        .filter(col => col.gitlabLabel)
+        .map(col => col.gitlabLabel);
 
     // Filter Logic
     const filteredIssues = optimisticIssues.filter((issue: any) => {
@@ -176,17 +197,28 @@ export function KanbanBoard({
             issue.iid.toString().includes(query);
     });
 
-    const getIssuesByStatus = (status: keyof typeof columns) => {
-        const label = columns[status];
-        return filteredIssues.filter((i: any) => i.labels.includes(label));
+    // Get issues for a specific column by label
+    const getIssuesByColumn = (columnId: string) => {
+        const column = qaColumns.find(c => c.id === columnId);
+        if (!column || !column.gitlabLabel) return [];
+        return filteredIssues.filter((i: any) => i.labels.includes(column.gitlabLabel));
     };
 
-    // Get issues that don't have any of the status labels (Backlog)
+    // Get issues that don't have any of the configured labels (Backlog)
     const getBacklogIssues = () => {
-        const statusLabels = Object.values(columns);
         return filteredIssues.filter((i: any) =>
-            !statusLabels.some(label => i.labels.includes(label))
+            !allConfiguredLabels.some(label => i.labels.includes(label))
         );
+    };
+
+    // Helper: find which column an issue belongs to
+    const getIssueColumnId = (issue: any): string | null => {
+        for (const col of qaColumns) {
+            if (col.gitlabLabel && issue.labels.includes(col.gitlabLabel)) {
+                return col.id;
+            }
+        }
+        return null; // Backlog
     };
 
     // Autocomplete Logic
@@ -259,20 +291,16 @@ export function KanbanBoard({
 
         if (!activeIssue || !overIssue) return;
 
-        // Determine if both items are in the same column
-        const activeStatus = Object.keys(columns).find((key) =>
-            activeIssue.labels.includes(columns[key as keyof typeof columns])
-        );
-        const overStatus = Object.keys(columns).find((key) =>
-            overIssue.labels.includes(columns[key as keyof typeof columns])
-        );
+        // Determine if both items are in the same column using dynamic columns
+        const activeColumnId = getIssueColumnId(activeIssue);
+        const overColumnId = getIssueColumnId(overIssue);
 
-        // Check if both in backlog (no status labels)
-        const activeInBacklog = !activeStatus;
-        const overInBacklog = !overStatus;
+        // Check if both in backlog (no column)
+        const activeInBacklog = activeColumnId === null;
+        const overInBacklog = overColumnId === null;
 
-        // Only reorder if in the same column (same status or both in backlog)
-        const isSameColumn = (activeStatus === overStatus) || (activeInBacklog && overInBacklog);
+        // Only reorder if in the same column (same column or both in backlog)
+        const isSameColumn = (activeColumnId === overColumnId) || (activeInBacklog && overInBacklog);
 
         if (isSameColumn) {
             setIssues((items: any) => {
@@ -322,15 +350,14 @@ export function KanbanBoard({
         startSync();
         const syncStartTime = Date.now();
 
-        // Determine source status (can be undefined if in backlog)
-        const sourceStatus = Object.keys(columns).find((key) =>
-            activeIssue.labels.includes(columns[key as keyof typeof columns])
-        ) as keyof typeof columns | undefined;
-        const isFromBacklog = !sourceStatus;
+        // Determine source column (can be null if in backlog)
+        const sourceColumnId = getIssueColumnId(activeIssue);
+        const sourceColumn = sourceColumnId ? qaColumns.find(c => c.id === sourceColumnId) : null;
+        const isFromBacklog = !sourceColumnId;
 
-        log('[Drag] Source status:', { sourceStatus, isFromBacklog });
+        log('[Drag] Source column:', { sourceColumnId, isFromBacklog });
 
-        let destStatus: keyof typeof columns | undefined;
+        let destColumnId: string | null = null;
         let droppedOnCard = false;
         let isMovingToBacklog = false;
 
@@ -348,13 +375,11 @@ export function KanbanBoard({
         if (overIssue) {
             droppedOnCard = true;
             // Check which column the target card is in
-            const overIssueColumn = Object.keys(columns).find((key) =>
-                overIssue.labels.includes(columns[key as keyof typeof columns])
-            ) as keyof typeof columns | undefined;
+            const overIssueColumnId = getIssueColumnId(overIssue);
 
-            if (overIssueColumn) {
-                destStatus = overIssueColumn;
-                log('[Drag] Dropped on card in column', { destStatus });
+            if (overIssueColumnId) {
+                destColumnId = overIssueColumnId;
+                log('[Drag] Dropped on card in column', { destColumnId });
             } else {
                 // Target card is in backlog (no QA labels)
                 isMovingToBacklog = true;
@@ -366,23 +391,26 @@ export function KanbanBoard({
                 isMovingToBacklog = true;
                 log('[Drag] Moving to backlog');
             } else {
-                const isColumn = Object.keys(columns).includes(overIdStr);
-                if (isColumn) {
-                    destStatus = overIdStr as keyof typeof columns;
-                    log('[Drag] Dropped on column', { destStatus });
+                // Check if overIdStr matches a column ID
+                const targetColumn = qaColumns.find(c => c.id === overIdStr);
+                if (targetColumn) {
+                    destColumnId = overIdStr;
+                    log('[Drag] Dropped on column', { destColumnId });
                 }
             }
         }
 
+        // Get destination column object
+        const destColumn = destColumnId ? qaColumns.find(c => c.id === destColumnId) : null;
+
         // Handle moving to backlog
-        if (isMovingToBacklog && sourceStatus) {
-            const oldLabel = columns[sourceStatus];
-            // Only remove the QA status label, keep all other labels
-            const allQALabels = Object.values(columns);
+        if (isMovingToBacklog && sourceColumn) {
+            const oldLabel = sourceColumn.gitlabLabel;
+            // Only remove the configured labels, keep all other labels
             const updatedIssue = {
                 ...activeIssue,
                 updated_at: new Date().toISOString(),
-                labels: activeIssue.labels.filter((l: string) => !allQALabels.includes(l)),
+                labels: activeIssue.labels.filter((l: string) => !allConfiguredLabels.includes(l)),
             };
 
             const activeIndex = issues.findIndex((i: any) =>
@@ -431,22 +459,21 @@ export function KanbanBoard({
             return;
         }
 
-        if (!destStatus) {
-            log('[Drag] No destination status, aborting');
+        if (!destColumnId || !destColumn) {
+            log('[Drag] No destination column, aborting');
             endSync();
             return;
         }
 
         // If from backlog, we only add the new label
-        if (isFromBacklog && destStatus) {
-            const newLabel = columns[destStatus];
-            // Add the new QA label, keeping all existing labels
-            const allQALabels = Object.values(columns);
-            const nonQALabels = activeIssue.labels.filter((l: string) => !allQALabels.includes(l));
+        if (isFromBacklog && destColumn) {
+            const newLabel = destColumn.gitlabLabel;
+            // Add the new label, keeping all existing non-configured labels
+            const nonConfiguredLabels = activeIssue.labels.filter((l: string) => !allConfiguredLabels.includes(l));
             const updatedIssue = {
                 ...activeIssue,
                 updated_at: new Date().toISOString(),
-                labels: [...nonQALabels, newLabel],
+                labels: [...nonConfiguredLabels, newLabel],
             };
 
             const activeIndex = issues.findIndex((i: any) =>
@@ -495,28 +522,25 @@ export function KanbanBoard({
             return;
         }
 
-        if (!sourceStatus || !destStatus) {
-            log('[Drag] Missing source or dest status', { sourceStatus, destStatus });
+        if (!sourceColumnId || !destColumnId) {
+            log('[Drag] Missing source or dest column', { sourceColumnId, destColumnId });
             endSync();
             return;
         }
 
         // Handle reordering within the same column
-        // Check if both source and dest are the same column (or both in backlog)
-        const overIssueStatus = overIssue ? Object.keys(columns).find((key) =>
-            overIssue.labels.includes(columns[key as keyof typeof columns])
-        ) as keyof typeof columns | undefined : undefined;
-        const overInBacklog = overIssue && !overIssueStatus;
+        const overIssueColumnId = overIssue ? getIssueColumnId(overIssue) : null;
+        const overInBacklog = overIssue && !overIssueColumnId;
 
-        const isSameColumn = (sourceStatus === destStatus && sourceStatus !== undefined) ||
+        const isSameColumn = (sourceColumnId === destColumnId && sourceColumnId !== null) ||
             (isFromBacklog && (overIdStr === 'backlog' || overInBacklog));
 
         if (isSameColumn && activeIdStr !== overIdStr) {
             log('[Drag] Same column reorder completed (handled in dragOver)', {
                 activeId: activeIdStr,
                 overId: overIdStr,
-                sourceStatus,
-                destStatus,
+                sourceColumnId,
+                destColumnId,
                 isFromBacklog,
                 isSameColumn
             });
@@ -525,18 +549,17 @@ export function KanbanBoard({
             return;
         }
 
-        const oldLabel = columns[sourceStatus];
-        const newLabel = columns[destStatus];
+        const oldLabel = sourceColumn!.gitlabLabel;
+        const newLabel = destColumn!.gitlabLabel;
 
-        log('[Drag] Moving between columns', { from: sourceStatus, to: destStatus, oldLabel, newLabel });
+        log('[Drag] Moving between columns', { from: sourceColumnId, to: destColumnId, oldLabel, newLabel });
 
-        // Remove old QA label, add new QA label, preserve all other labels
-        const allQALabels = Object.values(columns);
-        const nonQALabels = activeIssue.labels.filter((l: string) => !allQALabels.includes(l));
+        // Remove old label, add new label, preserve all non-configured labels
+        const nonConfiguredLabels = activeIssue.labels.filter((l: string) => !allConfiguredLabels.includes(l));
         const updatedIssue = {
             ...activeIssue,
             updated_at: new Date().toISOString(),
-            labels: [...nonQALabels, newLabel],
+            labels: [...nonConfiguredLabels, newLabel],
         };
 
         const activeIndex = issues.findIndex((i: any) =>
@@ -650,13 +673,31 @@ export function KanbanBoard({
                         )}
                     </div>
 
-                    {/* Syncing Badge */}
-                    {isSyncing && (
-                        <div className="flex items-center justify-center w-8 h-8 rounded-full bg-primary/10 animate-in fade-in duration-300">
-                            <Loader2 className="h-4 w-4 text-primary animate-spin" />
-                        </div>
-                    )}
+                    {/* Syncing Badge and Settings */}
+                    <div className="flex items-center gap-2">
+                        {isSyncing && (
+                            <div className="flex items-center justify-center w-8 h-8 rounded-full bg-primary/10 animate-in fade-in duration-300">
+                                <Loader2 className="h-4 w-4 text-primary animate-spin" />
+                            </div>
+                        )}
+                        <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => setShowColumnConfig(true)}
+                            title="Configure Columns"
+                        >
+                            <Settings2 className="h-4 w-4" />
+                        </Button>
+                    </div>
                 </div>
+
+                {/* Column Configuration Modal */}
+                <ColumnMappingModal
+                    projectId={project.id}
+                    open={showColumnConfig}
+                    onOpenChange={setShowColumnConfig}
+                    onSave={onColumnsChange}
+                />
 
                 <DndContext
                     id="kanban-board-dnd-context"
@@ -667,6 +708,7 @@ export function KanbanBoard({
                     onDragEnd={handleDragEnd}
                 >
                     <div className="flex h-full gap-6 overflow-x-auto pb-4 items-start px-6">
+                        {/* Backlog Column - Always first */}
                         <KanbanColumn
                             id="backlog"
                             title="Backlog"
@@ -674,26 +716,19 @@ export function KanbanBoard({
                             projectId={project.id}
                         />
 
-                        <KanbanColumn
-                            id="pending"
-                            title="Ready for QA"
-                            issues={getIssuesByStatus("pending")}
-                            projectId={project.id}
-                        />
-
-                        <KanbanColumn
-                            id="passed"
-                            title="Passed"
-                            issues={getIssuesByStatus("passed")}
-                            projectId={project.id}
-                        />
-
-                        <KanbanColumn
-                            id="failed"
-                            title="Failed"
-                            issues={getIssuesByStatus("failed")}
-                            projectId={project.id}
-                        />
+                        {/* Dynamic Columns based on configuration */}
+                        {qaColumns
+                            .sort((a, b) => a.order - b.order)
+                            .map((column) => (
+                                <KanbanColumn
+                                    key={column.id}
+                                    id={column.id}
+                                    title={column.title}
+                                    issues={getIssuesByColumn(column.id)}
+                                    projectId={project.id}
+                                    color={column.color}
+                                />
+                            ))}
                     </div>
 
                     <DragOverlay>

@@ -77,11 +77,21 @@ export const projects = sqliteTable('projects', {
     name: text('name').notNull(),
     description: text('description'),
     webUrl: text('web_url').notNull(),
+    // Legacy label mapping - kept for backwards compatibility
     qaLabelMapping: text('qa_label_mapping', { mode: 'json' }).$type<{
         pending: string;
         passed: string;
         failed: string;
     }>(),
+    // New flexible column mapping with workflow types
+    columnMapping: text('column_mapping', { mode: 'json' }).$type<Array<{
+        id: string;
+        title: string;
+        gitlabLabel: string;
+        color: string;
+        order: number;
+        columnType: 'queue' | 'active' | 'passed' | 'failed' | 'standard';
+    }>>(),
     webhookId: integer('webhook_id'),
     isConfigured: integer('is_configured', { mode: 'boolean' }).default(false).notNull(),
     lastSyncedAt: integer('last_synced_at', { mode: 'timestamp_ms' }),

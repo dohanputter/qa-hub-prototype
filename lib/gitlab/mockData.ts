@@ -155,14 +155,27 @@ export const MOCK_USERS: GitLabMockUser[] = [
 ];
 
 // === MOCK LABELS BY PROJECT ===
+// Project 500 has comprehensive workflow labels for testing column mapping
 const MOCK_LABELS_500: GitLabMockLabel[] = [
+    // Standard labels
     { id: 1, name: 'bug', color: '#dc2626', text_color: '#fff', description: 'Something is not working' },
     { id: 2, name: 'feature', color: '#2563eb', text_color: '#fff', description: 'New functionality' },
     { id: 3, name: 'critical', color: '#7f1d1d', text_color: '#fff', description: 'Critical severity' },
     { id: 4, name: 'frontend', color: '#0891b2', text_color: '#fff', description: 'Frontend related' },
+    // QA workflow labels
     { id: 6, name: 'qa::ready', color: '#f59e0b', text_color: '#fff', description: 'Ready for QA' },
-    { id: 7, name: 'qa::passed', color: '#10b981', text_color: '#fff', description: 'QA Passed' },
-    { id: 8, name: 'qa::failed', color: '#ef4444', text_color: '#fff', description: 'QA Failed' },
+    { id: 7, name: 'qa::testing', color: '#3b82f6', text_color: '#fff', description: 'Currently being tested' },
+    { id: 8, name: 'qa::passed', color: '#10b981', text_color: '#fff', description: 'QA Passed' },
+    { id: 9, name: 'qa::failed', color: '#ef4444', text_color: '#fff', description: 'QA Failed' },
+    // Extended workflow labels for column mapping testing
+    { id: 100, name: 'workflow::pending-review', color: '#9333ea', text_color: '#fff', description: 'Pending code review' },
+    { id: 101, name: 'workflow::pending-testing', color: '#f97316', text_color: '#fff', description: 'Ready for QA testing' },
+    { id: 102, name: 'workflow::in-testing', color: '#0ea5e9', text_color: '#fff', description: 'Currently being tested' },
+    { id: 103, name: 'workflow::qa-approved', color: '#22c55e', text_color: '#fff', description: 'QA Approved' },
+    { id: 104, name: 'workflow::qa-rejected', color: '#dc2626', text_color: '#fff', description: 'QA Rejected' },
+    { id: 105, name: 'workflow::blocked', color: '#991b1b', text_color: '#fff', description: 'Blocked by issue' },
+    { id: 106, name: 'workflow::uat', color: '#8b5cf6', text_color: '#fff', description: 'Ready for UAT' },
+    { id: 107, name: 'workflow::uat-passed', color: '#059669', text_color: '#fff', description: 'UAT Passed' },
 ];
 
 const MOCK_LABELS_501: GitLabMockLabel[] = [

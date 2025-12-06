@@ -3,7 +3,6 @@ import { revalidateTag } from 'next/cache';
 import { db } from '@/lib/db';
 import { qaIssues, qaRuns, notifications, projects } from '@/db/schema';
 import { eq, and, desc } from 'drizzle-orm';
-import { mapLabelToStatus } from '@/lib/utils';
 import { env } from '@/lib/env';
 import { ensureWebhookUser } from '@/lib/mockUser';
 import { SYSTEM_USERS } from '@/lib/constants';
@@ -52,11 +51,29 @@ async function handleIssueEvent(event: any) {
 
     const project = projectResults[0];
 
-    if (!project?.qaLabelMapping) return;
+    // Import column mapping helpers
+    const { getProjectColumnMapping } = await import('@/app/actions/columnMapping');
+    const { DEFAULT_COLUMNS } = await import('@/lib/constants');
+
+    // Get column configuration (from DB or defaults)
+    const columnMapping = (project?.columnMapping as any[]) || DEFAULT_COLUMNS;
 
     // Extract labels from webhook payload
-    const labels = issue.labels?.map((l: any) => l.title) || [];
-    const newStatus = mapLabelToStatus(labels, project.qaLabelMapping) || 'pending';
+    const issueLabels = issue.labels?.map((l: any) => l.title) || [];
+
+    // Find which column this issue belongs to based on its labels
+    const matchedColumn = columnMapping.find((col: any) =>
+        col.gitlabLabel && issueLabels.includes(col.gitlabLabel)
+    );
+
+    // Determine status based on column type
+    // For backward compatibility, map column types to status values
+    let newStatus: 'pending' | 'passed' | 'failed' = 'pending';
+    if (matchedColumn) {
+        if (matchedColumn.columnType === 'passed') newStatus = 'passed';
+        else if (matchedColumn.columnType === 'failed') newStatus = 'failed';
+        // queue, active, standard all map to 'pending' status in the database
+    }
 
     // Extract assignee and author from webhook
     const assigneeId = event.assignees?.[0]?.id || issue.assignee_id || null;
@@ -90,7 +107,7 @@ async function handleIssueEvent(event: any) {
                 issueTitle: issue.title,
                 issueDescription: issue.description || '',
                 issueUrl: issue.url || existingIssue[0].issueUrl,
-                jsonLabels: labels,
+                jsonLabels: issueLabels,
                 assigneeId: assigneeId,
                 authorId: authorId,
                 issueState: issueState,
@@ -98,7 +115,7 @@ async function handleIssueEvent(event: any) {
             })
             .where(eq(qaIssues.id, qaIssueId));
 
-        logger.info(`Webhook: Updated issue #${issue.iid} cache (labels: ${labels.join(', ')}, state: ${issueState})`);
+        logger.info(`Webhook: Updated issue #${issue.iid} cache (labels: ${issueLabels.join(', ')}, state: ${issueState})`);
     } else {
         // Create new issue with full metadata
         const [created] = await db.insert(qaIssues).values({
@@ -109,7 +126,7 @@ async function handleIssueEvent(event: any) {
             issueDescription: issue.description || '',
             issueUrl: issue.url || `https://gitlab.com/${event.project.path_with_namespace}/-/issues/${issue.iid}`,
             status: newStatus,
-            jsonLabels: labels,
+            jsonLabels: issueLabels,
             assigneeId: assigneeId,
             authorId: authorId,
             issueState: issueState,
@@ -120,12 +137,19 @@ async function handleIssueEvent(event: any) {
         logger.info(`Webhook: Created issue #${issue.iid} in cache`);
     }
 
-    logger.info(`Webhook: Status change for Issue #${issue.iid}: ${oldStatus || 'new'} -> ${newStatus}`);
+    logger.info(`Webhook: Status/column change for Issue #${issue.iid}: ${oldStatus || 'new'} -> ${newStatus} (column: ${matchedColumn?.title || 'none'})`);
 
-    // 2. Handle Run Logic based on Status Change
-    // Only start a run if status is CHANGING TO pending (not already pending)
-    if (newStatus === 'pending' && oldStatus !== 'pending') {
-        // TRIGGER: Start new run if none active
+    // 2. Handle Run Logic based on Column Type
+    // Use columnType to determine behavior instead of just status
+    const columnType = matchedColumn?.columnType || null;
+
+    // Find old column to determine transition
+    const oldColumn = oldStatus ? columnMapping.find((col: any) =>
+        col.columnType === (oldStatus === 'passed' ? 'passed' : oldStatus === 'failed' ? 'failed' : 'queue')
+    ) : null;
+
+    if (columnType === 'active' && oldColumn?.columnType !== 'active') {
+        // Moving TO active column: Start new run
         const runs = await db
             .select()
             .from(qaRuns)
@@ -146,12 +170,12 @@ async function handleIssueEvent(event: any) {
                 status: 'pending',
                 createdBy: SYSTEM_USERS.WEBHOOK,
             });
-            logger.info(`Webhook: Started Run #${nextRunNumber} for Issue #${issue.iid} (status changed from ${oldStatus || 'none'} to pending)`);
+            logger.info(`Webhook: Started Run #${nextRunNumber} for Issue #${issue.iid} (moved to active column)`);
         } else {
             logger.info(`Webhook: Run #${activeRun.runNumber} already exists for Issue #${issue.iid}, not creating new run`);
         }
-    } else if ((newStatus === 'passed' || newStatus === 'failed') && oldStatus === 'pending') {
-        // Only close run if transitioning FROM pending TO passed/failed
+    } else if ((columnType === 'passed' || columnType === 'failed') && oldStatus === 'pending') {
+        // Moving TO passed/failed column from pending: Close run
         const runs = await db
             .select()
             .from(qaRuns)
@@ -168,8 +192,14 @@ async function handleIssueEvent(event: any) {
             }).where(eq(qaRuns.id, activeRun.id));
             logger.info(`Webhook: Closed Run #${activeRun.runNumber} for Issue #${issue.iid} as ${newStatus}`);
         }
+    } else if (columnType === 'queue') {
+        // Queue column: Set readyForQaAt timestamp
+        await db.update(qaIssues)
+            .set({ readyForQaAt: new Date(), updatedAt: new Date() })
+            .where(eq(qaIssues.id, qaIssueId));
+        logger.info(`Webhook: Set readyForQaAt for Issue #${issue.iid} (queue column)`);
     } else {
-        logger.info(`Webhook: No run action needed for Issue #${issue.iid} (status: ${oldStatus || 'new'} -> ${newStatus})`);
+        logger.info(`Webhook: No run action needed for Issue #${issue.iid} (column type: ${columnType || 'none'})`);
     }
 }
 

@@ -13,10 +13,25 @@ interface KanbanColumnProps {
     title: string;
     issues: KanbanIssue[];
     projectId: number;
+    /** Optional custom color for the column indicator */
+    color?: string;
 }
 
-export function KanbanColumn({ id, title, issues, projectId }: KanbanColumnProps) {
+export function KanbanColumn({ id, title, issues, projectId, color }: KanbanColumnProps) {
     const { setNodeRef, isOver } = useDroppable({ id });
+
+    // Default colors for legacy/backlog columns
+    const getDefaultColor = () => {
+        switch (id) {
+            case 'backlog': return '#9ca3af'; // gray-400
+            case 'pending': return '#facc15'; // yellow-400
+            case 'passed': return '#22c55e';  // green-500
+            case 'failed': return '#ef4444';  // red-500
+            default: return '#6b7280';        // gray-500
+        }
+    };
+
+    const indicatorColor = color || getDefaultColor();
 
     return (
         <div className={cn(
@@ -25,12 +40,10 @@ export function KanbanColumn({ id, title, issues, projectId }: KanbanColumnProps
         )}>
             <div className="p-4 flex items-center justify-between border-b border-border">
                 <div className="flex items-center gap-2">
-                    <div className={cn("w-2 h-2 rounded-full",
-                        id === 'backlog' ? "bg-gray-400" :
-                            id === 'pending' ? "bg-yellow-400" :
-                                id === 'passed' ? "bg-green-500" :
-                                    id === 'failed' ? "bg-red-500" : "bg-gray-400"
-                    )} />
+                    <div
+                        className="w-2 h-2 rounded-full"
+                        style={{ backgroundColor: indicatorColor }}
+                    />
                     <h3 className="font-semibold text-sm text-foreground">{title}</h3>
                 </div>
                 <Badge variant="secondary" className="text-xs font-mono bg-card shadow-sm">{issues.length}</Badge>

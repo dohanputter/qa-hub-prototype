@@ -7,7 +7,7 @@ import { auth } from '@/auth';
 import { isMockMode } from '@/lib/mode';
 import { logger } from '@/lib/logger';
 import { revalidatePath } from 'next/cache';
-import { mapLabelToStatus } from '@/lib/utils';
+import { DEFAULT_COLUMNS } from '@/lib/constants';
 
 const CACHE_DURATION_MS = 5 * 60 * 1000; // 5 minutes
 
@@ -60,7 +60,7 @@ export async function syncProjectIssues(projectId: number): Promise<{ synced: nu
 
     logger.info(`syncProjectIssues: Starting sync for project ${projectId}`);
 
-    // Get project for label mapping
+    // Get project for column mapping
     const [project] = await db
         .select()
         .from(projects)
@@ -70,6 +70,9 @@ export async function syncProjectIssues(projectId: number): Promise<{ synced: nu
     if (!project) {
         throw new Error(`Project ${projectId} not found`);
     }
+
+    // Get column configuration
+    const columnMapping = (project?.columnMapping as any[]) || DEFAULT_COLUMNS;
 
     // Fetch issues from GitLab API
     const { getGitlabClient } = await import('@/lib/gitlab');
@@ -91,12 +94,20 @@ export async function syncProjectIssues(projectId: number): Promise<{ synced: nu
     let created = 0;
     let updated = 0;
 
+    // Helper: determine status from labels using column mapping
+    const getStatusFromLabels = (labels: string[]): 'pending' | 'passed' | 'failed' => {
+        const matchedColumn = columnMapping.find((col: any) =>
+            col.gitlabLabel && labels.includes(col.gitlabLabel)
+        );
+        if (matchedColumn?.columnType === 'passed') return 'passed';
+        if (matchedColumn?.columnType === 'failed') return 'failed';
+        return 'pending';
+    };
+
     // Upsert each issue to the database
     for (const issue of allIssues) {
         const labels = issue.labels?.map((l: any) => typeof l === 'string' ? l : l.name || l) || [];
-        const status = project.qaLabelMapping
-            ? (mapLabelToStatus(labels, project.qaLabelMapping) || 'pending')
-            : 'pending';
+        const status = getStatusFromLabels(labels);
 
         // Check if issue exists
         const [existing] = await db
