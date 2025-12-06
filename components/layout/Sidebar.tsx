@@ -3,7 +3,7 @@
 import React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { LayoutDashboard, ListTodo, KanbanSquare, Bell, Wrench, LogOut, BarChart3, ShieldAlert, PlayCircle } from 'lucide-react';
+import { LayoutDashboard, ListTodo, KanbanSquare, Bell, Wrench, LogOut, BarChart3, ShieldAlert } from 'lucide-react';
 import { signOut } from 'next-auth/react';
 import { cn } from '@/lib/utils';
 import { ThemeToggle } from "@/components/ThemeToggle";
@@ -63,7 +63,6 @@ export function Sidebar() {
         { href: '/issues', icon: ListTodo, label: 'Issues' },
         { href: '/board', icon: KanbanSquare, label: 'Issues Board' },
         { href: '/blockers', icon: ShieldAlert, label: 'Blockers' },
-        { href: '/sessions', icon: PlayCircle, label: 'Sessions' },
         { href: '/notifications', icon: Bell, label: 'Notifications' },
     ];
 
