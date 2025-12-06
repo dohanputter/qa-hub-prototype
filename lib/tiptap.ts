@@ -1,4 +1,51 @@
 import type { JSONContent } from '@tiptap/core';
+import { z } from 'zod';
+
+// ============================================
+// Tiptap Content Type Definitions (Zod Schemas)
+// ============================================
+
+/**
+ * Schema for text marks (bold, italic, code, etc.)
+ */
+const TiptapMarkSchema = z.object({
+    type: z.string(),
+    attrs: z.record(z.unknown()).optional(),
+});
+
+/**
+ * Base schema for any Tiptap node.
+ * Uses lazy evaluation for recursive content.
+ */
+export const TiptapNodeSchema: z.ZodType<TiptapNode> = z.lazy(() =>
+    z.object({
+        type: z.string().optional(),
+        text: z.string().optional(),
+        attrs: z.record(z.unknown()).optional(),
+        marks: z.array(TiptapMarkSchema).optional(),
+        content: z.array(TiptapNodeSchema).optional(),
+    })
+);
+
+/**
+ * Type inferred from the Zod schema
+ */
+export type TiptapNode = {
+    type?: string;
+    text?: string;
+    attrs?: Record<string, unknown>;
+    marks?: Array<{ type: string; attrs?: Record<string, unknown> }>;
+    content?: TiptapNode[];
+};
+
+/**
+ * Validates and parses Tiptap content.
+ * Returns null if content is invalid.
+ */
+export function parseTiptapContent(content: unknown): TiptapNode | null {
+    const result = TiptapNodeSchema.safeParse(content);
+    return result.success ? result.data : null;
+}
 
 // ============================================
 // Text & Image Extraction
@@ -6,11 +53,12 @@ import type { JSONContent } from '@tiptap/core';
 
 /**
  * Recursively extracts plain text from a Tiptap JSON structure.
+ * Accepts unknown type for safety with runtime validation.
  *
- * @param content The Tiptap JSON content (JSONContent) or any object structure
+ * @param content The Tiptap JSON content or any object structure
  * @returns A plain text string representation
  */
-export function extractTextFromTiptap(content: JSONContent | any): string {
+export function extractTextFromTiptap(content: unknown): string {
     if (!content) return '';
 
     // If it's a string, just return it
@@ -21,14 +69,19 @@ export function extractTextFromTiptap(content: JSONContent | any): string {
         return content.map(extractTextFromTiptap).join(' ');
     }
 
-    // If it has text property (Leaf node)
-    if (content.text) {
-        return content.text;
-    }
+    // Type guard for object with potential text/content properties
+    if (typeof content === 'object' && content !== null) {
+        const node = content as Record<string, unknown>;
 
-    // If it has content property (Node with children)
-    if (content.content) {
-        return extractTextFromTiptap(content.content);
+        // If it has text property (Leaf node)
+        if (typeof node.text === 'string') {
+            return node.text;
+        }
+
+        // If it has content property (Node with children)
+        if (node.content) {
+            return extractTextFromTiptap(node.content);
+        }
     }
 
     // Fallback: empty string
@@ -37,11 +90,12 @@ export function extractTextFromTiptap(content: JSONContent | any): string {
 
 /**
  * Recursively extracts all image URLs from a Tiptap JSON structure.
+ * Accepts unknown type for safety with runtime validation.
  *
  * @param content The Tiptap JSON content
  * @returns An array of image URLs found in the content
  */
-export function extractImageUrls(content: JSONContent | any): string[] {
+export function extractImageUrls(content: unknown): string[] {
     const urls: string[] = [];
 
     if (!content) return urls;
@@ -54,14 +108,26 @@ export function extractImageUrls(content: JSONContent | any): string[] {
         return urls;
     }
 
-    // If it's an image node, get the src
-    if (content.type === 'image' && content.attrs?.src) {
-        urls.push(content.attrs.src);
-    }
+    // Type guard for object
+    if (typeof content === 'object' && content !== null) {
+        const node = content as Record<string, unknown>;
 
-    // If it has content (children), recurse
-    if (content.content) {
-        urls.push(...extractImageUrls(content.content));
+        // If it's an image node, get the src
+        if (
+            (node.type === 'image' || node.type === 'resizableImage') &&
+            typeof node.attrs === 'object' &&
+            node.attrs !== null
+        ) {
+            const attrs = node.attrs as Record<string, unknown>;
+            if (typeof attrs.src === 'string') {
+                urls.push(attrs.src);
+            }
+        }
+
+        // If it has content (children), recurse
+        if (node.content) {
+            urls.push(...extractImageUrls(node.content));
+        }
     }
 
     return urls;
@@ -73,12 +139,21 @@ export function extractImageUrls(content: JSONContent | any): string[] {
  * @param content The Tiptap JSON content
  * @returns An array of unique mention IDs (usernames)
  */
-export function extractMentions(content: JSONContent): string[] {
+export function extractMentions(content: JSONContent | TiptapNode | null): string[] {
+    if (!content) return [];
+
     const mentions: string[] = [];
 
-    function traverse(node: JSONContent) {
-        if (node.type === 'mention' && node.attrs?.id) mentions.push(node.attrs.id);
-        if (node.content) node.content.forEach(traverse);
+    function traverse(node: JSONContent | TiptapNode) {
+        if (node.type === 'mention' && node.attrs) {
+            const id = node.attrs.id;
+            if (typeof id === 'string') {
+                mentions.push(id);
+            }
+        }
+        if (node.content) {
+            node.content.forEach(traverse);
+        }
     }
 
     traverse(content);
