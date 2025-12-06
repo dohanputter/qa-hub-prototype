@@ -136,6 +136,11 @@ export function Sidebar() {
                     </Button>
                     <ThemeToggle />
                 </div>
+                <div className="mt-2 pt-2 border-t border-border/40 text-xs text-muted-foreground/60 text-center">
+                    <span>v{process.env.NEXT_PUBLIC_APP_VERSION}</span>
+                    <span className="mx-1">•</span>
+                    <span>{new Date(process.env.NEXT_PUBLIC_BUILD_DATE || '').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span>
+                </div>
             </div>
         </div>
     );
