@@ -21,7 +21,9 @@ import { useImageUpload } from '@/hooks/useImageUpload';
 import { QAHeader } from './QAHeader';
 import { QAHistory } from './QAHistory';
 import { QAAttachments } from './QAAttachments';
-import type { QADetailProps, Snippet, Attachment } from '@/types/qa';
+import { PassRunModal } from './PassRunModal';
+import { PassSuccessDialog } from './PassSuccessDialog';
+import type { QADetailProps, Snippet, Attachment, SubmitQARunOptions } from '@/types/qa';
 
 export function QADetail({ issue, qaIssue, runs = [], allAttachments = [], members, projectId, issueIid, labels: projectLabels }: QADetailProps) {
     const router = useRouter();
@@ -53,6 +55,11 @@ export function QADetail({ issue, qaIssue, runs = [], allAttachments = [], membe
 
     // Track run ID
     const [runId, setRunId] = useState(activeRun?.id || null);
+
+    // Modal state
+    const [showPassModal, setShowPassModal] = useState(false);
+    const [showSuccessDialog, setShowSuccessDialog] = useState(false);
+    const [successShareUrl, setSuccessShareUrl] = useState<string | null>(null);
 
     // Track last saved content to avoid unnecessary saves
     const lastSavedRef = useRef({
@@ -147,7 +154,7 @@ export function QADetail({ issue, qaIssue, runs = [], allAttachments = [], membe
         }
     };
 
-    const handleSubmit = (result: 'passed' | 'failed') => {
+    const handleSubmit = (result: 'passed' | 'failed', options?: SubmitQARunOptions) => {
         startTransition(async () => {
             try {
                 // Save first
@@ -166,12 +173,18 @@ export function QADetail({ issue, qaIssue, runs = [], allAttachments = [], membe
                     });
                 }
 
-                const res = await submitQARun(projectId, currentRunId, result);
+                const res = await submitQARun(projectId, currentRunId, result, options);
                 if (res.success) {
-                    toast({
-                        title: result === 'passed' ? "QA Passed" : "QA Failed",
-                        description: "Result submitted to GitLab",
-                    });
+                    if (result === 'passed') {
+                        // Show success dialog with share link for passed runs
+                        setSuccessShareUrl(res.shareUrl);
+                        setShowSuccessDialog(true);
+                    } else {
+                        toast({
+                            title: "QA Failed",
+                            description: "Result submitted to GitLab",
+                        });
+                    }
                     // Refresh to show updated state
                     router.refresh();
                 }
@@ -370,7 +383,7 @@ export function QADetail({ issue, qaIssue, runs = [], allAttachments = [], membe
                                     {isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
                                     Fail
                                 </Button>
-                                <Button size="sm" className="bg-emerald-600 hover:bg-emerald-700 text-white shadow-none" onClick={() => handleSubmit('passed')} disabled={isPending}>
+                                <Button size="sm" className="bg-emerald-600 hover:bg-emerald-700 text-white shadow-none" onClick={() => setShowPassModal(true)} disabled={isPending}>
                                     {isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
                                     Pass
                                 </Button>
@@ -445,6 +458,24 @@ export function QADetail({ issue, qaIssue, runs = [], allAttachments = [], membe
                     </TabsContent>
                 </Tabs>
             </div>
+
+            {/* Pass Run Modal */}
+            <PassRunModal
+                open={showPassModal}
+                onOpenChange={setShowPassModal}
+                onConfirm={(opts) => {
+                    setShowPassModal(false);
+                    handleSubmit('passed', opts);
+                }}
+                isSubmitting={isPending}
+            />
+
+            {/* Pass Success Dialog */}
+            <PassSuccessDialog
+                open={showSuccessDialog}
+                onOpenChange={setShowSuccessDialog}
+                shareUrl={successShareUrl}
+            />
         </div>
     );
 }

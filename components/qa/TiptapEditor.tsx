@@ -342,13 +342,11 @@ export function TiptapEditor({
             // Update the editor content
             editor.commands.setContent(normalizedContent || { type: 'doc', content: [] });
 
-            // Manually trigger onChange to update parent state
-            // This is crucial for draft restoration to work with Pass/Fail
-            if (onChange && normalizedContent) {
-                onChange(normalizedContent);
-            }
+            // Note: Do NOT call onChange here as it creates an infinite loop.
+            // The parent already knows the content since it passed it via props.
+            // onChange should only fire from onUpdate when users actually edit.
         }
-    }, [editor, normalizedContent, readOnly, onChange]);
+    }, [editor, normalizedContent, readOnly]);
 
     if (!editor) return null;
 

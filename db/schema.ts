@@ -135,6 +135,7 @@ export const qaRuns = sqliteTable('qa_runs', {
 
     testCasesContent: text('test_cases_content', { mode: 'json' }),
     issuesFoundContent: text('issues_found_content', { mode: 'json' }),
+    closingNote: text('closing_note'),
 
     shareUuid: text('share_uuid').$defaultFn(() => crypto.randomUUID()).unique().notNull(),
 

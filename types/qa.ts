@@ -81,11 +81,20 @@ export interface QARun {
     status: 'pending' | 'passed' | 'failed';
     testCasesContent?: JSONContent | null;
     issuesFoundContent?: JSONContent | null;
+    closingNote?: string | null;
     shareUuid: string;
     createdBy: string;
     completedAt?: Date | number | null;
     createdAt: Date | number;
     updatedAt: Date | number;
+}
+
+/**
+ * Options for submitting a QA run
+ */
+export interface SubmitQARunOptions {
+    note?: string;
+    generateLink?: boolean;
 }
 
 /**

@@ -17,6 +17,7 @@ import { env } from '@/lib/env';
 import { logger } from '@/lib/logger';
 import { createNotification } from './notifications';
 import type { JSONContent } from '@tiptap/core';
+import type { SubmitQARunOptions } from '@/types/qa';
 
 export async function getOrCreateQARun(data: {
     projectId: number;
@@ -133,7 +134,7 @@ export async function getOrCreateQARun(data: {
     }
 }
 
-export async function submitQARun(projectId: number, runId: string, result: 'passed' | 'failed') {
+export async function submitQARun(projectId: number, runId: string, result: 'passed' | 'failed', options?: SubmitQARunOptions) {
     const session = await auth();
     if (!session?.accessToken || !session.user?.id) throw new Error('Unauthorized');
 
@@ -179,13 +180,23 @@ export async function submitQARun(projectId: number, runId: string, result: 'pas
         .where(eq(attachments.qaRunId, runId));
 
     let commentBody = '';
-    const shareUrl = `${env.NEXT_PUBLIC_APP_URL}/shared/${run.shareUuid}`;
+    // Only generate share URL if not explicitly disabled
+    const shareUrl = options?.generateLink !== false
+        ? `${env.NEXT_PUBLIC_APP_URL}/shared/${run.shareUuid}`
+        : null;
 
     if (result === 'passed') {
-        commentBody = `## ✅ QA Passed (Run #${run.runNumber})\n\n**View details:** ${shareUrl}\n\n`;
+        commentBody = `## ✅ QA Passed (Run #${run.runNumber})\n\n`;
+        if (shareUrl) {
+            commentBody += `**View details:** ${shareUrl}\n\n`;
+        }
         if (run.testCasesContent) {
             commentBody += `### Test Cases Executed\n\n`;
             commentBody += tiptapToMarkdown(run.testCasesContent as JSONContent);
+        }
+        // Append closing note if provided
+        if (options?.note?.trim()) {
+            commentBody += `\n\n### Closing Note\n\n> ${options.note.trim()}\n`;
         }
     } else {
         commentBody = `## ❌ QA Failed (Run #${run.runNumber})\n\n**View details:** ${shareUrl}\n\n`;
@@ -241,7 +252,12 @@ export async function submitQARun(projectId: number, runId: string, result: 'pas
     }
 
     await db.update(qaRuns)
-        .set({ status: result, completedAt: new Date(), updatedAt: new Date() })
+        .set({
+            status: result,
+            closingNote: options?.note || null,
+            completedAt: new Date(),
+            updatedAt: new Date()
+        })
         .where(eq(qaRuns.id, runId));
 
     // Calculate and update cumulative time
@@ -328,7 +344,7 @@ export async function submitQARun(projectId: number, runId: string, result: 'pas
 
     return {
         success: true,
-        shareUrl: result === 'passed' ? shareUrl : null
+        shareUrl: result === 'passed' && options?.generateLink !== false ? shareUrl : null
     };
 }
 

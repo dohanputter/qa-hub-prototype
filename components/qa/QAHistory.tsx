@@ -1,13 +1,32 @@
 import { Badge } from '@/components/ui/Badge';
+import { Button } from '@/components/ui/Button';
 import { TiptapEditor } from './TiptapEditor';
 import { cn } from '@/lib/utils';
 import { formatDistanceToNow } from 'date-fns';
+import { ExternalLink, Copy, Check } from 'lucide-react';
+import { useState } from 'react';
 
 interface QAHistoryProps {
     runs: any[];
 }
 
 export function QAHistory({ runs }: QAHistoryProps) {
+    const [copiedId, setCopiedId] = useState<string | null>(null);
+
+    const getShareUrl = (shareUuid: string) => {
+        return `${typeof window !== 'undefined' ? window.location.origin : ''}/shared/${shareUuid}`;
+    };
+
+    const handleCopy = async (runId: string, shareUuid: string) => {
+        try {
+            await navigator.clipboard.writeText(getShareUrl(shareUuid));
+            setCopiedId(runId);
+            setTimeout(() => setCopiedId(null), 2000);
+        } catch (err) {
+            console.error('Failed to copy:', err);
+        }
+    };
+
     return (
         <div className="space-y-0 max-w-3xl">
             {runs.length === 0 ? (
@@ -34,12 +53,40 @@ export function QAHistory({ runs }: QAHistoryProps) {
                         <span className="text-sm text-muted-foreground ml-auto">
                             {run.completedAt ? formatDistanceToNow(new Date(run.completedAt)) + ' ago' : 'In Progress'}
                         </span>
+                        {run.status !== 'pending' && run.shareUuid && (
+                            <div className="flex items-center gap-1">
+                                <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-7 w-7"
+                                    onClick={() => handleCopy(run.id, run.shareUuid)}
+                                    title="Copy share link"
+                                >
+                                    {copiedId === run.id ? (
+                                        <Check className="h-3.5 w-3.5 text-emerald-600" />
+                                    ) : (
+                                        <Copy className="h-3.5 w-3.5" />
+                                    )}
+                                </Button>
+                                <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-7 w-7"
+                                    asChild
+                                    title="Open share link"
+                                >
+                                    <a href={getShareUrl(run.shareUuid)} target="_blank" rel="noopener noreferrer">
+                                        <ExternalLink className="h-3.5 w-3.5" />
+                                    </a>
+                                </Button>
+                            </div>
+                        )}
                     </div>
 
                     <div className="space-y-4 text-sm text-muted-foreground pl-1">
                         {run.issuesFoundContent && (
-                            <div className="bg-red-50/50 rounded-lg p-4 border border-red-100/50">
-                                <div className="font-medium text-red-700 mb-2 text-xs uppercase tracking-wider flex items-center gap-2">
+                            <div className="bg-red-50 dark:bg-red-950/30 rounded-lg p-4 border border-red-200 dark:border-red-900/50">
+                                <div className="font-medium text-red-700 dark:text-red-400 mb-2 text-xs uppercase tracking-wider flex items-center gap-2">
                                     <span className="w-1.5 h-1.5 rounded-full bg-red-500" />
                                     Issues Found
                                 </div>
@@ -47,12 +94,21 @@ export function QAHistory({ runs }: QAHistoryProps) {
                             </div>
                         )}
                         {run.testCasesContent && (
-                            <div className="bg-slate-50/50 rounded-lg p-4 border border-border/40">
-                                <div className="font-medium text-foreground/70 mb-2 text-xs uppercase tracking-wider flex items-center gap-2">
-                                    <span className="w-1.5 h-1.5 rounded-full bg-slate-400" />
+                            <div className="bg-muted/50 rounded-lg p-4 border border-border">
+                                <div className="font-medium text-muted-foreground mb-2 text-xs uppercase tracking-wider flex items-center gap-2">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-muted-foreground" />
                                     Test Cases
                                 </div>
                                 <TiptapEditor content={run.testCasesContent} readOnly={true} className="border-0 bg-transparent p-0 min-h-0" />
+                            </div>
+                        )}
+                        {run.status === 'passed' && run.closingNote && (
+                            <div className="bg-emerald-50 dark:bg-emerald-950/30 rounded-lg p-4 border border-emerald-200 dark:border-emerald-900/50">
+                                <div className="font-medium text-emerald-700 dark:text-emerald-400 mb-2 text-xs uppercase tracking-wider flex items-center gap-2">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                                    Closing Note
+                                </div>
+                                <p className="text-sm text-foreground/80 whitespace-pre-wrap">{run.closingNote}</p>
                             </div>
                         )}
                     </div>
