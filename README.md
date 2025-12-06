@@ -15,6 +15,34 @@ The application is now fully functional in **Mock Mode** for offline development
 - **Real-time Updates**: Server-Sent Events (SSE)
 - **UI**: Shadcn UI + Tailwind CSS
 
+### Recent Updates (2025-12-06)
+
+#### ✅ Version Control & Automation
+- **Automatic Version Bumping**: `npm run version:patch/minor/major` scripts for semantic versioning
+- **Version Display**: App version and build date shown in sidebar
+- **Git Integration**: Automatic commit and tag creation on version bumps
+
+#### ✅ QA Pass Workflow Enhancements
+- **Shareable Links**: Generate UUID-based public links when passing a QA run
+- **Closing Notes**: Add notes when passing that are included in GitLab comments and run history
+- **Success Dialog**: Copy link directly after passing with a confirmation modal
+
+#### ✅ Pagination
+- **Configurable Rows**: 5, 10, 20, 50, or 100 rows per page on Issues, Blockers, and Sessions pages
+- **Navigation Controls**: Next/Previous buttons with page info
+
+#### ✅ Issue Sync & Caching
+- **Background Sync**: Stale-while-revalidate pattern for issue fetching in production
+- **Webhook Updates**: Enhanced webhook handler to keep cached issue data fresh
+- **Sync Status**: `lastSyncedAt` tracking per project
+
+#### ✅ Bug Fixes & Improvements
+- **Defect Leakage Tracking**: Track where defects were discovered (QA, UAT, Production)
+- **Issue Title Auto-Split**: Use `::` separator to populate title and description fields
+- **Cumulative QA Time**: Track total testing time across all runs per issue
+- **Session Deletion**: Delete exploratory sessions with confirmation
+- **Image Scaling**: Improved image display in tables and descriptions
+
 ### Recent Updates (2025-12-04)
 
 #### ✅ Refined Continuous Auto-Save
@@ -138,6 +166,7 @@ The application is now fully functional in **Mock Mode** for offline development
 - ✅ `removeAttachment.ts` - File attachment removal
 - ✅ `notifications.ts` - Get, mark read, mark all read
 - ✅ **`exploratorySessions.ts`** - Session lifecycle, note capture, blocker management
+- ✅ **`sync.ts`** - GitLab issue sync with stale-while-revalidate caching
 
 #### 7. API Routes (`/app/api/`)
 - ✅ `/api/auth/[...nextauth]` - NextAuth handlers
@@ -255,8 +284,10 @@ npm run db:studio    # Open Drizzle Studio GUI
 # Quality & Testing
 npm run lint         # Run ESLint with strict warnings
 
-# Development Tools
-npm run seed         # Seed database with mock data
+# Version Management
+npm run version:patch   # Bump patch version (0.1.1 → 0.1.2)
+npm run version:minor   # Bump minor version (0.1.2 → 0.2.0)
+npm run version:major   # Bump major version (0.2.0 → 1.0.0)
 ```
 
 ## Environment Setup
