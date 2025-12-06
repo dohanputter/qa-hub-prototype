@@ -35,9 +35,23 @@ export async function moveIssue(projectId: number, issueIid: number, newLabel: s
         logger.info('moveIssue: Column type resolution', {
             newLabel,
             oldLabel,
-            targetColumnType: targetColumn?.columnType || 'none',
             sourceColumnType: sourceColumn?.columnType || 'backlog'
         });
+
+        // Fetch current issue data to handle wait time calculations
+        const currentIssue = await db.query.qaIssues.findFirst({
+            where: and(
+                eq(qaIssues.gitlabProjectId, projectId),
+                eq(qaIssues.gitlabIssueIid, issueIid)
+            )
+        });
+
+        // Helper to calculate new cumulative wait time
+        const getNewWaitTime = () => {
+            if (!currentIssue?.readyForQaAt) return currentIssue?.cumulativeWaitTimeMs || 0;
+            const waitDuration = new Date().getTime() - new Date(currentIssue.readyForQaAt).getTime();
+            return (currentIssue.cumulativeWaitTimeMs || 0) + waitDuration;
+        };
 
         // 2. Handle QA workflow based on column type
         if (targetColumn) {
@@ -60,7 +74,13 @@ export async function moveIssue(projectId: number, issueIid: number, newLabel: s
 
                     // Clear readyForQaAt since testing is now active
                     await db.update(qaIssues)
-                        .set({ readyForQaAt: null, updatedAt: new Date() })
+                    // Clear readyForQaAt since testing is now active, and save wait time
+                    await db.update(qaIssues)
+                        .set({
+                            readyForQaAt: null,
+                            cumulativeWaitTimeMs: getNewWaitTime(),
+                            updatedAt: new Date()
+                        })
                         .where(and(
                             eq(qaIssues.gitlabProjectId, projectId),
                             eq(qaIssues.gitlabIssueIid, issueIid)
@@ -78,7 +98,12 @@ export async function moveIssue(projectId: number, issueIid: number, newLabel: s
                     logger.info('moveIssue: Moving to Passed column - Completing QA Run');
 
                     await db.update(qaIssues)
-                        .set({ readyForQaAt: null, updatedAt: new Date() })
+                    await db.update(qaIssues)
+                        .set({
+                            readyForQaAt: null,
+                            cumulativeWaitTimeMs: getNewWaitTime(),
+                            updatedAt: new Date()
+                        })
                         .where(and(
                             eq(qaIssues.gitlabProjectId, projectId),
                             eq(qaIssues.gitlabIssueIid, issueIid)
@@ -98,7 +123,12 @@ export async function moveIssue(projectId: number, issueIid: number, newLabel: s
                     logger.info('moveIssue: Moving to Failed column - Failing QA Run');
 
                     await db.update(qaIssues)
-                        .set({ readyForQaAt: null, updatedAt: new Date() })
+                    await db.update(qaIssues)
+                        .set({
+                            readyForQaAt: null,
+                            cumulativeWaitTimeMs: getNewWaitTime(),
+                            updatedAt: new Date()
+                        })
                         .where(and(
                             eq(qaIssues.gitlabProjectId, projectId),
                             eq(qaIssues.gitlabIssueIid, issueIid)
@@ -118,12 +148,16 @@ export async function moveIssue(projectId: number, issueIid: number, newLabel: s
                     // Standard column: No special QA behavior, but clear readyForQaAt if coming from queue
                     if (sourceColumn?.columnType === 'queue') {
                         await db.update(qaIssues)
-                            .set({ readyForQaAt: null, updatedAt: new Date() })
+                            .set({
+                                readyForQaAt: null,
+                                cumulativeWaitTimeMs: getNewWaitTime(),
+                                updatedAt: new Date()
+                            })
                             .where(and(
                                 eq(qaIssues.gitlabProjectId, projectId),
                                 eq(qaIssues.gitlabIssueIid, issueIid)
                             ));
-                        logger.info(`moveIssue: Cleared readyForQaAt for Issue #${issueIid} (moved from queue to standard)`);
+                        logger.info(`moveIssue: Cleared readyForQaAt and saved wait time for Issue #${issueIid} (moved from queue to standard)`);
                     }
                     logger.info('moveIssue: Moving to Standard column - Label update only');
                     break;
@@ -178,11 +212,18 @@ export async function moveIssue(projectId: number, issueIid: number, newLabel: s
                 const newCumulativeTime = currentCumulativeTime + accumulatedTime;
 
                 // Reset issue status to pending (for Backlog) and update cumulative time
+                // Calculate wait time if applicable (using local variable since we have existingIssue)
+                const currentWaitTimeMs = existingIssue[0].cumulativeWaitTimeMs || 0;
+                const additionalWait = existingIssue[0].readyForQaAt
+                    ? (now.getTime() - new Date(existingIssue[0].readyForQaAt).getTime())
+                    : 0;
+
                 await db.update(qaIssues)
                     .set({
                         status: 'pending',
                         cumulativeTimeMs: newCumulativeTime,
                         readyForQaAt: null,
+                        cumulativeWaitTimeMs: currentWaitTimeMs + additionalWait,
                         updatedAt: now
                     })
                     .where(eq(qaIssues.id, existingIssue[0].id));

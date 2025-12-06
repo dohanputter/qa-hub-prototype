@@ -141,6 +141,8 @@ export const qaIssues = sqliteTable('qa_issues', {
     issueState: text('issue_state').$type<'opened' | 'closed'>().default('opened'),
     // Timestamp when issue entered "Ready for QA" - used for wait time metrics
     readyForQaAt: integer('ready_for_qa_at', { mode: 'timestamp_ms' }),
+    // Cumulative wait time in "Ready for QA" (in milliseconds)
+    cumulativeWaitTimeMs: integer('cumulative_wait_time_ms').default(0),
     createdAt: integer('created_at', { mode: 'timestamp_ms' }).$defaultFn(() => new Date()),
     updatedAt: integer('updated_at', { mode: 'timestamp_ms' }).$defaultFn(() => new Date()),
 }, (table) => ({

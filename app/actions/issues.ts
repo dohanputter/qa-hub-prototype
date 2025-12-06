@@ -766,30 +766,20 @@ export async function getDashboardStats(groupId?: number) {
     let issuesWithWaitTimeCount = 0;
 
     allIssues.forEach(issue => {
-        // For completed issues, calculate wait time from readyForQaAt to first run
-        const issueRuns = allRuns.filter(r => r.qaIssueId === issue.id);
-        if (issueRuns.length > 0) {
-            // Sort by run number to find the first run
-            issueRuns.sort((a, b) => a.runNumber - b.runNumber);
-            const firstRun = issueRuns[0];
+        // Calculate total wait time: cumulative stored time + current wait if applicable
+        let waitTime = issue.cumulativeWaitTimeMs || 0;
 
-            // If we have readyForQaAt and first run has createdAt
-            if (issue.readyForQaAt && firstRun.createdAt) {
-                const readyAt = new Date(issue.readyForQaAt).getTime();
-                const runCreatedAt = new Date(firstRun.createdAt).getTime();
-                // Only count positive wait times (run started after ready)
-                if (runCreatedAt >= readyAt) {
-                    totalWaitMs += (runCreatedAt - readyAt);
-                    issuesWithWaitTimeCount++;
-                }
-            }
-        }
-        // For issues currently in Ready for QA (have readyForQaAt but no completed runs)
-        else if (issue.readyForQaAt) {
-            // Calculate current wait time
+        // Add current ongoing wait time if applicable
+        if (issue.readyForQaAt) {
             const readyAt = new Date(issue.readyForQaAt).getTime();
             const currentWait = Date.now() - readyAt;
-            totalWaitMs += currentWait;
+            if (currentWait > 0) {
+                waitTime += currentWait;
+            }
+        }
+
+        if (waitTime > 0) {
+            totalWaitMs += waitTime;
             issuesWithWaitTimeCount++;
         }
     });
