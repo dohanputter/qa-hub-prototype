@@ -504,7 +504,10 @@ export const CreateIssueWizard: React.FC<CreateIssueWizardProps> = ({ onClose, o
                                     <div className="absolute top-full mt-2 right-0 w-full bg-popover border border-border shadow-xl rounded-xl z-20 overflow-hidden animate-in zoom-in-95 duration-100">
                                         <div className="max-h-60 overflow-y-auto p-1">
                                             {labels
-                                                .filter(l => !l.title.toLowerCase().startsWith('qa:'))
+                                                .filter(l => {
+                                                    const lowerTitle = l.title.toLowerCase();
+                                                    return !lowerTitle.startsWith('qa:') && !lowerTitle.startsWith('workflow:');
+                                                })
                                                 .map(l => {
                                                     const isSelected = !!selectedLabels.find(sl => sl.id === l.id);
                                                     return (

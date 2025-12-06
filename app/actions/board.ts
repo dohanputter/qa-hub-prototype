@@ -115,7 +115,16 @@ export async function moveIssue(projectId: number, issueIid: number, newLabel: s
 
                 case 'standard':
                 default:
-                    // Standard column: No special QA behavior, just update labels
+                    // Standard column: No special QA behavior, but clear readyForQaAt if coming from queue
+                    if (sourceColumn?.columnType === 'queue') {
+                        await db.update(qaIssues)
+                            .set({ readyForQaAt: null, updatedAt: new Date() })
+                            .where(and(
+                                eq(qaIssues.gitlabProjectId, projectId),
+                                eq(qaIssues.gitlabIssueIid, issueIid)
+                            ));
+                        logger.info(`moveIssue: Cleared readyForQaAt for Issue #${issueIid} (moved from queue to standard)`);
+                    }
                     logger.info('moveIssue: Moving to Standard column - Label update only');
                     break;
             }
@@ -173,6 +182,7 @@ export async function moveIssue(projectId: number, issueIid: number, newLabel: s
                     .set({
                         status: 'pending',
                         cumulativeTimeMs: newCumulativeTime,
+                        readyForQaAt: null,
                         updatedAt: now
                     })
                     .where(eq(qaIssues.id, existingIssue[0].id));

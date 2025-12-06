@@ -2,7 +2,7 @@
 
 import { auth } from '@/auth';
 import { db } from '@/lib/db';
-import { projects } from '@/db/schema';
+import { groups, projects } from '@/db/schema';
 import { eq } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 import { isMockMode, getTokenOrMock } from '@/lib/mode';
@@ -12,18 +12,18 @@ import { logger } from '@/lib/logger';
 import type { QAColumn } from '@/types';
 
 /**
- * Get the column mapping configuration for a project
+ * Get the column mapping configuration for a group
  * Returns the custom mapping or default columns if not configured
  */
-export async function getProjectColumnMapping(projectId: number): Promise<QAColumn[]> {
-    const [project] = await db
-        .select({ columnMapping: projects.columnMapping })
-        .from(projects)
-        .where(eq(projects.id, projectId))
+export async function getProjectColumnMapping(groupId: number): Promise<QAColumn[]> {
+    const [group] = await db
+        .select({ columnMapping: groups.columnMapping })
+        .from(groups)
+        .where(eq(groups.id, groupId))
         .limit(1);
 
-    if (project?.columnMapping && project.columnMapping.length > 0) {
-        return project.columnMapping as QAColumn[];
+    if (group?.columnMapping && group.columnMapping.length > 0) {
+        return group.columnMapping as QAColumn[];
     }
 
     // Return default columns if no custom mapping
@@ -31,10 +31,10 @@ export async function getProjectColumnMapping(projectId: number): Promise<QAColu
 }
 
 /**
- * Save column mapping configuration for a project
+ * Save column mapping configuration for a group
  */
 export async function saveProjectColumnMapping(
-    projectId: number,
+    groupId: number,
     columns: QAColumn[]
 ): Promise<{ success: boolean; error?: string }> {
     const session = await auth();
@@ -73,18 +73,17 @@ export async function saveProjectColumnMapping(
             }));
 
         await db
-            .update(projects)
+            .update(groups)
             .set({
                 columnMapping: normalizedColumns,
-                isConfigured: true,
             })
-            .where(eq(projects.id, projectId));
+            .where(eq(groups.id, groupId));
 
-        logger.info(`Saved column mapping for project ${projectId}`, { columnCount: normalizedColumns.length });
+        logger.info(`Saved column mapping for group ${groupId}`, { columnCount: normalizedColumns.length });
 
-        revalidatePath(`/${projectId}`);
-        revalidatePath(`/${projectId}/board`);
-        revalidatePath(`/${projectId}/settings`);
+        revalidatePath(`/${groupId}`);
+        revalidatePath(`/${groupId}/board`);
+        revalidatePath(`/${groupId}/settings`);
 
         return { success: true };
     } catch (error) {

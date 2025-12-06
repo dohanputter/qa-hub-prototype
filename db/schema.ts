@@ -56,6 +56,15 @@ export const groups = sqliteTable('groups', {
     description: text('description'),
     webUrl: text('web_url').notNull(),
     avatarUrl: text('avatar_url'),
+    // Per-group column mapping for flexible QA workflow
+    columnMapping: text('column_mapping', { mode: 'json' }).$type<Array<{
+        id: string;
+        title: string;
+        gitlabLabel: string;
+        color: string;
+        order: number;
+        columnType: 'queue' | 'active' | 'passed' | 'failed' | 'standard';
+    }>>(),
     createdAt: integer('created_at', { mode: 'timestamp_ms' }).$defaultFn(() => new Date()),
 });
 

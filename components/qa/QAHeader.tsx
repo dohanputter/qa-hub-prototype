@@ -52,7 +52,12 @@ export function QAHeader({
     activeRun
 }: QAHeaderProps) {
     const [now, setNow] = useState(Date.now());
-    const filteredProjectLabels = projectLabels?.filter((l: any) => !l.name.startsWith('qa::')) || [];
+    // Filter out QA workflow labels from dropdown options
+    const filteredProjectLabels = projectLabels?.filter((l: any) =>
+        !l.name.startsWith('qa::') &&
+        !l.name.startsWith('QA::') &&
+        !l.name.startsWith('workflow::')
+    ) || [];
 
     // Live timer effect - update every second when there's an active run
     useEffect(() => {

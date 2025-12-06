@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback, useOptimistic, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import {
     DndContext,
     DragOverlay,
@@ -51,6 +52,7 @@ export function KanbanBoard({
     columns: configuredColumns,
     onColumnsChange,
 }: KanbanBoardProps) {
+    const router = useRouter();
     const [issues, setIssues] = useState<KanbanIssue[]>(initialIssues);
     const [optimisticIssues, setOptimisticIssues] = useOptimistic(issues, (state, newIssues: KanbanIssue[]) => newIssues);
     const [isPending, startTransition] = useTransition();
@@ -64,6 +66,13 @@ export function KanbanBoard({
 
     // Use configured columns or defaults
     const qaColumns = configuredColumns || DEFAULT_COLUMNS;
+
+    // Handle column save - refresh the page to get updated columns
+    const handleColumnSave = useCallback(() => {
+        onColumnsChange?.();
+        // Refresh the router to re-fetch server data with updated columns
+        router.refresh();
+    }, [onColumnsChange, router]);
 
     // Helper functions to manage sync state safely
     const startSync = useCallback(() => setSyncCount(c => c + 1), []);
@@ -620,7 +629,7 @@ export function KanbanBoard({
         : null;
 
     return (
-        <LabelColorsProvider labels={labels}>
+        <LabelColorsProvider labels={labels} hiddenLabels={allConfiguredLabels}>
             <div className="flex flex-col h-full">
                 {/* Sticky Header */}
                 <div className="flex justify-between items-center mb-6 sticky top-0 z-10 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 py-2">
@@ -696,7 +705,7 @@ export function KanbanBoard({
                     projectId={project.id}
                     open={showColumnConfig}
                     onOpenChange={setShowColumnConfig}
-                    onSave={onColumnsChange}
+                    onSave={handleColumnSave}
                 />
 
                 <DndContext

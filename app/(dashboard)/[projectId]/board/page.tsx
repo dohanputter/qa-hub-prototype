@@ -31,11 +31,14 @@ export default async function BoardPage({
     // Fetch group details
     const group = await getGroup(groupId, session.accessToken);
 
-    // Fetch labels from first project in group (heuristic)
+    // Fetch projects in group for labels
     const projects = await getGroupProjects(groupId, session.accessToken);
-    const labels = projects.length > 0 ? (await import('@/lib/gitlab')).getProjectLabels(projects[0].id, session.accessToken) : [];
 
-    // Fetch column mapping for the project
+    const firstProjectId = projects.length > 0 ? projects[0].id : groupId;
+    const labels = projects.length > 0 ? (await import('@/lib/gitlab')).getProjectLabels(firstProjectId, session.accessToken) : [];
+
+    // Fetch column mapping for the group (stored per-group)
+    // (Column mapping is stored per-project, and boards show group-level issues)
     const columns = await getProjectColumnMapping(groupId);
 
     // Callback to refresh when columns are updated
@@ -63,7 +66,7 @@ export default async function BoardPage({
 
             <KanbanBoard
                 issues={issues}
-                project={group as any}
+                project={{ ...group, id: groupId } as any}
                 labels={await labels as any}
                 projectId={groupId}
                 columns={columns}
@@ -72,4 +75,3 @@ export default async function BoardPage({
         </div>
     );
 }
-

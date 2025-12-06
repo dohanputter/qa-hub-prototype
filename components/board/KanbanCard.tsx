@@ -28,18 +28,21 @@ function generateLabelColor(labelName: string): { bg: string; text: string } {
     return { bg: `hsl(${hue}, 65%, 45%)`, text: '#fff' };
 }
 
-// Context for sharing label colors from the board
+// Context for sharing label colors and hidden labels from the board
 interface LabelColorsContextType {
     getLabelColor: (labelName: string) => { bg: string; text: string };
+    hiddenLabels: string[];
 }
 
 const LabelColorsContext = createContext<LabelColorsContextType | null>(null);
 
 export function LabelColorsProvider({
     labels,
+    hiddenLabels = [],
     children
 }: {
     labels: GitLabLabel[];
+    hiddenLabels?: string[];
     children: React.ReactNode;
 }) {
     // Memoize the label color map to prevent recreation on every render
@@ -71,7 +74,7 @@ export function LabelColorsProvider({
     }, [labelColorMap, generatedColorCache]);
 
     // Memoize context value to prevent unnecessary re-renders
-    const contextValue = useMemo(() => ({ getLabelColor }), [getLabelColor]);
+    const contextValue = useMemo(() => ({ getLabelColor, hiddenLabels }), [getLabelColor, hiddenLabels]);
 
     return (
         <LabelColorsContext.Provider value={contextValue}>
@@ -80,14 +83,15 @@ export function LabelColorsProvider({
     );
 }
 
-// Hook to use label colors
+// Hook to use label colors and hidden labels
 function useLabelColors() {
     const context = useContext(LabelColorsContext);
 
     // Fallback when used outside provider (shouldn't happen but safety first)
     if (!context) {
         return {
-            getLabelColor: generateLabelColor
+            getLabelColor: generateLabelColor,
+            hiddenLabels: []
         };
     }
 
@@ -98,7 +102,12 @@ function useLabelColors() {
 export function IssueCard({ issue, projectId, isOverlay = false }: { issue: KanbanIssue, projectId: number, isOverlay?: boolean }) {
     const router = useRouter();
     const [isDeleting, setIsDeleting] = useState(false);
-    const { getLabelColor } = useLabelColors();
+    const { getLabelColor, hiddenLabels } = useLabelColors();
+
+    // Filter out QA workflow labels (configured column labels + qa:: prefix)
+    const visibleLabels = issue.labels.filter((l: string) =>
+        !l.startsWith('qa::') && !hiddenLabels.includes(l)
+    );
 
     const handleDelete = async (e: React.MouseEvent) => {
         e.stopPropagation();
@@ -151,8 +160,7 @@ export function IssueCard({ issue, projectId, isOverlay = false }: { issue: Kanb
                 </div>
 
                 <div className="flex flex-wrap gap-1">
-                    {issue.labels
-                        .filter((l: string) => !l.startsWith('qa::'))
+                    {visibleLabels
                         .slice(0, 3)
                         .map((l: string) => {
                             const colors = getLabelColor(l);
@@ -167,8 +175,8 @@ export function IssueCard({ issue, projectId, isOverlay = false }: { issue: Kanb
                                 </Badge>
                             );
                         })}
-                    {issue.labels.filter((l: string) => !l.startsWith('qa::')).length > 3 && (
-                        <span className="text-xs text-muted-foreground">+{issue.labels.filter((l: string) => !l.startsWith('qa::')).length - 3}</span>
+                    {visibleLabels.length > 3 && (
+                        <span className="text-xs text-muted-foreground">+{visibleLabels.length - 3}</span>
                     )}
                 </div>
 

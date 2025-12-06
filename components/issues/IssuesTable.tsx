@@ -133,7 +133,11 @@ export function IssuesTable({ issues, projectId, labels = [] }: { issues: any[];
                             <TableCell>
                                 <div className="flex flex-wrap gap-1">
                                     {issue.labels
-                                        .filter((l: string) => !l.startsWith('qa::'))
+                                        .filter((l: string) =>
+                                            !l.startsWith('qa::') &&
+                                            !l.startsWith('QA::') &&
+                                            !l.startsWith('workflow::')
+                                        )
                                         .map((label: string) => {
                                             const colors = getLabelColor(label);
                                             return (

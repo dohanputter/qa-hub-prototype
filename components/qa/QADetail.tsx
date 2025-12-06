@@ -37,8 +37,15 @@ export function QADetail({ issue, qaIssue, runs = [], allAttachments = [], membe
         issue.web_url
     );
 
-    // Filter out QA labels from display and selection
-    const [issueLabels, setIssueLabels] = useState<string[]>((issue.labels || []).filter((l: string) => !l.startsWith('qa::')));
+    // Filter out QA workflow labels from display and selection
+    // Hides labels with qa::, QA::, and workflow:: prefixes
+    const [issueLabels, setIssueLabels] = useState<string[]>(
+        (issue.labels || []).filter((l: string) =>
+            !l.startsWith('qa::') &&
+            !l.startsWith('QA::') &&
+            !l.startsWith('workflow::')
+        )
+    );
     const [isUpdatingLabels, setIsUpdatingLabels] = useState(false);
 
     // Editor state
