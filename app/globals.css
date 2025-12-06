@@ -4,8 +4,8 @@
 
 @layer base {
   :root {
-    /* Light Mode - Zinc & Teal */
-    --background: 240 10% 96%; /* Slightly darker to reduce glare */
+    /* Light Mode - Zinc & Teal (Polished) */
+    --background: 220 14% 96%; /* Slightly warmer off-white */
     --foreground: 240 10% 3.9%;
 
     --card: 0 0% 100%;
@@ -18,34 +18,44 @@
     --primary: 173 58% 39%;
     --primary-foreground: 0 0% 98%;
 
-    --secondary: 240 4.8% 95.9%;
+    --secondary: 220 14% 96%;
     --secondary-foreground: 240 5.9% 10%;
 
-    --muted: 240 4.8% 95.9%;
+    --muted: 220 13% 94%;
     --muted-foreground: 240 3.8% 40%; /* Darker for better readability */
 
-    --accent: 240 4.8% 95.9%;
+    --accent: 220 14% 96%;
     --accent-foreground: 240 5.9% 10%;
 
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 0 0% 98%;
 
-    --border: 240 5.9% 90%;
-    --input: 240 5.9% 90%;
+    /* Warmer tinted borders for light mode */
+    --border: 200 10% 88%;
+    --input: 200 10% 88%;
     --ring: 173 58% 39%;
 
     --radius: 0.75rem;
+
+    /* Light mode shadow system */
+    --shadow-subtle: 0 1px 2px rgba(0, 0, 0, 0.04), 0 1px 3px rgba(0, 0, 0, 0.06);
+    --shadow-elevated: 0 4px 6px -1px rgba(0, 0, 0, 0.06), 0 2px 4px -2px rgba(0, 0, 0, 0.05);
+    --shadow-floating: 0 10px 15px -3px rgba(0, 0, 0, 0.08), 0 4px 6px -4px rgba(0, 0, 0, 0.04);
   }
 
   .dark {
-    /* Dark Mode - Zinc & Teal */
+    /* Dark Mode - Zinc & Teal (Polished) */
     --background: 240 10% 3.9%;
     --foreground: 0 0% 98%;
 
-    --card: 240 10% 3.9%;
+    --card: 240 10% 5.5%;
     --card-foreground: 0 0% 98%;
 
-    --popover: 240 10% 3.9%;
+    /* Elevated surfaces in dark mode */
+    --card-elevated: 240 10% 7%;
+    --card-raised: 240 10% 9%;
+
+    --popover: 240 10% 6%;
     --popover-foreground: 0 0% 98%;
 
     /* Teal 600 Primary */
@@ -55,7 +65,7 @@
     --secondary: 240 3.7% 15.9%;
     --secondary-foreground: 0 0% 98%;
 
-    --muted: 240 3.7% 15.9%;
+    --muted: 240 3.7% 13%;
     --muted-foreground: 240 5% 64.9%;
 
     --accent: 240 3.7% 15.9%;
@@ -64,9 +74,16 @@
     --destructive: 0 62.8% 30.6%;
     --destructive-foreground: 0 0% 98%;
 
-    --border: 240 3.7% 15.9%;
-    --input: 240 3.7% 15.9%;
+    /* More visible borders in dark mode */
+    --border: 240 4% 18%;
+    --input: 240 4% 18%;
     --ring: 173 58% 39%;
+
+    /* Dark mode shadow/glow system */
+    --shadow-subtle: 0 1px 2px rgba(0, 0, 0, 0.3);
+    --shadow-elevated: 0 4px 6px -1px rgba(0, 0, 0, 0.4), 0 2px 4px -2px rgba(0, 0, 0, 0.3);
+    --shadow-floating: 0 10px 15px -3px rgba(0, 0, 0, 0.5), 0 4px 6px -4px rgba(0, 0, 0, 0.3);
+    --glow-primary: 0 0 20px -5px hsl(173 58% 39% / 0.4);
   }
 }
 
@@ -77,11 +94,19 @@
 
   body {
     @apply bg-background text-foreground antialiased;
-    /* Subtle gradient to enhance glassmorphism */
+    /* Multi-layer gradient for visual depth */
     background-image: 
-      radial-gradient(circle at top left, hsl(var(--primary) / 0.03), transparent 40%),
-      radial-gradient(circle at bottom right, hsl(var(--primary) / 0.03), transparent 40%);
+      radial-gradient(ellipse at 0% 0%, hsl(var(--primary) / 0.04), transparent 50%),
+      radial-gradient(ellipse at 100% 100%, hsl(var(--primary) / 0.03), transparent 50%),
+      radial-gradient(ellipse at 50% 50%, hsl(var(--muted) / 0.3), transparent 80%);
     background-attachment: fixed;
+  }
+
+  /* Dark mode enhanced background */
+  .dark body {
+    background-image: 
+      radial-gradient(ellipse at 0% 0%, hsl(var(--primary) / 0.06), transparent 40%),
+      radial-gradient(ellipse at 100% 100%, hsl(173 58% 25% / 0.04), transparent 40%);
   }
 }
 
@@ -92,11 +117,53 @@
 
   .glass-card {
     @apply bg-card/50 backdrop-blur-sm border border-border/50;
+    box-shadow: var(--shadow-subtle);
   }
 
-  /* Colored shadows */
+  /* Elevation shadows */
+  .shadow-subtle {
+    box-shadow: var(--shadow-subtle);
+  }
+
+  .shadow-elevated {
+    box-shadow: var(--shadow-elevated);
+  }
+
+  .shadow-floating {
+    box-shadow: var(--shadow-floating);
+  }
+
+  /* Primary glow effect - works great in dark mode */
   .shadow-glow-primary {
     box-shadow: 0 0 20px -5px hsl(var(--primary) / 0.3);
+  }
+
+  .dark .shadow-glow-primary {
+    box-shadow: var(--glow-primary), var(--shadow-elevated);
+  }
+
+  /* Card with top highlight gradient (premium feel) */
+  .card-gradient {
+    background: linear-gradient(180deg, hsl(var(--card)) 0%, hsl(var(--card) / 0.98) 100%);
+  }
+
+  .dark .card-gradient {
+    background: linear-gradient(180deg, hsl(var(--card-raised)) 0%, hsl(var(--card)) 100%);
+  }
+
+  /* Interactive card with hover state */
+  .card-interactive {
+    @apply transition-all duration-200;
+    box-shadow: var(--shadow-subtle);
+  }
+
+  .card-interactive:hover {
+    box-shadow: var(--shadow-elevated);
+    transform: translateY(-1px);
+  }
+
+  .dark .card-interactive:hover {
+    box-shadow: var(--shadow-elevated), 0 0 0 1px hsl(var(--border));
   }
 
   /* Tiptap Table Styles - Aggressive Override */
